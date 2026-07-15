@@ -1,4 +1,4 @@
-# StyleForge - 服装AI全链路品牌自研系统设计文档
+# fashion-ai-plm - 服装AI全链路品牌自研系统设计文档
 
 > 日期：2026-07-15
 > 状态：已通过需求对齐，待用户审阅后进入实施规划
@@ -9,7 +9,7 @@
 
 ### 1.1 定位
 
-StyleForge 是面向轻资产服装品牌（无工厂、全外包生产）的 AI 全链路自研管理系统。以「款式生命周期」为核心，用 2 人团队实现传统大服装品牌公司所需的企划、设计、打样、大货、销售、售后全链路数字化闭环。
+fashion-ai-plm 是面向轻资产服装品牌（无工厂、全外包生产）的 AI 全链路自研管理系统。以「款式生命周期」为核心，用 2 人团队实现传统大服装品牌公司所需的企划、设计、打样、大货、销售、售后全链路数字化闭环。
 
 前期 2 人纯自用，全程 AI 介入；后期验证价值后可平滑升级为多租户 SaaS。
 
@@ -153,6 +153,7 @@ Vercel（免费，永不休眠，git push 自动部署）
 | 框架 | Next.js (App Router) | 14+ | 全栈一体，TypeScript 原生，Vercel 零配置部署 |
 | 语言 | TypeScript | 5+ | strict 模式，编译期拦截类型错误 |
 | UI 库 | Tailwind CSS + shadcn/ui | latest | 专业级 UI，响应式自适应 |
+| 白板 SDK | tldraw | latest | 高性能无限画布，支持自定义形状和工具 |
 | 数据库 | Supabase (PostgreSQL) | 免费版 | 500MB，自带 Auth/RLS/自动备份 |
 | ORM | Drizzle ORM | latest | 轻量 TypeScript 优先，类型安全 |
 | 文件存储 | Cloudflare R2 | 免费版 | 10GB，无流量费，S3 兼容 |
@@ -175,13 +176,13 @@ Vercel（免费，永不休眠，git push 自动部署）
 ### 4.4 目录结构（预设）
 
 ```
-styleforge/
+fashion-ai-plm/
 ├─ src/
 │  ├─ app/                    # Next.js App Router
 │  │  ├─ (auth)/              # 认证相关页面
 │  │  ├─ (dashboard)/         # 主工作台
 │  │  │  ├─ styles/           # 款式管理（核心）
-│  │  │  ├─ planning/         # 企划模块
+│  │  │  ├─ planning/         # 企划模块（含灵感白板）
 │  │  │  ├─ sampling/         # 打样模块
 │  │  │  ├─ production/       # 大货生产
 │  │  │  ├─ inventory/        # 库存管理
@@ -191,18 +192,21 @@ styleforge/
 │  │  ├─ api/                 # API Routes
 │  │  │  ├─ ai/               # AI 相关接口
 │  │  │  ├─ styles/           # 款式 CRUD
-│  │  │  ├─ upload/           # 文件上传
+│  │  │  ├─ upload/           # 文件上传（含图片处理）
+│  │  │  ├─ whiteboard/       # 白板数据接口
 │  │  │  └─ webhooks/         # 外部回调
 │  │  └─ layout.tsx           # 全局布局
 │  ├─ components/             # 组件
 │  │  ├─ ui/                  # shadcn/ui 基础组件
 │  │  ├─ style/               # 款式相关组件
 │  │  ├─ ai/                  # AI 辅助组件
+│  │  ├─ whiteboard/          # tldraw 白板组件（含自定义形状）
 │  │  └─ shared/              # 共享组件
 │  ├─ lib/
 │  │  ├─ db/                  # Drizzle schema & queries
 │  │  ├─ ai/                  # AI 服务封装
-│  │  ├─ storage/             # R2 文件存储
+│  │  ├─ storage/             # R2 文件存储（含图片处理）
+│  │  ├─ whiteboard/          # 白板数据处理（快照/区域分割）
 │  │  └─ utils/               # 工具函数
 │  ├─ types/                  # TypeScript 类型定义
 │  └─ middleware.ts           # 认证中间件
@@ -214,6 +218,231 @@ styleforge/
 ├─ next.config.js
 └─ .env.local                 # 环境变量
 ```
+
+---
+
+## 4.5 tldraw 灵感白板（Mood Board）架构设计
+
+### 4.5.1 需求背景
+
+企划灵感板（Mood Board）是服装品牌研发的核心环节，设计师需要将数百到上千张参考图、面料图、设计元素拖拽到无限画布上自由排版。单次企划灵感白板素材数量最高可达 500~1000 张高清参考图，必须解决：
+
+- 大量图片带来的内存高占用问题
+- 画布加载缓慢问题
+- 缩放平移卡顿问题
+
+### 4.5.2 架构级性能优化方案
+
+针对 500-1000 张高清图片场景，采用**多层级架构优化**：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    前端渲染层                                │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │         tldraw 编辑器（视口裁剪 + 虚拟化渲染）            │   │
+│  │  ├─ 自定义 ImageShapeUtil（渐进式加载 + 占位符）       │   │
+│  │  ├─ 自定义工具（批量导入 + AI 标签）                    │   │
+│  │  └─ 组件优化（React.memo + useMemo）                  │   │
+│  └─────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│                    图片处理层                                │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │         Cloudflare R2 + 图片处理管道                    │   │
+│  │  ├─ 多级缩略图生成（256px / 512px / 原始尺寸）        │   │
+│  │  ├─ WebP 格式转换（体积减少 60-70%）                   │   │
+│  │  └─ 按需加载（基于视口和缩放级别）                      │   │
+│  └─────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│                    数据存储层                                │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │         Supabase + R2 联合存储                          │   │
+│  │  ├─ 白板元数据（形状位置、大小、层级）                  │   │
+│  │  ├─ 区域快照（按空间分区缓存）                          │   │
+│  │  └─ 素材索引（标签、分类、AI 属性）                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.5.3 性能优化策略详解
+
+#### 策略一：视口裁剪 + 虚拟化渲染（tldraw 原生能力）
+
+tldraw 内置视口裁剪机制，只渲染当前视口内的形状。结合自定义优化：
+
+- **自定义 ImageShapeUtil**：实现渐进式图片加载，先显示低分辨率占位符，再加载高清图
+- **条件裁剪**：对于超出视口一定距离的图片，不渲染或仅渲染占位符
+- **缩放级别感知**：缩放级别低时（全局视图），只加载最小缩略图
+
+#### 策略二：多级图片处理（架构级核心优化）
+
+这是解决 500-1000 张图片性能问题的**核心方案**：
+
+```
+上传高清原图（2-5MB）
+    │
+    ▼
+Cloudflare R2 存储原始文件
+    │
+    ▼
+图片处理管道（Next.js API）
+    ├─ 生成 256px 缩略图（用于全局视图和预览）
+    ├─ 生成 512px 中等图（用于画布正常缩放级别）
+    └─ 保留原始图（用于选中/放大查看）
+    │
+    ▼
+存储到 R2，建立尺寸索引
+```
+
+**加载策略**：
+| 缩放级别 | 加载尺寸 | 预估单张大小 | 1000 张预估内存 |
+|---------|---------|------------|----------------|
+| < 25%（全局视图） | 256px 缩略图 | ~10KB | ~10MB |
+| 25% - 100%（正常视图） | 512px 中等图 | ~30KB | ~30MB |
+| > 100%（放大查看） | 原始尺寸 | ~2MB | 按需加载 |
+
+#### 策略三：区域快照与懒加载
+
+将无限画布按固定大小（如 2000x2000px）划分为网格区域：
+
+- **区域快照**：当用户离开某个区域时，将该区域渲染为一张快照图，替换掉内部的所有图片形状
+- **懒加载**：进入新区域时，异步加载该区域的实际图片内容
+- **预加载**：根据用户平移方向，提前加载相邻区域的内容
+
+#### 策略四：WebP 格式 + 智能压缩
+
+- 所有图片自动转换为 WebP 格式，体积减少 60-70%
+- 根据图片内容智能压缩：
+  - 照片类：质量 70%，保留细节
+  - 插画/图案类：质量 80%，色彩丰富
+  - 纯图/色块：质量 90%，保持清晰度
+
+#### 策略五：内存管理与垃圾回收
+
+- **图片缓存限制**：设置最大缓存数量（如 200 张），LRU 淘汰策略
+- **离屏卸载**：图片离开视口后，释放其内存占用
+- **定时清理**：定期清理未使用的图片缓存
+
+### 4.5.4 白板数据存储方案
+
+#### 存储结构
+
+```
+mood_boards (灵感板主表)
+├─ id                  uuid PK
+├─ planning_id         uuid FK (关联企划计划)
+├─ name                text (白板名称)
+├─ thumbnail_url       text (预览图)
+├─ created_at          timestamptz
+└─ updated_at          timestamptz
+
+mood_board_shapes (形状数据)
+├─ id                  uuid PK
+├─ board_id            uuid FK
+├─ type                text (image/text/rectangle/...)
+├─ x                   numeric (X坐标)
+├─ y                   numeric (Y坐标)
+├─ width               numeric (宽度)
+├─ height              numeric (高度)
+├─ rotation            numeric (旋转角度)
+├─ z_index             int (层级)
+├─ props               jsonb (形状属性，含图片URL/标签等)
+└─ area_id             text (所属区域ID)
+
+mood_board_areas (区域快照)
+├─ id                  text PK
+├─ board_id            uuid FK
+├─ x                   int (区域左上角X)
+├─ y                   int (区域左上角Y)
+├─ width               int (区域宽度)
+├─ height              int (区域高度)
+├─ snapshot_url        text (快照图片URL)
+├─ snapshot_time       timestamptz
+└─ is_dirty            boolean (是否有未保存变更)
+
+mood_board_assets (素材索引)
+├─ id                  uuid PK
+├─ board_id            uuid FK
+├─ asset_id            uuid FK (关联设计资产)
+├─ shape_id            uuid FK (关联形状)
+├─ ai_tags             jsonb (AI 标签)
+├─ ai_color_palette    jsonb (AI 提取色彩)
+└─ category            text (分类)
+```
+
+#### 数据同步策略
+
+- **实时同步**：使用 tldraw 的 `onMount` 和 `onChange` 回调，监听画布变更
+- **批量保存**：采用节流策略，每 3 秒或累计 10 个变更后批量保存到数据库
+- **版本管理**：每次保存生成版本快照，支持回滚
+- **离线支持**：本地 IndexedDB 缓存，网络恢复后同步
+
+### 4.5.5 自定义 tldraw 扩展
+
+#### 自定义形状：FashionImageShape
+
+```typescript
+class FashionImageShapeUtil extends ShapeUtil<TLFashionImageShape> {
+  static override type = 'fashion-image' as const
+
+  override getGeometry(shape: TLFashionImageShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true
+    })
+  }
+
+  override component(shape: TLFashionImageShape) {
+    const { assetId, thumbnailUrl, mediumUrl, originalUrl } = shape.props
+    
+    return (
+      <FashionImage
+        assetId={assetId}
+        thumbnailUrl={thumbnailUrl}
+        mediumUrl={mediumUrl}
+        originalUrl={originalUrl}
+        width={shape.props.w}
+        height={shape.props.h}
+      />
+    )
+  }
+
+  override indicator(shape: TLFashionImageShape) {
+    return <rect width={shape.props.w} height={shape.props.h} />
+  }
+}
+```
+
+#### 自定义工具：BatchImportTool
+
+支持从素材库批量导入图片到画布，自动排列布局。
+
+#### 自定义面板：AssetLibraryPanel
+
+素材库面板，支持：
+- AI 标签搜索和筛选
+- 分类浏览（灵感图/面料图/设计元素）
+- 拖拽到画布
+- 批量选择和导入
+
+### 4.5.6 AI 集成
+
+| 用户动作 | AI 自动响应 | AI 类型 |
+|---------|------------|---------|
+| 上传参考图 | 自动打标签、提取色彩、分类归档 | 图像识别 + DeepSeek |
+| 批量导入素材 | 自动分组、推荐布局排列方式 | DeepSeek 推理 |
+| 选中图片 | 推荐相似面料、色彩搭配方案 | DeepSeek 推荐 |
+| 白板完成 | 自动生成企划方向总结、色彩趋势报告 | DeepSeek 分析 |
+
+### 4.5.7 预期性能指标
+
+| 指标 | 预期值 |
+|------|-------|
+| 1000 张图片初始加载时间 | < 5 秒（仅加载视口内缩略图） |
+| 画布缩放帧率 | > 30 FPS |
+| 画布平移帧率 | > 30 FPS |
+| 单张图片加载时间 | < 200ms（中等图） |
+| 内存占用（正常缩放） | < 100MB |
 
 ---
 
@@ -237,6 +466,12 @@ styles (款式)
 ├─ marketing_assets     营销素材
 ├─ after_sales          售后记录
 └─ supplier_relations   供应商关联
+
+planning (企划计划)
+└─ mood_boards          灵感白板
+    ├─ mood_board_shapes      白板形状数据
+    ├─ mood_board_areas       区域快照
+    └─ mood_board_assets      素材索引
 ```
 
 ### 5.2 核心表结构
@@ -430,6 +665,81 @@ styles (款式)
 | ai_match_score | numeric | AI 匹配评分 |
 | created_at | timestamptz | 创建时间 |
 
+#### planning（企划计划）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid PK | 主键 |
+| season | text | 季节（如 2026SS） |
+| name | text | 企划名称 |
+| start_date | date | 开始日期 |
+| end_date | date | 结束日期 |
+| category_structure | jsonb | 品类结构规划 |
+| cost_target | numeric | 成本目标 |
+| ai_trend_analysis | text | AI 趋势分析 |
+| ai_plan_suggestion | text | AI 企划建议 |
+| created_at | timestamptz | 创建时间 |
+| updated_at | timestamptz | 更新时间 |
+
+#### mood_boards（灵感白板）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid PK | 主键 |
+| planning_id | uuid FK | 关联企划计划 |
+| name | text | 白板名称 |
+| thumbnail_url | text | 预览图 URL |
+| canvas_width | numeric | 画布宽度 |
+| canvas_height | numeric | 画布高度 |
+| created_at | timestamptz | 创建时间 |
+| updated_at | timestamptz | 更新时间 |
+
+#### mood_board_shapes（白板形状数据）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid PK | 主键 |
+| board_id | uuid FK | 关联灵感白板 |
+| type | text | 形状类型（image/text/rectangle/...） |
+| x | numeric | X 坐标 |
+| y | numeric | Y 坐标 |
+| width | numeric | 宽度 |
+| height | numeric | 高度 |
+| rotation | numeric | 旋转角度（弧度） |
+| z_index | int | 层级 |
+| props | jsonb | 形状属性（含图片 URL/标签/AI 分析等） |
+| area_id | text | 所属区域 ID |
+| created_at | timestamptz | 创建时间 |
+| updated_at | timestamptz | 更新时间 |
+
+#### mood_board_areas（区域快照）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | text PK | 区域 ID（格式：`{board_id}_{x}_{y}`） |
+| board_id | uuid FK | 关联灵感白板 |
+| x | int | 区域左上角 X（网格坐标） |
+| y | int | 区域左上角 Y（网格坐标） |
+| width | int | 区域宽度（像素） |
+| height | int | 区域高度（像素） |
+| snapshot_url | text | 快照图片 URL |
+| snapshot_time | timestamptz | 快照时间 |
+| is_dirty | boolean | 是否有未保存变更 |
+| created_at | timestamptz | 创建时间 |
+
+#### mood_board_assets（素材索引）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid PK | 主键 |
+| board_id | uuid FK | 关联灵感白板 |
+| asset_id | uuid FK | 关联设计资产 |
+| shape_id | uuid FK | 关联形状 |
+| ai_tags | jsonb | AI 标签 |
+| ai_color_palette | jsonb | AI 提取色彩 |
+| category | text | 分类（灵感图/面料图/设计元素） |
+| created_at | timestamptz | 创建时间 |
+
 ---
 
 ## 6. 分阶段交付计划
@@ -467,21 +777,25 @@ styles (款式)
 - 物料齐套校验有效预防停工待料
 - 质检记录可追溯到具体款式和批次
 
-### Phase 3：AI 能力强化（4 周）— 核心差异化
+### Phase 3：AI 能力强化（6 周）— 核心差异化
 
-**目标**：AI 设计、AI 测款、AI 投产决策全面上线。
+**目标**：AI 设计、AI 测款、AI 投产决策全面上线，重点实现高性能灵感白板。
 
 | 周 | 交付内容 | AI 能力 |
 |----|---------|---------|
-| W9 | 企划模块（季节波段/品类结构/上新节奏）<br>灵感白板 + 素材标签化管理 | AI 趋势分析<br>AI 企划方向建议 |
-| W10 | AI 图生图改款、衍生款生成<br>色彩/面料/配饰搭配推荐 | 豆包/Seedream 图像生成<br>AI 搭配推荐 |
-| W11 | AI 测款效果图/主图/详情页素材生成<br>AI 销量预估 + 下单量决策 | 豆包/Seedream 图像生成<br>DeepSeek 销量预测 |
-| W12 | 色码配比模拟 + 投产风险评估<br>供应商评分体系 + AI 智能匹配工厂 | AI 配比建议<br>AI 供应商匹配 |
+| W9 | 企划模块（季节波段/品类结构/上新节奏）<br>素材库管理（分类/标签/搜索） | AI 趋势分析<br>AI 企划方向建议 |
+| W10 | tldraw 白板基础集成（无限画布/基本形状/拖拽）<br>自定义 FashionImageShape（渐进式加载） | AI 参考图打标签、提取色彩 |
+| W11 | 多级图片处理管道（256px/512px/原图）<br>WebP 格式转换 + 智能压缩 | - |
+| W12 | 区域快照与懒加载机制<br>缩放级别感知图片加载策略 | AI 批量导入分组、推荐布局 |
+| W13 | AI 图生图改款、衍生款生成<br>色彩/面料/配饰搭配推荐 | 豆包/Seedream 图像生成<br>AI 搭配推荐 |
+| W14 | AI 测款效果图/主图/详情页素材生成<br>AI 销量预估 + 下单量决策 | 豆包/Seedream 图像生成<br>DeepSeek 销量预测 |
+| W15 | 色码配比模拟 + 投产风险评估<br>供应商评分体系 + AI 智能匹配工厂 | AI 配比建议<br>AI 供应商匹配 |
 
 **Phase 3 验收标准**：
 - AI 能生成可用的测款图和营销素材
 - AI 销量预估和下单量建议有参考价值
 - 供应商评分和匹配能辅助决策
+- 灵感白板支持 500-1000 张图片流畅操作（>30 FPS）
 
 ### Phase 4：闭环复盘（3 周）— 完整商业闭环
 
@@ -489,16 +803,16 @@ styles (款式)
 
 | 周 | 交付内容 | AI 能力 |
 |----|---------|---------|
-| W13 | 多渠道销售数据统计<br>售罄率/动销分析<br>热销/滞销判断 | AI 销售洞察分析 |
-| W14 | 售后问题分类 + 缺陷统计<br>问题自动归集款式档案<br>AI 季度复盘报告 | AI 售后归因分析<br>AI 自动复盘 |
-| W15 | 全链路数据看板（研发/供应链/销售/库存）<br>商业化预留（多租户字段）<br>系统优化 + 文档 | AI 全链路数据洞察 |
+| W16 | 多渠道销售数据统计<br>售罄率/动销分析<br>热销/滞销判断 | AI 销售洞察分析 |
+| W17 | 售后问题分类 + 缺陷统计<br>问题自动归集款式档案<br>AI 季度复盘报告 | AI 售后归因分析<br>AI 自动复盘 |
+| W18 | 全链路数据看板（研发/供应链/销售/库存）<br>商业化预留（多租户字段）<br>系统优化 + 文档 | AI 全链路数据洞察 |
 
 **Phase 4 验收标准**：
 - 销售数据能驱动设计和投产决策
 - 售后问题能反推设计端迭代
 - 全链路数据看板可一览全局
 
-### 总计：15 周，第 4 周即有可用系统
+### 总计：18 周，第 4 周即有可用系统
 
 ---
 
