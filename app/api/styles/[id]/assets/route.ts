@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { uploadFile } from "@/lib/storage/supabase-storage";
+import { toCamelCase } from "@/lib/db/mappers";
 
 export const runtime = "edge";
 
@@ -20,7 +21,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "获取设计资产失败" }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    return NextResponse.json(toCamelCase(data) || []);
   } catch {
     return NextResponse.json({ error: "获取设计资产失败" }, { status: 500 });
   }
@@ -82,7 +83,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "保存设计资产记录失败" }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(toCamelCase(data), { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "上传设计资产失败";
     return NextResponse.json({ error: message }, { status: 500 });

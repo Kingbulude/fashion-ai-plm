@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
+import { toCamelCase } from "@/lib/db/mappers";
 
 export const runtime = "edge";
 
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(toCamelCase(data));
   } catch {
     return NextResponse.json({ error: "获取款式信息失败" }, { status: 500 });
   }
@@ -53,7 +54,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(toCamelCase(data));
   } catch {
     return NextResponse.json({ error: "更新款式失败" }, { status: 500 });
   }

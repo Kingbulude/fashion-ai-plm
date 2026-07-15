@@ -7,6 +7,7 @@ import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toCamelCase } from "@/lib/db/mappers";
 import {
   Plus,
   Package,
@@ -30,9 +31,9 @@ export default function DashboardPage() {
 
   const fetchStyles = async () => {
     try {
-      const { data, error } = await supabase.from("styles").select("*").order("createdAt", { ascending: false });
+      const { data, error } = await supabase.from("styles").select("*").order("created_at", { ascending: false });
       if (data) {
-        setStyles(data);
+        setStyles(toCamelCase<any[]>(data) || []);
       }
     } catch (err) {
       console.error("Failed to fetch styles");

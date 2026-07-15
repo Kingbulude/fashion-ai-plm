@@ -8,12 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AssetUploadDialog } from "@/components/styles/asset-upload-dialog";
 import {
   ArrowLeft,
   Edit,
   Trash2,
   Upload,
-  Image,
+  Image as ImageIcon,
   FileText,
   Package,
   CheckCircle,
@@ -21,6 +22,8 @@ import {
   Tag,
   Palette,
   DollarSign,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export const runtime = "edge";
@@ -30,6 +33,11 @@ export default function StyleDetailPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadDefaultType, setUploadDefaultType] = useState<"inspiration" | "design" | "ai_derivative" | "3d_sample">("design");
+  const [analyzingAssetId, setAnalyzingAssetId] = useState<string | null>(null);
+  const [globalAnalyzing, setGlobalAnalyzing] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   
   const router = useRouter();
   const params = useParams();
@@ -72,6 +80,74 @@ export default function StyleDetailPage() {
       router.push("/dashboard");
     } catch (err) {
       setError("删除失败");
+    }
+  };
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const openUpload = (type: "inspiration" | "design" | "ai_derivative" | "3d_sample" = "design") => {
+    setUploadDefaultType(type);
+    setUploadOpen(true);
+  };
+
+  const handleUploaded = () => {
+    fetchAssets();
+  };
+
+  const handleAnalyzed = () => {
+    fetchStyle();
+    fetchAssets();
+  };
+
+  // 对单个资产触发 AI 分析
+  const handleAnalyzeAsset = async (assetId: string) => {
+    setAnalyzingAssetId(assetId);
+    try {
+      const res = await fetch(`/api/styles/${id}/analyze-design`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "AI 分析失败");
+      }
+      const result = await res.json();
+      showToast("success", `AI 分析完成，提取到 ${result.tags?.length || 0} 个标签，${result.colors?.length || 0} 种色彩`);
+      fetchStyle();
+      fetchAssets();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI 分析失败";
+      showToast("error", msg);
+    } finally {
+      setAnalyzingAssetId(null);
+    }
+  };
+
+  // 一键分析最新设计稿
+  const handleAnalyzeLatest = async () => {
+    setGlobalAnalyzing(true);
+    try {
+      const res = await fetch(`/api/styles/${id}/analyze-design`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "AI 分析失败");
+      }
+      const result = await res.json();
+      showToast("success", `AI 分析完成，提取到 ${result.tags?.length || 0} 个标签，${result.colors?.length || 0} 种色彩`);
+      fetchStyle();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI 分析失败";
+      showToast("error", msg);
+    } finally {
+      setGlobalAnalyzing(false);
     }
   };
 
@@ -263,10 +339,32 @@ export default function StyleDetailPage() {
                     <p className="text-xs text-muted-foreground mb-4">
                       上传设计稿，AI 将自动提取色彩、风格、元素等标签
                     </p>
-                    <Button variant="outline" size="sm" className="w-full bg-white/60 hover:bg-white/80">
-                      <Upload className="h-4 w-4 mr-2" />
-                      上传设计稿
-                    </Button>
+                    {style.aiTags?.length > 0 ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full bg-white/60 hover:bg-white/80"
+                        onClick={handleAnalyzeLatest}
+                        disabled={globalAnalyzing}
+                      >
+                        {globalAnalyzing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        {globalAnalyzing ? "AI 分析中..." : "重新分析最新设计稿"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full bg-white/60 hover:bg-white/80"
+                        onClick={() => openUpload("design")}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        上传设计稿
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -281,7 +379,7 @@ export default function StyleDetailPage() {
                     <CardTitle className="text-base">设计资产</CardTitle>
                     <CardDescription>款式相关的设计稿、灵感图等资产</CardDescription>
                   </div>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => openUpload()}>
                     <Upload className="h-4 w-4 mr-2" />
                     上传资产
                   </Button>
@@ -290,9 +388,9 @@ export default function StyleDetailPage() {
               <CardContent>
                 {assets.length === 0 ? (
                   <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <Image className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <ImageIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
                     <p className="text-muted-foreground text-sm mb-4">暂无设计资产</p>
-                    <Button size="sm">
+                    <Button size="sm" onClick={() => openUpload()}>
                       <Upload className="h-4 w-4 mr-2" />
                       上传第一个资产
                     </Button>
@@ -323,12 +421,36 @@ export default function StyleDetailPage() {
                         </div>
                         <div className="p-3">
                           <p className="font-medium text-sm truncate">{asset.fileName}</p>
-                          <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center justify-between mt-2 mb-2">
                             <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-600">
                               {assetTypeLabels[asset.type] || asset.type}
                             </Badge>
                             <span className="text-xs text-muted-foreground">v{asset.version}</span>
                           </div>
+                          {asset.type === "design" && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              className="w-full h-7 mt-1 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnalyzeAsset(asset.id);
+                              }}
+                              disabled={analyzingAssetId === asset.id}
+                            >
+                              {analyzingAssetId === asset.id ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  分析中
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  {asset.aiTags ? "重新 AI 分析" : "AI 分析"}
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -393,6 +515,54 @@ export default function StyleDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Toast 提示 */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 max-w-sm">
+          <div
+            className={`px-4 py-3 rounded-lg shadow-lg border flex items-start gap-3 ${
+              toast.type === "success"
+                ? "bg-white border-green-200"
+                : "bg-white border-red-200"
+            }`}
+          >
+            <div
+              className={`mt-0.5 ${
+                toast.type === "success" ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {toast.type === "success" ? "操作成功" : "操作失败"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{toast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 上传对话框 */}
+      <AssetUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        styleId={id}
+        defaultType={uploadDefaultType}
+        onUploaded={handleUploaded}
+        onAnalyzed={handleAnalyzed}
+      />
     </SidebarLayout>
   );
 }

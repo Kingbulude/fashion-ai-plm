@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
+import { toCamelCase } from "@/lib/db/mappers";
 
 export const runtime = "edge";
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "创建款式失败" }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(toCamelCase(data), { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "创建款式失败" }, { status: 500 });
   }
@@ -46,7 +47,7 @@ export async function GET() {
       return NextResponse.json({ error: "获取款式列表失败" }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(toCamelCase(data) || []);
   } catch (error) {
     return NextResponse.json({ error: "获取款式列表失败" }, { status: 500 });
   }
