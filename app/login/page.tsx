@@ -37,7 +37,11 @@ function LoginForm() {
     });
     
     if (authError) {
-      setError(authError.message);
+      if (authError.message.includes("email") && authError.message.includes("confirmed")) {
+        setError("邮箱尚未验证，请检查邮箱完成验证后再登录。");
+      } else {
+        setError("邮箱或密码错误，请重试。");
+      }
     } else {
       router.push(redirect);
     }
@@ -52,12 +56,15 @@ function LoginForm() {
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
     
     if (authError) {
       setError(authError.message);
     } else {
-      router.push(redirect);
+      setError("注册成功！请检查邮箱完成验证后再登录。");
     }
     
     setLoading(false);
