@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "StyleForge - 服装AI全链路品牌自研系统",
+  title: "服装AI全链路管理",
   description: "服装款式全生命周期管理系统",
 };
 
