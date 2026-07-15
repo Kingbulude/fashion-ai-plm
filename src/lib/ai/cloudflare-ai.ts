@@ -64,18 +64,28 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
 }
 
 export async function generateTechPack(styleName: string, description: string): Promise<string> {
-  const promptText = `根据以下款式信息生成工艺包草稿：
+  const promptText = `你是服装工艺专家。根据以下款式信息生成工艺包草稿：
 
 款式名称：${styleName}
 描述：${description}
 
-请包含：
-1. 尺寸表（S/M/L/XL）
-2. 工艺说明
-3. 缝制标准
-4. 建议BOM物料清单
+请严格以JSON格式输出，包含以下字段：
+{
+  "sizeChart": [
+    {"size": "S", "chest": "", "waist": "", "hip": "", "length": "", "shoulder": "", "sleeve": ""},
+    {"size": "M", "chest": "", "waist": "", "hip": "", "length": "", "shoulder": "", "sleeve": ""},
+    {"size": "L", "chest": "", "waist": "", "hip": "", "length": "", "shoulder": "", "sleeve": ""},
+    {"size": "XL", "chest": "", "waist": "", "hip": "", "length": "", "shoulder": "", "sleeve": ""}
+  ],
+  "processNotes": "工艺说明（详细文字）",
+  "sewingStandard": "缝制标准（详细文字）",
+  "printEmbroidery": [{"type": "印花/绣花", "position": "位置", "description": "描述"}],
+  "bomSuggestion": [
+    {"materialName": "面料名称", "materialType": "fabric", "specification": "规格", "unitConsumption": 1.5, "unitPrice": 30}
+  ]
+}
 
-以专业服装工艺文档格式输出。`;
+只输出JSON，不要任何其他文字。`;
 
   return generateText(promptText);
 }
@@ -83,10 +93,17 @@ export async function generateTechPack(styleName: string, description: string): 
 export async function analyzeDesignImage(imageBase64: string, mimeType: string): Promise<string> {
   const promptText = "请分析这张服装设计图，输出以下信息：1. 服装类型 2. 主要颜色 3. 设计风格 4. 面料建议 5. 工艺要点。以JSON格式输出。";
 
-  // Workers AI 视觉模型使用 image_url 或 image 作为参数
+  // Workers AI 视觉模型使用 image 参数，要求 number[]（Uint8Array 转 Array）
+  const binaryString = atob(imageBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  const imageArray = Array.from(bytes);
+
   return callWorkersAI(VISION_MODEL, {
     prompt: promptText,
-    image: Array.from(Buffer.from(imageBase64, "base64")),
+    image: imageArray,
   });
 }
 

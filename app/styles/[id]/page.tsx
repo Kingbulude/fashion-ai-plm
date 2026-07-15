@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AssetUploadDialog } from "@/components/styles/asset-upload-dialog";
+import { TechPackForm } from "@/components/styles/tech-pack-form";
+import { BomItemForm } from "@/components/styles/bom-item-form";
 import {
   ArrowLeft,
   Edit,
@@ -100,6 +102,11 @@ export default function StyleDetailPage() {
   const handleAnalyzed = () => {
     fetchStyle();
     fetchAssets();
+  };
+
+  // BOM 或工艺包更新后刷新款式信息（同步实际成本）
+  const handleCostUpdated = () => {
+    fetchStyle();
   };
 
   // 对单个资产触发 AI 分析
@@ -461,57 +468,20 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="techpack" className="mt-0">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">工艺包</CardTitle>
-                    <CardDescription>尺寸表、工艺说明、缝制标准</CardDescription>
-                  </div>
-                  <Button size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    生成工艺包
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-muted-foreground text-sm mb-4">暂无工艺包</p>
-                  <Button size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    生成工艺包
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <TechPackForm
+              styleId={id}
+              styleName={style.name}
+              styleDescription={style.description}
+              onCostUpdated={handleCostUpdated}
+            />
           </TabsContent>
 
           <TabsContent value="bom" className="mt-0">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">BOM物料清单</CardTitle>
-                    <CardDescription>面辅料清单、单耗、成本核算</CardDescription>
-                  </div>
-                  <Button size="sm">
-                    <Package className="h-4 w-4 mr-2" />
-                    添加物料
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-muted-foreground text-sm mb-4">暂无BOM物料</p>
-                  <Button size="sm">
-                    <Package className="h-4 w-4 mr-2" />
-                    添加物料
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <BomItemForm
+              styleId={id}
+              targetCost={style.targetCost}
+              onCostUpdated={handleCostUpdated}
+            />
           </TabsContent>
         </Tabs>
       </div>
