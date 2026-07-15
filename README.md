@@ -1,123 +1,36 @@
-# fashion-ai-plm
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-服装品牌 AI 全链路 PLM（Product Lifecycle Management）系统，以「款式生命周期」为核心主键，打通企划、设计、研发、打样、外协生产、测款投产、销售运营、售后复盘完整闭环。AI 深度嵌入每个业务节点，实现服装品牌从创意到交付的全链路数字化管理。
+## Getting Started
 
-## 做什么
+First, run the development server:
 
-### 业务覆盖
-
-系统覆盖服装品牌从企划到售后的全生命周期：
-
-| 环节 | 核心功能 |
-|------|---------|
-| **企划** | 季节波段规划、品类结构、灵感白板（Mood Board）、AI 趋势分析 |
-| **设计** | 灵感图库、AI 改款衍生、色彩搭配、面料搭配、多版本设计稿、3D 样衣 |
-| **工艺** | 产品档案、尺寸表、工艺说明、缝制标准、印花绣花、BOM 清单、成本预估 |
-| **打样** | 打样下单、工艺包下发、进度跟踪、回样登记、多轮改版、封样确认 |
-| **生产** | 物料齐套校验、缺料预警、大货外协下单、色码配比、进度跟踪、全链路质检 |
-| **测款** | AI 生成测款效果图、主图/详情页素材、销量预测、下单量决策、投产风险评估 |
-| **库存** | 大货入库抽检、色码库存台账、库存变动记录 |
-| **销售** | 多渠道销售数据、售罄率、动销分析、热销/滞销判断 |
-| **售后** | 客诉登记、缺陷统计、AI 自动复盘、问题反向推送设计迭代 |
-| **供应商** | 工厂/面料商档案、报价/交期/品质评分、AI 智能推荐适配供应商 |
-
-### AI 能力
-
-AI 不作为独立功能入口，而是隐形嵌入每个用户动作：
-
-- **文本 AI**：工艺包自动生成、BOM 推荐、成本预估、风险评估、销量预测、复盘报告
-- **图像 AI**：趋势分析、改款生成、测款图/主图/详情页素材生成
-- **图像识别**：质检缺陷识别、设计稿对比差异标记、参考图自动打标签
-
-## 技术架构
-
-### 系统架构
-
-```
-用户浏览器（电脑/手机自适应 Web 端）
-    │
-    ▼
-Vercel — Next.js 14 全栈应用
-    │         ├─ App Router 页面（SSR/SSG）
-    │         ├─ API Routes（后端业务逻辑）
-    │         ├─ tldraw 白板 SDK（无限画布）
-    │         ├─ AI SDK（流式 AI 响应）
-    │         └─ Drizzle ORM（类型安全数据库访问）
-    │
-    ├──→ Supabase（PostgreSQL）
-    │      ├─ 业务数据（款式/BOM/打样/生产/销售...）
-    │      ├─ 白板数据（形状/区域快照/素材索引）
-    │      ├─ Auth 认证
-    │      └─ RLS 行级安全
-    │
-    ├──→ Cloudflare R2（S3 兼容对象存储）
-    │      ├─ 设计稿/灵感图/面料图（多级缩略图：256px/512px/原图）
-    │      ├─ 工艺文件/3D 文件
-    │      ├─ 区域快照图片
-    │      └─ WebP 格式转换
-    │
-    └──→ 外部 AI API
-           ├─ DeepSeek（文本推理/生成/分析）
-           ├─ 豆包/Seedream（图像生成）
-           └─ 图像识别 API（质检/对比/打标）
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### 技术栈
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-| 层 | 技术 | 说明 |
-|----|------|------|
-| 前端框架 | Next.js 14 (App Router) | 全栈一体，SSR/SSG，API Routes |
-| 语言 | TypeScript 5+ | strict 模式 |
-| UI | Tailwind CSS + shadcn/ui | 响应式，手机端可用 |
-| 白板 | tldraw SDK | 无限画布，自定义形状，支持 1000+ 图片高性能渲染 |
-| 数据库 | Supabase (PostgreSQL) | 结构化数据 + Auth + RLS |
-| ORM | Drizzle ORM | 类型安全 |
-| 文件存储 | Cloudflare R2 | 10GB 免费，S3 兼容，无流量费 |
-| AI 文本 | DeepSeek API | ~1 元/百万 token |
-| AI 图像 | 豆包/Seedream API | 中文时尚理解 |
-| 部署 | Vercel | 永不休眠，git push 自动部署 |
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-### 白板性能优化
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-灵感白板（Mood Board）支持单次 500~1000 张高清参考图，采用架构级优化：
+## Learn More
 
-1. **多级缩略图**：256px（全局视图）/ 512px（正常视图）/ 原图（放大查看）
-2. **视口裁剪**：tldraw 原生，只渲染可见区域形状
-3. **区域快照**：2000x2000px 网格分区，离开区域自动降级为快照
-4. **WebP 压缩**：自动转换，体积减少 60-70%
-5. **LRU 缓存**：最大 200 张图片缓存，离屏自动卸载
+To learn more about Next.js, take a look at the following resources:
 
-### 数据模型
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-以 `style_no`（款号）为全局唯一主键，所有数据统一归集：
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-```
-style_no
-├─ design_assets        设计资产
-├─ tech_packs           工艺包
-├─ bom_items            BOM 物料清单
-├─ sampling_records     打样记录
-├─ material_procurement 物料采购
-├─ production_orders    大货订单
-├─ qc_records           质检记录
-├─ inventory            库存台账
-├─ sales_data           销售数据
-├─ after_sales          售后记录
-└─ suppliers            供应商档案
+## Deploy on Vercel
 
-planning
-└─ mood_boards          灵感白板
-    ├─ mood_board_shapes  形状数据
-    ├─ mood_board_areas   区域快照
-    └─ mood_board_assets  素材索引
-```
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-## 核心差异化
-
-- **物料齐套管控**：大货投产前自动校验面辅料到货进度，缺料预警
-- **全链路质检体系**：覆盖来料检、打样评审、生产巡检、尾期抽检、入库复检
-- **单品全生命周期档案**：以款号为唯一主键，全链路数据统一归集，可复盘、可迭代、可改款复用
-
-## 设计文档
-
-详细架构设计见 [docs/superpowers/specs/2026-07-15-styleforge-design.md](docs/superpowers/specs/2026-07-15-styleforge-design.md)
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
