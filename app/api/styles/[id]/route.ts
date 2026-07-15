@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export const runtime = "edge";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, { params }: RouteContext) {
   try {
-    const { id } = params;
-    
+    const { id } = await params;
+
     const { data, error } = await supabase.from("styles").select("*").eq("id", id).single();
-    
+
     if (error || !data) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "获取款式信息失败" }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: RouteContext) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
-    
+
     const { styleNo, name, season, category, description, targetCost, actualCost, status } = body;
 
     if (!styleNo || !name) {
@@ -50,23 +54,23 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "更新款式失败" }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: RouteContext) {
   try {
-    const { id } = params;
-    
+    const { id } = await params;
+
     const { error } = await supabase.from("styles").delete().eq("id", id);
-    
+
     if (error) {
       return NextResponse.json({ error: "删除款式失败" }, { status: 500 });
     }
 
     return NextResponse.json({ message: "删除成功" }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "删除款式失败" }, { status: 500 });
   }
 }

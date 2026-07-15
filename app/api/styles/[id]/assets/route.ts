@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { uploadFile } from "@/lib/storage/supabase-storage";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export const runtime = "edge";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, { params }: RouteContext) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const { data, error } = await supabase
       .from("design_assets")
@@ -22,9 +26,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: RouteContext) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const formData = await request.formData();
 
     const file = formData.get("file") as File | null;

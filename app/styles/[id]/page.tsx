@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Edit, Trash2, Upload, Image, FileText, Package, CheckCircle } from "lucide-react";
 
+export const runtime = "edge";
+
 export default function StyleDetailPage() {
   const [style, setStyle] = useState<any>(null);
   const [assets, setAssets] = useState<any[]>([]);
