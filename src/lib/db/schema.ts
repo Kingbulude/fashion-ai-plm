@@ -108,6 +108,7 @@ export const designAssets = pgTable("design_assets", {
   type: designAssetTypeEnum("type").notNull(),
   fileName: text("file_name").notNull(),
   fileUrl: text("file_url").notNull(),
+  filePath: text("file_path"),
   thumbnailUrl: text("thumbnail_url"),
   version: integer("version").notNull().default(1),
   aiTags: jsonb("ai_tags"),
