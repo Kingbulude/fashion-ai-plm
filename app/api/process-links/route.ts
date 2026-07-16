@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { supabase } from "@/lib/db/client";
 
 export const runtime = "edge";
-
-const STORAGE_KEY = "process_links_data";
 
 const defaultLinks = [
   { id: "1", from_node: "planning", to_node: "design", link_type: "critical", duration_hours: 40, deadline: "2026-08-01", work_content: "完成商品企划、设计方向确认、面料色彩企划", deliverables: "企划方案文档、主题板、色彩方案、面料方案", sort_order: 1 },
@@ -50,25 +48,16 @@ export async function PUT(request: Request) {
     if (work_content !== undefined) updateData.work_content = work_content;
     if (deliverables !== undefined) updateData.deliverables = deliverables;
 
-    try {
-      const { data, error } = await supabase
-        .from("process_links")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from("process_links")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
 
-      if (!error && data) {
-        return NextResponse.json(data);
-      }
-    } catch (e) {
-      // Supabase 不可用时降级到内存更新
-    }
-
-    // 降级方案：返回更新后的数据（模拟成功）
-    const updated = { ...defaultLinks.find(l => l.id === id), ...updateData };
-    return NextResponse.json(updated);
+    if (error) throw error;
+    return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json({ error: "更新失败" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "更新失败" }, { status: 500 });
   }
 }

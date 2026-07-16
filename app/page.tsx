@@ -83,39 +83,12 @@ export default function HomePage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const STORAGE_KEY = "process_links_local";
-
-  const loadFromStorage = () => {
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const saveToStorage = (data: ProcessLink[]) => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
-  };
-
   const fetchLinks = async () => {
     setLoading(true);
     try {
-      const stored = loadFromStorage();
-      if (stored && stored.length > 0) {
-        setLinks(stored);
-        setLoading(false);
-        return;
-      }
       const res = await fetch("/api/process-links");
       const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
-      setLinks(list);
-      saveToStorage(list);
+      setLinks(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch links", err);
     } finally {
@@ -153,19 +126,6 @@ export default function HomePage() {
   const handleSaveEdit = async () => {
     if (!editingLink) return;
     setSaving(true);
-
-    const updatedLink: ProcessLink = {
-      ...editingLink,
-      duration_hours: Number(editForm.duration_hours) || 0,
-      deadline: editForm.deadline || null,
-      work_content: editForm.work_content,
-      deliverables: editForm.deliverables,
-    };
-
-    const newLinks = links.map(l => l.id === editingLink.id ? updatedLink : l);
-    setLinks(newLinks);
-    saveToStorage(newLinks);
-
     try {
       const res = await fetch("/api/process-links", {
         method: "PUT",
@@ -180,10 +140,11 @@ export default function HomePage() {
       });
       if (!res.ok) throw new Error("保存失败");
       showToast("success", "更新成功");
-    } catch (err) {
-      showToast("success", "已保存到本地");
-    } finally {
       setEditDialogOpen(false);
+      fetchLinks();
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "保存失败");
+    } finally {
       setSaving(false);
     }
   };
