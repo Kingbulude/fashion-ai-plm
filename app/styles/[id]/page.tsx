@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AssetUploadDialog } from "@/components/styles/asset-upload-dialog";
 import { TechPackForm } from "@/components/styles/tech-pack-form";
 import { BomItemForm } from "@/components/styles/bom-item-form";
+import { SamplingForm } from "@/components/styles/sampling-form";
+import { QcRecordForm } from "@/components/styles/qc-record-form";
 import {
   ArrowLeft,
   Edit,
@@ -248,6 +250,8 @@ export default function StyleDetailPage() {
             <TabsTrigger value="assets" className="h-8 px-4">设计资产</TabsTrigger>
             <TabsTrigger value="techpack" className="h-8 px-4">工艺包</TabsTrigger>
             <TabsTrigger value="bom" className="h-8 px-4">BOM清单</TabsTrigger>
+            <TabsTrigger value="sampling" className="h-8 px-4">打样</TabsTrigger>
+            <TabsTrigger value="qc" className="h-8 px-4">质检</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="mt-0">
@@ -482,6 +486,14 @@ export default function StyleDetailPage() {
               targetCost={style.targetCost}
               onCostUpdated={handleCostUpdated}
             />
+          </TabsContent>
+
+          <TabsContent value="sampling" className="mt-0">
+            <SamplingForm styleId={id} />
+          </TabsContent>
+
+          <TabsContent value="qc" className="mt-0">
+            <QcRecordForm styleId={id} />
           </TabsContent>
         </Tabs>
       </div>
