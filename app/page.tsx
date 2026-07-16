@@ -41,9 +41,9 @@ const LINKS_DEF = [
   { from: "sampling", to: "testing", type: "critical" },
   { from: "sampling", to: "procurement", type: "critical" },
   { from: "testing", to: "procurement", type: "parallel" },
-  { from: "procurement", to: "stocking", type: "critical" },
-  { from: "testing", to: "sales", type: "critical" },
-  { from: "stocking", to: "sales", type: "critical" },
+  { from: "procurement", to: "stocking", type: "parallel" },
+  { from: "testing", to: "sales", type: "parallel" },
+  { from: "stocking", to: "sales", type: "parallel" },
   { from: "sales", to: "aftersales", type: "critical" },
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
@@ -202,17 +202,9 @@ export default function HomePage() {
       return (
         <g
           key={`label-${linkId}`}
-          className={clickable ? "cursor-pointer" : ""}
           onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
+          style={{ cursor: clickable ? "pointer" : "default" }}
         >
-          <rect
-            x={cx - halfW - 4}
-            y={cy - halfH - 4}
-            width={labelWidth + 8}
-            height={labelHeight + 8}
-            rx={8}
-            fill="transparent"
-          />
           <rect
             x={cx - halfW}
             y={cy - halfH}
@@ -222,8 +214,8 @@ export default function HomePage() {
             fill="white"
             stroke={strokeColor}
             strokeWidth={1.5}
-            className="hover:brightness-95 transition-all"
             style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+            className="hover:brightness-95 transition-all"
           />
           <text
             x={cx}
@@ -232,7 +224,7 @@ export default function HomePage() {
             fontSize={12}
             fill={strokeColor}
             fontWeight={700}
-            className="pointer-events-none select-none"
+            style={{ pointerEvents: "none", userSelect: "none" }}
           >
             {label}
           </text>
@@ -273,7 +265,7 @@ export default function HomePage() {
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             markerEnd={`url(#${markerId})`}
-            className="cursor-pointer"
+            style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
           {label && renderLabel(midX, labelY)}
@@ -303,7 +295,7 @@ export default function HomePage() {
             strokeWidth={strokeWidth}
             strokeDasharray={dashArray}
             markerEnd={`url(#${markerId})`}
-            className="cursor-pointer"
+            style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
           {label && renderLabel(midX, topY - 16)}
@@ -356,7 +348,7 @@ export default function HomePage() {
             strokeWidth={strokeWidth}
             strokeDasharray={dashArray}
             markerEnd={`url(#${markerId})`}
-            className="cursor-pointer"
+            style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
           {label && renderLabel(labelX, labelY)}
@@ -381,7 +373,7 @@ export default function HomePage() {
           strokeWidth={strokeWidth}
           strokeDasharray={dashArray}
           markerEnd={`url(#${markerId})`}
-          className="cursor-pointer"
+          style={{ cursor: "pointer" }}
           onClick={() => handleArrowClick(fromId, toId)}
         />
         {label && renderLabel(midX, midY + labelOffsetY)}
