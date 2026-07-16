@@ -3,33 +3,28 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
-  RefreshCw,
-  ChevronRight,
   Info,
   Sparkles,
-  AlertTriangle,
 } from "lucide-react";
 
-// 工序定义
 const PROCESS_NODES = [
   { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 80, y: 100 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 100 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 400, y: 100 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 560, y: 100 },
-  { id: "production", name: "大货", icon: "🏭", color: "bg-green-500", route: "/production", x: 720, y: 100 },
-  { id: "qc", name: "质检", icon: "✅", color: "bg-cyan-500", route: "/styles", x: 720, y: 240 },
-  { id: "inventory", name: "入库", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 560, y: 240 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 400, y: 240 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 240, y: 240 },
-  { id: "procurement", name: "物料采购", icon: "🛒", color: "bg-slate-400", route: "/styles", x: 400, y: 300, parallel: true },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 200, y: 100 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 320, y: 100 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 480, y: 100 },
+  { id: "production", name: "大货", icon: "🏭", color: "bg-green-500", route: "/production", x: 600, y: 100 },
+  { id: "qc", name: "质检", icon: "✅", color: "bg-cyan-500", route: "/styles", x: 720, y: 100 },
+  { id: "inventory", name: "入库", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 840, y: 100 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 960, y: 100 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1080, y: 100 },
+  { id: "procurement", name: "物料采购", icon: "🛒", color: "bg-slate-400", route: "/styles", x: 400, y: 200, parallel: true },
 ];
 
-// 连接关系（关键路径）
 const CRITICAL_PATHS = [
   { from: "planning", to: "design" },
   { from: "design", to: "sampling" },
@@ -41,7 +36,6 @@ const CRITICAL_PATHS = [
   { from: "sales", to: "aftersales" },
 ];
 
-// 并行路径
 const PARALLEL_PATHS = [
   { from: "sampling", to: "procurement" },
   { from: "procurement", to: "production" },
@@ -62,9 +56,8 @@ export default function HomePage() {
     const fetchStatuses = async () => {
       setLoading(true);
       try {
-        const [planningRes, stylesRes, productionRes, salesRes, aftersalesRes] = await Promise.all([
+        const [planningRes, stylesRes, salesRes, aftersalesRes] = await Promise.all([
           fetch("/api/planning").catch(() => ({ json: async () => [] })),
-          fetch("/api/styles").catch(() => ({ json: async () => [] })),
           fetch("/api/styles").catch(() => ({ json: async () => [] })),
           fetch("/api/sales").catch(() => ({ json: async () => ({ sales: [] }) })),
           fetch("/api/aftersales").catch(() => ({ json: async () => ({ records: [] }) })),
@@ -72,64 +65,22 @@ export default function HomePage() {
 
         const planning = await planningRes.json();
         const styles = await stylesRes.json();
-        const production = await productionRes.json();
         const salesData = await salesRes.json();
         const aftersalesData = await aftersalesRes.json();
 
         const stylesList = Array.isArray(styles) ? styles : [];
 
-        // 计算各工序状态
         const statuses: Record<string, ProcessStatus> = {
-          planning: {
-            id: "planning",
-            status: planning?.length > 0 ? "completed" : "pending",
-            count: planning?.length || 0,
-          },
-          design: {
-            id: "design",
-            status: stylesList.length > 0 ? "completed" : "pending",
-            count: stylesList.length,
-          },
-          sampling: {
-            id: "sampling",
-            status: stylesList.some((s: any) => s.samplingStatus === "completed") ? "completed" : stylesList.some((s: any) => s.samplingStatus === "in_progress") ? "in_progress" : "pending",
-            count: stylesList.filter((s: any) => s.samplingStatus).length,
-          },
-          testing: {
-            id: "testing",
-            status: stylesList.some((s: any) => s.aiTestResult) ? "completed" : "pending",
-            count: stylesList.filter((s: any) => s.aiTestResult).length,
-          },
-          procurement: {
-            id: "procurement",
-            status: "pending",
-            count: 0,
-          },
-          production: {
-            id: "production",
-            status: "pending",
-            count: 0,
-          },
-          qc: {
-            id: "qc",
-            status: "pending",
-            count: 0,
-          },
-          inventory: {
-            id: "inventory",
-            status: "pending",
-            count: 0,
-          },
-          sales: {
-            id: "sales",
-            status: salesData?.sales?.length > 0 ? "completed" : "pending",
-            count: salesData?.sales?.length || 0,
-          },
-          aftersales: {
-            id: "aftersales",
-            status: aftersalesData?.records?.length > 0 ? "completed" : "pending",
-            count: aftersalesData?.records?.length || 0,
-          },
+          planning: { id: "planning", status: planning?.length > 0 ? "completed" : "pending", count: planning?.length || 0 },
+          design: { id: "design", status: stylesList.length > 0 ? "completed" : "pending", count: stylesList.length },
+          sampling: { id: "sampling", status: stylesList.some((s: any) => s.samplingStatus === "completed") ? "completed" : stylesList.some((s: any) => s.samplingStatus === "in_progress") ? "in_progress" : "pending", count: stylesList.filter((s: any) => s.samplingStatus).length },
+          testing: { id: "testing", status: stylesList.some((s: any) => s.aiTestResult) ? "completed" : "pending", count: stylesList.filter((s: any) => s.aiTestResult).length },
+          procurement: { id: "procurement", status: "pending", count: 0 },
+          production: { id: "production", status: "pending", count: 0 },
+          qc: { id: "qc", status: "pending", count: 0 },
+          inventory: { id: "inventory", status: "pending", count: 0 },
+          sales: { id: "sales", status: salesData?.sales?.length > 0 ? "completed" : "pending", count: salesData?.sales?.length || 0 },
+          aftersales: { id: "aftersales", status: aftersalesData?.records?.length > 0 ? "completed" : "pending", count: aftersalesData?.records?.length || 0 },
         };
 
         setProcessStatuses(statuses);
@@ -152,20 +103,11 @@ export default function HomePage() {
     return node ? { x: node.x, y: node.y } : { x: 0, y: 0 };
   };
 
-  const getNodeById = (id: string) => {
-    return PROCESS_NODES.find((n) => n.id === id);
-  };
-
-  // 绘制箭头路径
   const renderArrow = (fromId: string, toId: string, isParallel: boolean = false) => {
     const from = getNodePosition(fromId);
     const to = getNodePosition(toId);
     
-    const fromNode = getNodeById(fromId);
-    const toNode = getNodeById(toId);
-    
-    // 计算起点和终点（考虑节点大小）
-    const nodeRadius = 44;
+    const nodeRadius = 40;
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -175,7 +117,7 @@ export default function HomePage() {
     const endX = to.x - (dx / distance) * nodeRadius;
     const endY = to.y - (dy / distance) * nodeRadius;
 
-    const strokeClass = isParallel ? "stroke-slate-300" : "stroke-red-500";
+    const strokeClass = isParallel ? "stroke-slate-400" : "stroke-red-500";
     const strokeDash = isParallel ? "8 4" : "none";
     const strokeWidth = isParallel ? 2 : 3;
 
@@ -207,7 +149,6 @@ export default function HomePage() {
     );
   };
 
-  // 判断当前应该高亮哪个节点（找到第一个未完成的工序）
   const getActiveNodeId = () => {
     const order = ["planning", "design", "sampling", "testing", "production", "qc", "inventory", "sales", "aftersales"];
     for (const id of order) {
@@ -224,8 +165,7 @@ export default function HomePage() {
   return (
     <SidebarLayout>
       <div className="p-6 lg:p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">StyleForge 智能调度中心</h1>
             <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区</p>
@@ -236,14 +176,13 @@ export default function HomePage() {
           </Button>
         </div>
 
-        {/* Legend */}
         <div className="flex items-center gap-6 mb-6 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-1 bg-red-500 rounded"></div>
             <span className="text-muted-foreground">关键路径</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-slate-300" style={{ borderStyle: "dashed" }}></div>
+            <div className="w-4 h-0.5 bg-slate-400" style={{ borderStyle: "dashed" }}></div>
             <span className="text-muted-foreground">并行工序</span>
           </div>
           <div className="flex items-center gap-2">
@@ -263,67 +202,68 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* PERT Network Diagram */}
             <Card className="border-0 shadow-lg mb-8 overflow-hidden">
               <CardContent className="p-0">
-                <div className="relative" style={{ height: "400px" }}>
-                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 400">
-                    {/* 绘制关键路径箭头 */}
-                    {CRITICAL_PATHS.map((path) => renderArrow(path.from, path.to, false))}
-                    
-                    {/* 绘制并行路径箭头 */}
-                    {PARALLEL_PATHS.map((path) => renderArrow(path.from, path.to, true))}
-                  </svg>
+                <div className="overflow-x-auto">
+                  <div className="relative" style={{ minWidth: "1160px", height: "280px" }}>
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1160 280">
+                      {CRITICAL_PATHS.map((path) => renderArrow(path.from, path.to, false))}
+                      {PARALLEL_PATHS.map((path) => renderArrow(path.from, path.to, true))}
+                    </svg>
 
-                  {/* 绘制节点 */}
-                  {PROCESS_NODES.map((node) => {
-                    const status = processStatuses[node.id];
-                    const isActive = activeNodeId === node.id;
-                    const isCompleted = status?.status === "completed";
-                    const isParallel = node.parallel;
+                    {PROCESS_NODES.map((node) => {
+                      const status = processStatuses[node.id];
+                      const isActive = activeNodeId === node.id;
+                      const isCompleted = status?.status === "completed";
+                      const isParallel = node.parallel;
 
-                    return (
-                      <div
-                        key={node.id}
-                        onClick={() => handleNodeClick(node)}
-                        className={`absolute cursor-pointer transition-all duration-300 ${
-                          isParallel ? "opacity-70" : ""
-                        }`}
-                        style={{
-                          left: node.x - 44,
-                          top: node.y - 44,
-                        }}
-                      >
+                      return (
                         <div
-                          className={`w-22 h-22 rounded-full flex flex-col items-center justify-center shadow-lg transition-all ${
-                            isCompleted
-                              ? "bg-green-500 text-white"
-                              : isActive
-                              ? `${node.color} text-white animate-pulse ring-4 ring-blue-300 ring-opacity-50`
-                              : `${node.color} text-white hover:scale-110`
+                          key={node.id}
+                          onClick={() => handleNodeClick(node)}
+                          className={`absolute cursor-pointer transition-all duration-300 ${
+                            isParallel ? "opacity-70" : ""
                           }`}
-                          style={{ width: 88, height: 88 }}
+                          style={{
+                            left: node.x - 40,
+                            top: node.y - 40,
+                          }}
                         >
-                          <span className="text-2xl mb-1">{node.icon}</span>
-                          <span className="font-bold text-sm">{node.name}</span>
-                        </div>
-                        
-                        {/* 状态徽章 */}
-                        {status && status.count > 0 && (
-                          <div className="absolute -top-1 -right-1">
-                            <Badge className="bg-white text-slate-600 border border-slate-200 text-xs">
-                              {status.count}
-                            </Badge>
+                          <div
+                            className={`w-20 h-20 rounded-full flex flex-col items-center justify-center shadow-lg transition-all ${
+                              isCompleted
+                                ? "bg-green-500 text-white"
+                                : isActive
+                                ? `${node.color} text-white animate-pulse ring-4 ring-blue-300 ring-opacity-50`
+                                : `${node.color} text-white hover:scale-110 hover:shadow-xl`
+                            }`}
+                            style={{ width: 80, height: 80 }}
+                          >
+                            <span className="text-xl mb-0.5">{node.icon}</span>
+                            <span className="font-bold text-sm">{node.name}</span>
                           </div>
-                        )}
+                          
+                          {status && status.count > 0 && (
+                            <div className="absolute -top-1 -right-1">
+                              <Badge className="bg-white text-slate-600 border border-slate-200 text-xs">
+                                {status.count}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {!PROCESS_NODES.find(n => n.parallel) && (
+                      <div className="absolute left-[320px] top-[180px] text-xs text-slate-500">
+                        并行工序
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-4">
@@ -379,7 +319,6 @@ export default function HomePage() {
               </Card>
             </div>
 
-            {/* Tips */}
             <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-amber-500 mt-0.5" />

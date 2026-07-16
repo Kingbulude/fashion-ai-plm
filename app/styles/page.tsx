@@ -67,7 +67,7 @@ export default function StylesPage() {
             <h1 className="text-2xl font-bold mb-1">款式管理</h1>
             <p className="text-muted-foreground">全款式列表与管理</p>
           </div>
-          <Button onClick={() => router.push("/dashboard")}>
+          <Button onClick={() => router.push("/styles/new")}>
             <Plus className="h-4 w-4 mr-2" />
             新建款式
           </Button>
@@ -90,10 +90,10 @@ export default function StylesPage() {
               {search ? "未找到匹配的款式" : "暂无款式"}
             </p>
             {!search && (
-              <Button onClick={() => router.push("/dashboard")}>
-                <Plus className="h-4 w-4 mr-2" />
-                创建第一个款式
-              </Button>
+              <Button onClick={() => router.push("/styles/new")}>
+              <Plus className="h-4 w-4 mr-2" />
+              创建第一个款式
+            </Button>
             )}
           </div>
         ) : (
