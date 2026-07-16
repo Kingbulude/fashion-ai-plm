@@ -1,36 +1,280 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StyleForge — 服装AI全链路品牌管理系统
 
-## Getting Started
+> 面向轻资产服装品牌的全生命周期智能管理系统，基于运筹学思想构建工序流程调度中心
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 一、项目架构
+
+### 1.1 工序流程图（PERT网络图）
+
+```
+关键路径（红色箭头）：决定总工期
+并行工序（灰色虚线）：可与关键路径同步进行
+
+┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
+│  P1企划 │ ──→ │  P2设计 │ ──→ │  P3打样 │ ──→ │  P4测款 │ ──→ │ P6大货  │
+└─────────┘     └─────────┘     └─────────┘     └─────────┘     └────┬────┘
+                                                                    │
+                                                                    ↓
+┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
+│ P10售后 │ ←── │  P9销售 │ ←── │  P8入库 │ ←── │  P7质检 │     │         │
+└─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘
+                         
+                              ┌─────────────┐
+                              │ P5物料采购  │ ←── 与 P4测款 并行
+                              └──────┬──────┘
+                                     │
+                                     └──────────→ 汇入 P6大货生产
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 1.2 工序节点与子模块规划
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| 工序 | 节点ID | 名称 | 图标 | 主路径 | 子模块 |
+|------|--------|------|------|--------|--------|
+| P1 | planning | 企划 | 📋 | `/planning` | 商品企划、设计企划、面料企划、色彩企划、趋势预测 |
+| P2 | design | 设计 | 🎨 | `/styles` | 款式管理、BOM管理、工艺单、设计资产库 |
+| P3 | sampling | 打样 | ✂️ | `/styles/[id]` | 打样申请、样衣评审、版型调整、成本核算 |
+| P4 | testing | 测款 | 🎯 | `/ai` | AI生图、目标受众反馈、市场接受度评估、下单数量建议 |
+| P5 | procurement | 物料采购 | 🛒 | `/styles/[id]` | 物料齐套校验、缺料预警、供应商管理、采购记录 |
+| P6 | production | 大货生产 | 🏭 | `/production` | 生产订单、进度跟踪、制程质检、交期预测 |
+| P7 | qc | 质检 | ✅ | `/styles/[id]` | 质检标准、缺陷记录、返工处理、合格判定 |
+| P8 | inventory | 入库 | 📦 | `/styles/[id]` | 色码台账、库存登记、库存查询、入库记录 |
+| P9 | sales | 销售 | 💰 | `/sales` | 销售订单、渠道管理、销售额统计、销售趋势 |
+| P10 | aftersales | 售后 | 🔄 | `/aftersales` | 退货管理、换货管理、投诉记录、售后复盘 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1.3 各工序子模块详细规划
 
-## Learn More
+#### P1 企划中心
+```
+/planning
+├── 商品企划    → 季节波段、品类规划、目标成本、上市计划
+├── 设计企划    → 主题概念、设计方向、灵感收集、设计规范
+├── 面料企划    → 面料趋势、供应商对接、样品确认、成本预估
+├── 色彩企划    → 色彩方案、流行色预测、配色搭配、色卡管理
+└── 趋势预测    → AI趋势分析、竞品分析、市场洞察
+```
 
-To learn more about Next.js, take a look at the following resources:
+#### P2 设计管理
+```
+/styles
+├── 款式列表    → 款式卡片网格、搜索筛选、状态标签
+├── 款式详情    → 款式信息、图片、BOM、工艺单、打样
+├── BOM管理     → 物料清单、用量核算、成本汇总
+├── 工艺单      → 工艺说明、工序流程、质量标准
+└── 设计资产库  → 设计图片、版型文件、设计稿归档
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+#### P3 打样管理
+```
+/styles/[id]/sampling
+├── 打样申请    → 打样单创建、样品要求、交期设定
+├── 样衣评审    → 评审记录、修改意见、通过/驳回
+├── 版型调整    → 版型修改记录、尺寸确认
+└── 成本核算    → 打样成本、材料损耗、工时统计
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### P4 测款中心（AI驱动）
+```
+/ai
+├── AI生图      → 款式AI生成、风格调整、细节优化
+├── 市场测试    → 生成图片投放目标受众、收集反馈
+├── 接受度评估  → AI分析反馈数据、竞争力评分
+└── 下单建议    → 基于测款结果的大货数量建议
+```
 
-## Deploy on Vercel
+#### P5 物料采购
+```
+/styles/[id]/procurement
+├── 物料齐套    → BOM物料清单、采购进度、齐套校验
+├── 缺料预警    → 未采购/未到货物料提醒、交期预警
+├── 供应商管理  → 供应商信息、报价记录、交货评级
+└── 采购记录    → 采购单创建、跟踪、到货确认
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### P6 大货生产
+```
+/production
+├── 生产订单    → 订单创建、数量设定、交期规划
+├── 进度跟踪    → 裁剪/缝制/后整进度、实时更新
+├── 制程质检    → 各工序质检记录、缺陷统计
+└── 交期预测    → AI预测实际交期、延误预警
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### P7 质检管理
+```
+/styles/[id]/qc
+├── 质检标准    → 检验项目、合格标准、抽样规则
+├── 缺陷记录    → 缺陷类型、位置、严重程度
+├── 返工处理    → 返工流程、返工记录、二次检验
+└── 合格判定    → 批量合格/不合格、放行/扣留
+```
+
+#### P8 库存管理
+```
+/styles/[id]/inventory
+├── 色码台账    → 颜色×尺码矩阵、库存数量
+├── 库存登记    → 入库数量、批次管理、有效期
+├── 库存查询    → 实时库存、库存预警、库存调拨
+└── 入库记录    → 入库单、质检关联、凭证管理
+```
+
+#### P9 销售管理
+```
+/sales
+├── 销售订单    → 订单创建、款式关联、渠道选择
+├── 渠道管理    → 渠道信息、销售目标、业绩统计
+├── 销售额统计  → 日/周/月销售、品类占比、客单价
+└── 销售趋势    → 销售曲线、增长分析、同比环比
+```
+
+#### P10 售后管理
+```
+/aftersales
+├── 退货管理    → 退货申请、原因分类、退款处理
+├── 换货管理    → 换货申请、尺码调换、发货记录
+├── 投诉记录    → 投诉类型、问题描述、处理结果
+└── 售后复盘    → 售后数据分析、改进建议、质量追溯
+```
+
+---
+
+## 二、技术架构
+
+### 2.1 技术栈
+
+| 层级 | 技术 | 版本 |
+|------|------|------|
+| 前端框架 | Next.js | 15.5.2 (App Router) |
+| UI框架 | React | 19 |
+| 语言 | TypeScript | 5.x |
+| 样式 | Tailwind CSS | 3.x |
+| UI组件 | shadcn/ui | latest |
+| 图标 | Lucide React | latest |
+| 后端/数据库 | Supabase | PostgreSQL |
+| 文件存储 | Supabase Storage | - |
+| AI服务 | Cloudflare Workers AI | - |
+| 部署 | Cloudflare Pages | `@cloudflare/next-on-pages` |
+| 认证 | Supabase Auth | Email/Password |
+
+### 2.2 架构特点
+
+- **延迟初始化模式**：使用 Proxy 包裹 Supabase 客户端，避免构建时环境变量未加载导致报错
+- **Edge Runtime**：API 路由使用 Edge Runtime，支持更快的冷启动和全球边缘部署
+- **RLS行级安全**：Supabase 数据库启用行级安全策略，保障数据隔离
+- **组件化开发**：所有功能模块封装为独立组件，便于维护和扩展
+
+### 2.3 项目结构
+
+```
+/workspace
+├── app/                    # Next.js App Router
+│   ├── page.tsx            # 首页（PERT网络图）
+│   ├── planning/page.tsx   # 企划中心
+│   ├── styles/             # 款式管理
+│   ├── production/page.tsx # 大货生产
+│   ├── ai/page.tsx         # AI测款中心
+│   ├── sales/page.tsx      # 销售管理
+│   ├── aftersales/page.tsx # 售后管理
+│   ├── dashboard/page.tsx  # 数据看板
+│   └── api/                # API路由
+├── src/                    # 源代码
+│   ├── components/         # UI组件
+│   │   ├── layout/         # 布局组件
+│   │   ├── styles/         # 款式相关组件
+│   │   └── ui/             # 通用组件
+│   ├── lib/                # 工具函数
+│   │   ├── supabase.ts     # Supabase客户端
+│   │   └── utils.ts        # 通用工具
+│   └── types/              # TypeScript类型定义
+├── public/                 # 静态资源
+├── supabase/               # Supabase迁移脚本
+├── next.config.js          # Next.js配置
+├── tsconfig.json           # TypeScript配置
+├── tailwind.config.ts      # Tailwind配置
+└── package.json            # 依赖管理
+```
+
+---
+
+## 三、开发计划
+
+### 3.1 已完成阶段
+
+| 阶段 | 完成状态 | 说明 |
+|------|---------|------|
+| Phase 1 MVP | ✅ 完成 | 款式设计、打样管理、物料采购、大货生产、库存管理 |
+| Phase 2 企划+AI | ✅ 完成 | 企划中心、AI趋势分析、AI测款、AI销量预估、供应商智能匹配 |
+| Phase 3 销售+售后+看板 | ✅ 完成 | 销售管理、售后管理、数据看板 |
+| 首页重构 | ✅ 完成 | PERT网络图风格首页，点击节点跳转对应工作区 |
+
+### 3.2 待完善内容
+
+| 序号 | 任务 | 优先级 | 状态 |
+|------|------|--------|------|
+| 1 | 企划中心子模块细化（商品/设计/面料/色彩企划） | 高 | ⏳ 待开发 |
+| 2 | 测款中心细化（AI生图、市场测试、接受度评估） | 高 | ⏳ 待开发 |
+| 3 | 生产管理页面完善（生产订单、进度跟踪） | 高 | ⏳ 待开发 |
+| 4 | 设计资产库页面开发 | 中 | ⏳ 待开发 |
+| 5 | 销售趋势图表动态化 | 中 | ⏳ 待开发 |
+| 6 | 用户权限体系（按角色区分功能可见性） | 低 | ⏳ 待开发 |
+
+---
+
+## 四、运行项目
+
+### 4.1 开发环境
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 访问 http://localhost:3000
+```
+
+### 4.2 构建部署
+
+```bash
+# 构建
+npm run build
+
+# 类型检查
+npx tsc --noEmit
+
+# 部署到 Cloudflare Pages
+npx wrangler pages deploy .vercel/output/static
+```
+
+---
+
+## 五、数据库初始化
+
+执行以下 SQL 脚本初始化数据库表结构：
+
+```bash
+# 执行迁移脚本
+npx supabase migration up
+
+# 刷新数据库类型
+npx supabase gen types --local > src/types/supabase.ts
+```
+
+---
+
+## 六、环境变量
+
+在 `.env.local` 中配置：
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# AI
+CLOUDFLARE_API_KEY=
+CLOUDFLARE_ACCOUNT_ID=
+```
