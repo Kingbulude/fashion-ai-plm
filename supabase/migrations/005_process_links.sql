@@ -48,9 +48,9 @@ INSERT INTO process_links (from_node, to_node, link_type, duration_hours, deadli
   ('sampling', 'testing', 'critical', 30, '2026-08-25', '制作首样、试穿修改、确认版型', '确认样衣、版型报告、修改意见', 3),
   ('sampling', 'procurement', 'critical', 20, '2026-08-20', '确认面料供应商、下达采购订单', '面料采购单、供应商确认函、交期确认', 4),
   ('testing', 'procurement', 'parallel', 10, '2026-08-28', '根据测款结果调整采购计划、确认面料风险', '测款反馈、采购调整建议、面料备选方案', 5),
-  ('procurement', 'stocking', 'parallel', 80, '2026-09-20', '物料采购到货、大货生产、制程质检、成品入库', '采购到货单、生产订单、质检报告、入库单', 6),
-  ('testing', 'sales', 'parallel', 15, '2026-09-05', 'AI测款验证、市场测试、接受度评估、下单决策', '测款报告、接受度评估、下单建议', 7),
-  ('stocking', 'sales', 'parallel', 10, '2026-09-25', '备货完成、库存就位、发货准备', '库存确认单、发货清单、物流安排', 8),
+  ('procurement', 'stocking', 'critical', 80, '2026-09-20', '物料采购到货、大货生产、制程质检、成品入库', '采购到货单、生产订单、质检报告、入库单', 6),
+  ('testing', 'sales', 'critical', 15, '2026-09-05', 'AI测款验证、市场测试、接受度评估、下单决策', '测款报告、接受度评估、下单建议', 7),
+  ('stocking', 'sales', 'critical', 10, '2026-09-25', '备货完成、库存就位、发货准备', '库存确认单、发货清单、物流安排', 8),
   ('sales', 'aftersales', 'critical', 0, NULL, '销售运营、订单处理、物流配送', '销售订单、发货单、物流信息', 9),
   ('aftersales', 'planning', 'feedback', 10, NULL, '售后复盘、客户反馈收集、数据沉淀', '售后报告、客户反馈汇总、复盘分析报告', 10)
 ON CONFLICT (from_node, to_node) DO NOTHING;

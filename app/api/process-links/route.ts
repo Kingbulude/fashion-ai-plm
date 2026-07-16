@@ -19,9 +19,9 @@ export async function GET() {
       { id: "3", from_node: "sampling", to_node: "testing", link_type: "critical", duration_hours: 30, deadline: "2026-08-25", work_content: "制作首样、试穿修改、确认版型", deliverables: "确认样衣、版型报告、修改意见", sort_order: 3 },
       { id: "4", from_node: "sampling", to_node: "procurement", link_type: "critical", duration_hours: 20, deadline: "2026-08-20", work_content: "确认面料供应商、下达采购订单", deliverables: "面料采购单、供应商确认函、交期确认", sort_order: 4 },
       { id: "5", from_node: "testing", to_node: "procurement", link_type: "parallel", duration_hours: 10, deadline: "2026-08-28", work_content: "根据测款结果调整采购计划、确认面料风险", deliverables: "测款反馈、采购调整建议、面料备选方案", sort_order: 5 },
-      { id: "6", from_node: "procurement", to_node: "stocking", link_type: "parallel", duration_hours: 80, deadline: "2026-09-20", work_content: "物料采购到货、大货生产、制程质检、成品入库", deliverables: "采购到货单、生产订单、质检报告、入库单", sort_order: 6 },
-      { id: "7", from_node: "testing", to_node: "sales", link_type: "parallel", duration_hours: 15, deadline: "2026-09-05", work_content: "AI测款验证、市场测试、接受度评估、下单决策", deliverables: "测款报告、接受度评估、下单建议", sort_order: 7 },
-      { id: "8", from_node: "stocking", to_node: "sales", link_type: "parallel", duration_hours: 10, deadline: "2026-09-25", work_content: "备货完成、库存就位、发货准备", deliverables: "库存确认单、发货清单、物流安排", sort_order: 8 },
+      { id: "6", from_node: "procurement", to_node: "stocking", link_type: "critical", duration_hours: 80, deadline: "2026-09-20", work_content: "物料采购到货、大货生产、制程质检、成品入库", deliverables: "采购到货单、生产订单、质检报告、入库单", sort_order: 6 },
+      { id: "7", from_node: "testing", to_node: "sales", link_type: "critical", duration_hours: 15, deadline: "2026-09-05", work_content: "AI测款验证、市场测试、接受度评估、下单决策", deliverables: "测款报告、接受度评估、下单建议", sort_order: 7 },
+      { id: "8", from_node: "stocking", to_node: "sales", link_type: "critical", duration_hours: 10, deadline: "2026-09-25", work_content: "备货完成、库存就位、发货准备", deliverables: "库存确认单、发货清单、物流安排", sort_order: 8 },
       { id: "9", from_node: "sales", to_node: "aftersales", link_type: "critical", duration_hours: 0, deadline: null, work_content: "销售运营、订单处理、物流配送", deliverables: "销售订单、发货单、物流信息", sort_order: 9 },
       { id: "10", from_node: "aftersales", to_node: "planning", link_type: "feedback", duration_hours: 10, deadline: null, work_content: "售后复盘、客户反馈收集、数据沉淀", deliverables: "售后报告、客户反馈汇总、复盘分析报告", sort_order: 10 },
     ];

@@ -26,13 +26,13 @@ const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
   { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 160, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 380, y: 160, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 520, y: 160, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 450, y: 290, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 620, y: 290, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 700, y: 160, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 840, y: 160, number: 8 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 230, y: 160, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 360, y: 160, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 490, y: 160, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 490, y: 290, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 640, y: 290, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 640, y: 160, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 790, y: 160, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -41,9 +41,9 @@ const LINKS_DEF = [
   { from: "sampling", to: "testing", type: "critical" },
   { from: "sampling", to: "procurement", type: "critical" },
   { from: "testing", to: "procurement", type: "parallel" },
-  { from: "procurement", to: "stocking", type: "parallel" },
-  { from: "testing", to: "sales", type: "parallel" },
-  { from: "stocking", to: "sales", type: "parallel" },
+  { from: "procurement", to: "stocking", type: "critical" },
+  { from: "testing", to: "sales", type: "critical" },
+  { from: "stocking", to: "sales", type: "critical" },
   { from: "sales", to: "aftersales", type: "critical" },
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
@@ -252,7 +252,9 @@ export default function HomePage() {
 
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
-      const labelY = midY - 22;
+      const isVertical = Math.abs(dx) < Math.abs(dy);
+      const labelX = isVertical ? midX + 50 : midX;
+      const labelY = isVertical ? midY : midY - 22;
 
       return (
         <g key={linkId}>
@@ -268,7 +270,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {label && renderLabel(midX, labelY)}
+          {label && renderLabel(labelX, labelY)}
         </g>
       );
     }
