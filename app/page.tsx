@@ -25,14 +25,14 @@ const NODE_SIZE = 80;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 260, y: 160 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 420, y: 160 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 580, y: 80 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 580, y: 240 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 740, y: 240 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 900, y: 160 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1060, y: 160 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 260, y: 160, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 420, y: 160, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 580, y: 80, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 580, y: 240, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 740, y: 240, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 900, y: 160, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1060, y: 160, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -437,7 +437,7 @@ export default function HomePage() {
                     {LINKS_DEF.map(link => renderArrow(link.from, link.to, link.type))}
                   </svg>
 
-                  <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2 }}>
+                  <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2, pointerEvents: "none" }}>
                     {NODES.map(node => (
                       <div
                         key={node.id}
@@ -448,8 +448,12 @@ export default function HomePage() {
                           top: node.y - NODE_RADIUS,
                           width: NODE_SIZE,
                           height: NODE_SIZE,
+                          pointerEvents: "auto",
                         }}
                       >
+                        <div className="absolute -top-1 -left-1 w-6 h-6 rounded-lg bg-white border-2 border-slate-200 flex items-center justify-center text-xs font-bold text-slate-700 shadow-sm z-10">
+                          {node.number}
+                        </div>
                         <div
                           className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
                         >
