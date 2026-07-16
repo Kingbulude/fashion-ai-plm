@@ -13,6 +13,9 @@ import { TechPackForm } from "@/components/styles/tech-pack-form";
 import { BomItemForm } from "@/components/styles/bom-item-form";
 import { SamplingForm } from "@/components/styles/sampling-form";
 import { QcRecordForm } from "@/components/styles/qc-record-form";
+import { ProcurementForm } from "@/components/styles/procurement-form";
+import { ProductionForm } from "@/components/styles/production-form";
+import { InventoryForm } from "@/components/styles/inventory-form";
 import {
   ArrowLeft,
   Edit,
@@ -252,6 +255,9 @@ export default function StyleDetailPage() {
             <TabsTrigger value="bom" className="h-8 px-4">BOM清单</TabsTrigger>
             <TabsTrigger value="sampling" className="h-8 px-4">打样</TabsTrigger>
             <TabsTrigger value="qc" className="h-8 px-4">质检</TabsTrigger>
+            <TabsTrigger value="procurement" className="h-8 px-4">采购</TabsTrigger>
+            <TabsTrigger value="production" className="h-8 px-4">生产</TabsTrigger>
+            <TabsTrigger value="inventory" className="h-8 px-4">库存</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="mt-0">
@@ -494,6 +500,18 @@ export default function StyleDetailPage() {
 
           <TabsContent value="qc" className="mt-0">
             <QcRecordForm styleId={id} />
+          </TabsContent>
+
+          <TabsContent value="procurement" className="mt-0">
+            <ProcurementForm styleId={id} />
+          </TabsContent>
+
+          <TabsContent value="production" className="mt-0">
+            <ProductionForm styleId={id} />
+          </TabsContent>
+
+          <TabsContent value="inventory" className="mt-0">
+            <InventoryForm styleId={id} />
           </TabsContent>
         </Tabs>
       </div>

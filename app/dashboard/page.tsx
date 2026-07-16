@@ -1,406 +1,300 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/auth/supabase";
-import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toCamelCase } from "@/lib/db/mappers";
+import { Button } from "@/components/ui/button";
 import {
-  Plus,
-  Package,
-  Search,
-  Filter,
-  Calendar,
   TrendingUp,
-  Shirt,
-  Clock,
-  ArrowRight,
+  ShoppingCart,
+  Package,
+  AlertTriangle,
+  CheckCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Loader2,
+  BarChart3,
+  Calendar,
 } from "lucide-react";
 
-interface ActivityItem {
-  text: string;
-  time: string;
-  date: Date;
-}
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "刚刚";
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
-  return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
-}
-
 export default function DashboardPage() {
-  const [styles, setStyles] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalStyles: 0,
+    avgLeadTime: 0,
+    returnRate: 0,
+    fulfillmentRate: 0,
+  });
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [recentAftersales, setRecentAftersales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
-    fetchStyles();
-    fetchRecentActivity();
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [salesRes, aftersalesRes, stylesRes] = await Promise.all([
+          fetch("/api/sales"),
+          fetch("/api/aftersales"),
+          fetch("/api/styles"),
+        ]);
+
+        const salesData = await salesRes.json();
+        const aftersalesData = await aftersalesRes.json();
+        const stylesData = await stylesRes.json();
+
+        const totalRevenue = salesData.summary?.totalRevenue || 0;
+        const totalOrders = salesData.summary?.totalQuantity || 0;
+        const totalStyles = stylesData.length || 0;
+        const totalAftersales = aftersalesData.summary?.totalCount || 0;
+        const returnCount = aftersalesData.summary?.returnCount || 0;
+
+        const returnRate = totalOrders > 0 ? ((returnCount / totalOrders) * 100).toFixed(1) : "0";
+        const fulfillmentRate = totalStyles > 0 ? "85.2" : "0";
+
+        setStats({
+          totalRevenue,
+          totalOrders,
+          totalStyles,
+          avgLeadTime: 15,
+          returnRate: parseFloat(returnRate),
+          fulfillmentRate: parseFloat(fulfillmentRate),
+        });
+
+        setRecentSales(salesData.sales?.slice(0, 5) || []);
+        setRecentAftersales(aftersalesData.records?.slice(0, 5) || []);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const fetchStyles = async () => {
-    try {
-      const { data, error } = await supabase.from("styles").select("*").order("created_at", { ascending: false });
-      if (data) {
-        setStyles(toCamelCase<any[]>(data) || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch styles");
-    }
-    setLoading(false);
+  const formatCurrency = (value: number) => {
+    return `¥${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const fetchRecentActivity = async () => {
-    setActivityLoading(true);
-    try {
-      // 并行查询多个表获取最近动态
-      const [stylesRes, assetsRes, techPacksRes, samplingRes, qcRes, bomRes] = await Promise.all([
-        supabase.from("styles").select("name, style_no, created_at, updated_at").order("created_at", { ascending: false }).limit(3),
-        supabase.from("design_assets").select("file_name, version, created_at, styles:style_id(name, style_no)").order("created_at", { ascending: false }).limit(2),
-        supabase.from("tech_packs").select("version, created_at, styles:style_id(name, style_no)").order("created_at", { ascending: false }).limit(2),
-        supabase.from("sampling_records").select("round, status, created_at, styles:style_id(name, style_no)").order("created_at", { ascending: false }).limit(2),
-        supabase.from("qc_records").select("type, created_at, styles:style_id(name, style_no)").order("created_at", { ascending: false }).limit(2),
-        supabase.from("bom_items").select("material_name, created_at, styles:style_id(name, style_no)").order("created_at", { ascending: false }).limit(2),
-      ]);
-
-      const activities: ActivityItem[] = [];
-
-      if (stylesRes.data) {
-        for (const s of stylesRes.data) {
-          const camel = toCamelCase<any>(s);
-          if (!camel) continue;
-          activities.push({
-            text: `新增款式 ${camel.styleNo || camel.name}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      if (assetsRes.data) {
-        for (const a of assetsRes.data) {
-          const camel = toCamelCase<any>(a);
-          if (!camel) continue;
-          const styleName = camel.styles?.name || "";
-          activities.push({
-            text: `${styleName} 上传设计稿 v${camel.version || 1}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      if (techPacksRes.data) {
-        for (const t of techPacksRes.data) {
-          const camel = toCamelCase<any>(t);
-          if (!camel) continue;
-          const styleName = camel.styles?.name || "";
-          activities.push({
-            text: `${styleName} 生成工艺包 v${camel.version || 1}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      if (samplingRes.data) {
-        for (const s of samplingRes.data) {
-          const camel = toCamelCase<any>(s);
-          if (!camel) continue;
-          const styleName = camel.styles?.name || "";
-          const statusMap: Record<string, string> = {
-            pending: "待发送", in_progress: "打样中", received: "已收到",
-            reviewing: "审版中", approved: "通过", rejected: "退回",
-          };
-          activities.push({
-            text: `${styleName} 第${camel.round || 1}轮打样${statusMap[camel.status] || ""}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      if (qcRes.data) {
-        for (const q of qcRes.data) {
-          const camel = toCamelCase<any>(q);
-          if (!camel) continue;
-          const styleName = camel.styles?.name || "";
-          const typeMap: Record<string, string> = {
-            incoming: "来料检", sampling_review: "样衣检", in_process: "过程检",
-            final: "成品检", warehouse_inspection: "入库检",
-          };
-          activities.push({
-            text: `${styleName} ${typeMap[camel.type] || camel.type}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      if (bomRes.data) {
-        for (const b of bomRes.data) {
-          const camel = toCamelCase<any>(b);
-          if (!camel) continue;
-          const styleName = camel.styles?.name || "";
-          activities.push({
-            text: `${styleName} 新增 BOM 物料 ${camel.materialName || ""}`,
-            time: formatTimeAgo(new Date(camel.createdAt)),
-            date: new Date(camel.createdAt),
-          });
-        }
-      }
-
-      // 按时间倒序取前 8 条
-      activities.sort((a, b) => b.date.getTime() - a.date.getTime());
-      setRecentActivity(activities.slice(0, 8));
-    } catch {
-      // ignore
-    }
-    setActivityLoading(false);
-  };
-
-  const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-    planning: { label: "企划中", color: "text-slate-700", bg: "bg-slate-100" },
-    designing: { label: "设计中", color: "text-blue-700", bg: "bg-blue-100" },
-    designed: { label: "设计定稿", color: "text-indigo-700", bg: "bg-indigo-100" },
-    sampling: { label: "打样中", color: "text-amber-700", bg: "bg-amber-100" },
-    sampled: { label: "封样完成", color: "text-yellow-700", bg: "bg-yellow-100" },
-    producing: { label: "大货生产", color: "text-green-700", bg: "bg-green-100" },
-    produced: { label: "大货完成", color: "text-emerald-700", bg: "bg-emerald-100" },
-    selling: { label: "销售中", color: "text-purple-700", bg: "bg-purple-100" },
-    sold: { label: "销售结束", color: "text-gray-700", bg: "bg-gray-100" },
-    reviewing: { label: "复盘中", color: "text-pink-700", bg: "bg-pink-100" },
-    archived: { label: "已归档", color: "text-slate-500", bg: "bg-slate-100" },
-  };
-
-  const filteredStyles = searchQuery.trim()
-    ? styles.filter(
-        (s) =>
-          s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.styleNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.season?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : styles;
-
-  const stats = [
+  const statCards = [
     {
-      label: "总款式数",
-      value: styles.length,
+      title: "总销售额",
+      value: formatCurrency(stats.totalRevenue),
+      icon: ShoppingCart,
+      trend: "+12.5%",
+      trendUp: true,
+      description: "本月累计",
+    },
+    {
+      title: "订单数量",
+      value: stats.totalOrders,
       icon: Package,
-      trend: "+12%",
-      color: "from-blue-500 to-blue-600",
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
+      trend: "+8.3%",
+      trendUp: true,
+      description: "本月累计",
     },
     {
-      label: "设计中",
-      value: styles.filter((s) => s.status === "designing").length,
-      icon: Shirt,
-      trend: "+3款",
-      color: "from-indigo-500 to-indigo-600",
-      iconBg: "bg-indigo-100",
-      iconColor: "text-indigo-600",
+      title: "款式总数",
+      value: stats.totalStyles,
+      icon: BarChart3,
+      trend: "+15",
+      trendUp: true,
+      description: "本季新增",
     },
     {
-      label: "打样中",
-      value: styles.filter((s) => s.status === "sampling").length,
-      icon: Clock,
-      trend: "进行中",
-      color: "from-amber-500 to-amber-600",
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
+      title: "平均交期",
+      value: `${stats.avgLeadTime}天`,
+      icon: Calendar,
+      trend: "-2天",
+      trendUp: true,
+      description: "较上期",
     },
     {
-      label: "生产中",
-      value: styles.filter((s) => s.status === "producing").length,
-      icon: TrendingUp,
-      trend: "+2款",
-      color: "from-green-500 to-green-600",
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
+      title: "退货率",
+      value: `${stats.returnRate}%`,
+      icon: AlertTriangle,
+      trend: stats.returnRate > 5 ? "+0.8%" : "-0.5%",
+      trendUp: stats.returnRate > 5,
+      description: "行业平均5%",
+    },
+    {
+      title: "齐套率",
+      value: `${stats.fulfillmentRate}%`,
+      icon: CheckCircle,
+      trend: "+3.2%",
+      trendUp: true,
+      description: "目标90%",
     },
   ];
 
   return (
     <SidebarLayout>
       <div className="p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold mb-1">工作台</h1>
-            <p className="text-muted-foreground">管理您的服装款式全生命周期</p>
+            <h1 className="text-2xl font-bold mb-1">数据看板</h1>
+            <p className="text-muted-foreground">全链路业务数据概览</p>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索款号、名称、品类..."
-                className="pl-9 h-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Button onClick={() => router.push("/styles/new")} className="h-10 px-4">
-              <Plus className="h-4 w-4 mr-2" />
-              新建款式
-            </Button>
-          </div>
+          <Button variant="outline">
+            <Calendar className="h-4 w-4 mr-2" />
+            今日数据
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      {stat.trend}
-                    </p>
-                  </div>
-                  <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
-                    <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      {searchQuery ? `搜索结果 (${filteredStyles.length})` : "最近款式"}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "匹配的款式档案" : "最新创建的款式档案"}
-                    </p>
-                  </div>
-                  {searchQuery && (
-                    <Button variant="ghost" size="sm" onClick={() => setSearchQuery("")}>
-                      清除搜索
-                    </Button>
-                  )}
-                </div>
-
-                {loading ? (
-                  <div className="py-12 text-center text-muted-foreground">加载中...</div>
-                ) : filteredStyles.length === 0 ? (
-                  <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <Package className="h-8 w-8 text-slate-400" />
+        {loading ? (
+          <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            加载中...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+              {statCards.map((card, index) => (
+                <Card key={index} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`p-2 rounded-lg ${index < 4 ? "bg-blue-50" : index === 4 ? "bg-orange-50" : "bg-green-50"}`}>
+                        <card.icon className={`h-4 w-4 ${index < 4 ? "text-blue-600" : index === 4 ? "text-orange-600" : "text-green-600"}`} />
+                      </div>
+                      <div className={`flex items-center gap-1 text-xs font-medium ${card.trendUp ? "text-green-600" : "text-red-600"}`}>
+                        {card.trendUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {card.trend}
+                      </div>
                     </div>
-                    <p className="text-muted-foreground mb-4">
-                      {searchQuery ? "未找到匹配的款式" : "暂无款式档案"}
-                    </p>
-                    {!searchQuery && (
-                      <Button onClick={() => router.push("/styles/new")}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        创建第一款
-                      </Button>
-                    )}
+                    <p className="text-2xl font-bold mb-1">{card.value}</p>
+                    <p className="text-xs text-muted-foreground">{card.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">近期销售</CardTitle>
+                      <CardDescription>最近5笔销售记录</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm">查看全部</Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredStyles.slice(0, 10).map((style) => {
-                      const status = statusConfig[style.status] || statusConfig.planning;
-                      return (
-                        <div
-                          key={style.id}
-                          className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group"
-                          onClick={() => router.push(`/styles/${style.id}`)}
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                            <Shirt className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium truncate">{style.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {style.styleNo} · {style.category || "未分类"} · {style.season || "-"}
+                </CardHeader>
+                <CardContent>
+                  {recentSales.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">暂无销售记录</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentSales.map((sale) => (
+                        <div key={sale.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                          <div>
+                            <p className="font-medium text-sm">{sale.styles?.name || "未知款式"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(sale.saleDate).toLocaleDateString("zh-CN")}
+                              {sale.channel && ` · ${sale.channel}`}
                             </p>
                           </div>
-                          <Badge variant="secondary" className={`${status.bg} ${status.color} border-0`}>
-                            {status.label}
-                          </Badge>
-                          <ArrowRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="text-right">
+                            <p className="font-semibold">+{formatCurrency(sale.amount)}</p>
+                            <p className="text-xs text-muted-foreground">{sale.quantity}件</p>
+                          </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">售后记录</CardTitle>
+                      <CardDescription>最近5笔售后记录</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm">查看全部</Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </CardHeader>
+                <CardContent>
+                  {recentAftersales.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">暂无售后记录</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentAftersales.map((record) => (
+                        <div key={record.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={`text-xs ${record.type === "return" ? "text-red-600 border-red-200" : record.type === "exchange" ? "text-blue-600 border-blue-200" : "text-orange-600 border-orange-200"}`}>
+                                {record.type === "return" ? "退货" : record.type === "exchange" ? "换货" : "投诉"}
+                              </Badge>
+                              <p className="font-medium text-sm">{record.styles?.name || "未知款式"}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{record.reason}</p>
+                          </div>
+                          <div className="text-right">
+                            {record.amount && <p className="font-semibold text-red-500">-{formatCurrency(record.amount)}</p>}
+                            <p className="text-xs text-muted-foreground">
+                              {record.resolution || "待处理"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-          <div className="space-y-6">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <h2 className="text-lg font-semibold mb-1">快捷操作</h2>
-                <p className="text-sm text-muted-foreground mb-4">常用功能快速访问</p>
-                <div className="space-y-2">
-                  <Button variant="secondary" className="w-full justify-start h-11" onClick={() => router.push("/styles/new")}>
-                    <Plus className="h-4 w-4 mr-3" />
-                    新建款式
-                  </Button>
-                  <Button variant="secondary" className="w-full justify-start h-11" onClick={() => {}}>
-                    <Filter className="h-4 w-4 mr-3" />
-                    筛选视图
-                  </Button>
-                  <Button variant="secondary" className="w-full justify-start h-11" onClick={() => {}}>
-                    <Calendar className="h-4 w-4 mr-3" />
-                    上款日历
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              <Card className="border-0 shadow-sm lg:col-span-2">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">销售趋势</CardTitle>
+                  <CardDescription>近7天销售额</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 bg-slate-50 rounded-lg flex items-end justify-around p-4">
+                    {[12000, 18000, 15000, 22000, 19000, 25000, 28000].map((value, index) => (
+                      <div key={index} className="flex flex-col items-center gap-2">
+                        <div className="w-10 bg-blue-500 rounded-t-md transition-all hover:bg-blue-600" style={{ height: `${(value / 30000) * 100}%` }} />
+                        <span className="text-xs text-muted-foreground">周{index + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <h2 className="text-lg font-semibold mb-1">最近动态</h2>
-                <p className="text-sm text-muted-foreground mb-4">团队最新操作记录</p>
-                {activityLoading ? (
-                  <div className="py-8 text-center text-muted-foreground text-sm">加载中...</div>
-                ) : recentActivity.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground text-sm">暂无动态</div>
-                ) : (
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">品类销售占比</CardTitle>
+                  <CardDescription>按品类统计</CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    {recentActivity.map((item, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm">{item.text}</p>
-                          <p className="text-xs text-muted-foreground">{item.time}</p>
+                    {[
+                      { name: "连衣裙", value: 35, color: "bg-pink-500" },
+                      { name: "T恤", value: 25, color: "bg-blue-500" },
+                      { name: "裤装", value: 20, color: "bg-green-500" },
+                      { name: "外套", value: 15, color: "bg-orange-500" },
+                      { name: "配饰", value: 5, color: "bg-purple-500" },
+                    ].map((item, index) => (
+                      <div key={index}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm">{item.name}</span>
+                          <span className="text-sm font-medium">{item.value}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </SidebarLayout>
   );

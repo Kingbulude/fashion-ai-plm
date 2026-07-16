@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  Wand2,
 } from "lucide-react";
 
 interface SidebarLayoutProps {
@@ -54,6 +55,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const navItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
+    { icon: Sparkles, label: "企划中心", href: "/planning" },
+    { icon: Wand2, label: "AI智能分析", href: "/ai" },
     { icon: Shirt, label: "款式管理", href: "/dashboard" },
     { icon: Palette, label: "设计资产", href: "/dashboard" },
     { icon: Factory, label: "生产管理", href: "/dashboard" },
