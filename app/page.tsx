@@ -168,9 +168,12 @@ export default function HomePage() {
     const dashArray = isCritical ? "0" : "6 4";
 
     const hours = link?.duration_hours || 0;
-    const label = hours > 0 ? `${hours}h` : "";
-    const labelWidth = label ? Math.max(48, label.length * 10 + 16) : 0;
-    const labelHeight = 22;
+    const deadline = link?.deadline;
+    const label = deadline
+      ? new Date(deadline).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })
+      : (hours > 0 ? `${hours}h` : "");
+    const labelWidth = label ? Math.max(64, label.length * 11 + 20) : 0;
+    const labelHeight = 26;
 
     const markerId = `arrowhead-${linkId}`;
 
@@ -191,44 +194,51 @@ export default function HomePage() {
       </defs>
     );
 
-    // Helper: draw label pill above given point
-    const renderLabel = (cx: number, cy: number, clickable: boolean = true) => (
-      <g
-        key={`label-${linkId}`}
-        className={clickable ? "cursor-pointer" : ""}
-        onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
-      >
-        <rect
-          x={cx - labelWidth / 2 - 4}
-          y={cy - labelHeight / 2 - 4}
-          width={labelWidth + 8}
-          height={labelHeight + 8}
-          fill="transparent"
-        />
-        <rect
-          x={cx - labelWidth / 2}
-          y={cy - labelHeight / 2}
-          width={labelWidth}
-          height={labelHeight}
-          rx={labelHeight / 2}
-          fill="white"
-          stroke={strokeColor}
-          strokeWidth={1.5}
-          className="hover:fill-slate-50 transition-colors"
-        />
-        <text
-          x={cx}
-          y={cy + 4}
-          textAnchor="middle"
-          fontSize={12}
-          fill={strokeColor}
-          fontWeight={600}
-          className="pointer-events-none select-none"
+    // Helper: draw deadline button above given point
+    const renderLabel = (cx: number, cy: number, clickable: boolean = true) => {
+      if (!label) return null;
+      const halfW = labelWidth / 2;
+      const halfH = labelHeight / 2;
+      return (
+        <g
+          key={`label-${linkId}`}
+          className={clickable ? "cursor-pointer" : ""}
+          onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
         >
-          {label}
-        </text>
-      </g>
-    );
+          <rect
+            x={cx - halfW - 4}
+            y={cy - halfH - 4}
+            width={labelWidth + 8}
+            height={labelHeight + 8}
+            rx={8}
+            fill="transparent"
+          />
+          <rect
+            x={cx - halfW}
+            y={cy - halfH}
+            width={labelWidth}
+            height={labelHeight}
+            rx={halfH}
+            fill="white"
+            stroke={strokeColor}
+            strokeWidth={1.5}
+            className="hover:brightness-95 transition-all"
+            style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+          />
+          <text
+            x={cx}
+            y={cy + 4}
+            textAnchor="middle"
+            fontSize={12}
+            fill={strokeColor}
+            fontWeight={700}
+            className="pointer-events-none select-none"
+          >
+            {label}
+          </text>
+        </g>
+      );
+    };
 
     // Critical path: straight line (horizontal or diagonal) with label above
     if (isCritical) {
@@ -387,7 +397,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">StyleForge 智能调度中心</h1>
-            <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击工时标签编辑</p>
+            <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/dashboard")}>
             <Sparkles className="h-4 w-4 mr-2" />
@@ -409,8 +419,8 @@ export default function HomePage() {
             <span className="text-muted-foreground">反馈回路</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="px-2 py-0.5 rounded-full bg-white border-2 border-slate-400 text-[11px] text-slate-600 font-semibold leading-none">40h</div>
-            <span className="text-muted-foreground">工时标签（点击编辑）</span>
+            <div className="px-2 py-0.5 rounded-full bg-white border-2 border-slate-400 text-[11px] text-slate-600 font-semibold leading-none shadow-sm">07/16</div>
+            <span className="text-muted-foreground">截止时间（点击编辑）</span>
           </div>
         </div>
 
@@ -473,20 +483,20 @@ export default function HomePage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
+                  <Label>截止时间</Label>
+                  <Input
+                    type="date"
+                    value={editForm.deadline}
+                    onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label>工时（小时）</Label>
                   <Input
                     type="number"
                     value={editForm.duration_hours}
                     onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
                     placeholder="例如：40"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>截止日期</Label>
-                  <Input
-                    type="date"
-                    value={editForm.deadline}
-                    onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
                   />
                 </div>
               </div>
