@@ -26,13 +26,13 @@ const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
   { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 260, y: 160, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 420, y: 160, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 580, y: 80, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 580, y: 240, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 740, y: 240, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 900, y: 160, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1060, y: 160, number: 8 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 160, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 380, y: 160, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 520, y: 160, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 450, y: 290, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 620, y: 290, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 700, y: 160, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 840, y: 160, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -48,8 +48,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1180;
-const CANVAS_HEIGHT = 340;
+const CANVAS_WIDTH = 960;
+const CANVAS_HEIGHT = 380;
 
 interface ProcessLink {
   id: string;
@@ -451,14 +451,11 @@ export default function HomePage() {
                           pointerEvents: "auto",
                         }}
                       >
-                        <div className="absolute -top-1 -left-1 w-6 h-6 rounded-lg bg-white border-2 border-slate-200 flex items-center justify-center text-xs font-bold text-slate-700 shadow-sm z-10">
-                          {node.number}
-                        </div>
                         <div
                           className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
                         >
                           <span className="text-xl mb-0.5">{node.icon}</span>
-                          <span className="font-bold text-sm">{node.name}</span>
+                          <span className="font-bold text-sm">{node.number}.{node.name}</span>
                         </div>
                       </div>
                     ))}
@@ -470,7 +467,7 @@ export default function HomePage() {
         )}
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg bg-white">
             <DialogHeader>
               <DialogTitle>
                 编辑工序：{editingLink && `${getNodeName(editingLink.from_node)} → ${getNodeName(editingLink.to_node)}`}
