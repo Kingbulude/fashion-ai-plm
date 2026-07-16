@@ -38,12 +38,12 @@ const NODES = [
 const LINKS_DEF = [
   { from: "planning", to: "design", type: "critical" },
   { from: "design", to: "sampling", type: "critical" },
-  { from: "sampling", to: "testing", type: "parallel" },
-  { from: "sampling", to: "procurement", type: "parallel" },
+  { from: "sampling", to: "testing", type: "critical" },
+  { from: "sampling", to: "procurement", type: "critical" },
   { from: "testing", to: "procurement", type: "parallel" },
-  { from: "procurement", to: "stocking", type: "parallel" },
-  { from: "testing", to: "sales", type: "parallel" },
-  { from: "stocking", to: "sales", type: "parallel" },
+  { from: "procurement", to: "stocking", type: "critical" },
+  { from: "testing", to: "sales", type: "critical" },
+  { from: "stocking", to: "sales", type: "critical" },
   { from: "sales", to: "aftersales", type: "critical" },
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
@@ -230,22 +230,36 @@ export default function HomePage() {
       </g>
     );
 
-    // Critical path: straight horizontal line with label above
+    // Critical path: straight line (horizontal or diagonal) with label above
     if (isCritical) {
-      const y = from.y;
-      const x1 = from.x + NODE_RADIUS;
-      const x2 = to.x - NODE_RADIUS - 4;
-      const midX = (x1 + x2) / 2;
-      const labelY = y - 22;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      
+      let sx = from.x;
+      let sy = from.y;
+      let ex = to.x;
+      let ey = to.y;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        sx = dx > 0 ? from.x + NODE_RADIUS : from.x - NODE_RADIUS;
+        ex = dx > 0 ? to.x - NODE_RADIUS - 4 : to.x + NODE_RADIUS + 4;
+      } else {
+        sy = dy > 0 ? from.y + NODE_RADIUS : from.y - NODE_RADIUS;
+        ey = dy > 0 ? to.y - NODE_RADIUS - 4 : to.y + NODE_RADIUS + 4;
+      }
+
+      const midX = (sx + ex) / 2;
+      const midY = (sy + ey) / 2;
+      const labelY = midY - 22;
 
       return (
         <g key={linkId}>
           {ArrowMarker}
           <line
-            x1={x1}
-            y1={y}
-            x2={x2}
-            y2={y}
+            x1={sx}
+            y1={sy}
+            x2={ex}
+            y2={ey}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             markerEnd={`url(#${markerId})`}
@@ -257,13 +271,13 @@ export default function HomePage() {
       );
     }
 
-    // Feedback loop: arc over the top
+    // Feedback loop: right-angle turns over the top
     if (isFeedback) {
       const startX = from.x;
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 24;
+      const topY = 28;
       const midX = (startX + endX) / 2;
 
       return (
@@ -271,11 +285,9 @@ export default function HomePage() {
           {ArrowMarker}
           <path
             d={`M ${startX} ${startY}
-                L ${startX} ${topY + 24}
-                Q ${startX} ${topY} ${startX + 28} ${topY}
-                L ${endX - 28} ${topY}
-                Q ${endX} ${topY} ${endX} ${topY + 24}
-                L ${endX} ${endY - 2}`}
+                L ${startX} ${topY}
+                L ${endX} ${topY}
+                L ${endX} ${endY - 4}`}
             fill="none"
             stroke={strokeColor}
             strokeWidth={strokeWidth}
@@ -284,7 +296,7 @@ export default function HomePage() {
             className="cursor-pointer"
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {label && renderLabel(midX, topY)}
+          {label && renderLabel(midX, topY - 16)}
         </g>
       );
     }
