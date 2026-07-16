@@ -54,7 +54,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   };
 
   const navItems = [
-    { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
+    { icon: LayoutDashboard, label: "工作台", href: "/" },
     { icon: Sparkles, label: "企划中心", href: "/planning" },
     { icon: Wand2, label: "AI智能分析", href: "/ai" },
     { icon: Shirt, label: "款式管理", href: "/styles" },
@@ -64,6 +64,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   ];
 
   const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   };
