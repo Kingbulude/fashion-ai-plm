@@ -27,6 +27,7 @@ import {
   Palette,
   Target,
 } from "lucide-react";
+import { InspirationBoard } from "@/components/planning/inspiration-board";
 
 export default function PlanningPage() {
   const [plans, setPlans] = useState<any[]>([]);
@@ -35,6 +36,8 @@ export default function PlanningPage() {
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [boardPlanId, setBoardPlanId] = useState<string>("");
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [form, setForm] = useState({
@@ -263,7 +266,7 @@ export default function PlanningPage() {
                       {analyzing ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Sparkles className="h-3 w-3 mr-2" />}
                       AI分析趋势
                     </Button>
-                    <Button size="sm" variant="secondary" className="flex-1 h-9" onClick={() => {}}>
+                    <Button size="sm" variant="secondary" className="flex-1 h-9" onClick={() => { setBoardPlanId(plan.id); setBoardOpen(true); }}>
                       <Palette className="h-3 w-3 mr-2" />
                       灵感收集
                     </Button>
@@ -322,6 +325,15 @@ export default function PlanningPage() {
                 保存
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={boardOpen} onOpenChange={setBoardOpen}>
+          <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>灵感白板</DialogTitle>
+            </DialogHeader>
+            {boardPlanId && <InspirationBoard planId={boardPlanId} />}
           </DialogContent>
         </Dialog>
 

@@ -57,9 +57,9 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: Sparkles, label: "企划中心", href: "/planning" },
     { icon: Wand2, label: "AI智能分析", href: "/ai" },
-    { icon: Shirt, label: "款式管理", href: "/dashboard" },
-    { icon: Palette, label: "设计资产", href: "/dashboard" },
-    { icon: Factory, label: "生产管理", href: "/dashboard" },
+    { icon: Shirt, label: "款式管理", href: "/styles" },
+    { icon: Palette, label: "设计资产", href: "/design" },
+    { icon: Factory, label: "生产管理", href: "/production" },
     { icon: BarChart3, label: "数据看板", href: "/dashboard" },
   ];
 

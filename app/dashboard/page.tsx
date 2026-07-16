@@ -27,6 +27,7 @@ export default function DashboardPage() {
     returnRate: 0,
     fulfillmentRate: 0,
   });
+  const [allSales, setAllSales] = useState<any[]>([]);
   const [recentSales, setRecentSales] = useState<any[]>([]);
   const [recentAftersales, setRecentAftersales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,7 @@ export default function DashboardPage() {
           fulfillmentRate: parseFloat(fulfillmentRate),
         });
 
+        setAllSales(salesData.sales || []);
         setRecentSales(salesData.sales?.slice(0, 5) || []);
         setRecentAftersales(aftersalesData.records?.slice(0, 5) || []);
       } catch (err) {
@@ -254,14 +256,31 @@ export default function DashboardPage() {
                   <CardDescription>近7天销售额</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-64 bg-slate-50 rounded-lg flex items-end justify-around p-4">
-                    {[12000, 18000, 15000, 22000, 19000, 25000, 28000].map((value, index) => (
-                      <div key={index} className="flex flex-col items-center gap-2">
-                        <div className="w-10 bg-blue-500 rounded-t-md transition-all hover:bg-blue-600" style={{ height: `${(value / 30000) * 100}%` }} />
-                        <span className="text-xs text-muted-foreground">周{index + 1}</span>
+                  {(() => {
+                    const days: { label: string; amount: number }[] = [];
+                    for (let i = 6; i >= 0; i--) {
+                      const d = new Date();
+                      d.setDate(d.getDate() - i);
+                      const ds = d.toISOString().split("T")[0];
+                      const amount = allSales.filter((s) => s.saleDate === ds).reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+                      days.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, amount });
+                    }
+                    const maxAmount = Math.max(...days.map((d) => d.amount), 1);
+                    if (days.every((d) => d.amount === 0)) {
+                      return <div className="h-64 bg-slate-50 rounded-lg flex items-center justify-center text-sm text-muted-foreground">暂无销售数据</div>;
+                    }
+                    return (
+                      <div className="h-64 bg-slate-50 rounded-lg flex items-end justify-around p-4">
+                        {days.map((day, index) => (
+                          <div key={index} className="flex flex-col items-center gap-2 flex-1 mx-1">
+                            <div className="w-full max-w-[40px] bg-blue-500 rounded-t-md transition-all hover:bg-blue-600" style={{ height: `${(day.amount / maxAmount) * 100}%` }} />
+                            <span className="text-xs text-muted-foreground">{day.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{day.amount > 0 ? `¥${(day.amount / 1000).toFixed(1)}k` : ""}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
@@ -271,25 +290,41 @@ export default function DashboardPage() {
                   <CardDescription>按品类统计</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      { name: "连衣裙", value: 35, color: "bg-pink-500" },
-                      { name: "T恤", value: 25, color: "bg-blue-500" },
-                      { name: "裤装", value: 20, color: "bg-green-500" },
-                      { name: "外套", value: 15, color: "bg-orange-500" },
-                      { name: "配饰", value: 5, color: "bg-purple-500" },
-                    ].map((item, index) => (
-                      <div key={index}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm">{item.name}</span>
-                          <span className="text-sm font-medium">{item.value}%</span>
-                        </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
-                        </div>
+                  {(() => {
+                    const catMap: Record<string, number> = {};
+                    allSales.forEach((s) => {
+                      const cat = s.styles?.category || "未分类";
+                      catMap[cat] = (catMap[cat] || 0) + (s.amount || 0);
+                    });
+                    const total = Object.values(catMap).reduce((a, b) => a + b, 0);
+                    const colors = ["bg-pink-500", "bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500", "bg-red-500", "bg-cyan-500"];
+                    const items = Object.entries(catMap)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 6)
+                      .map(([name, amount], i) => ({
+                        name,
+                        value: total > 0 ? Math.round((amount / total) * 100) : 0,
+                        color: colors[i % colors.length],
+                      }));
+                    if (items.length === 0) {
+                      return <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">暂无数据</div>;
+                    }
+                    return (
+                      <div className="space-y-4">
+                        {items.map((item, index) => (
+                          <div key={index}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm">{item.name}</span>
+                              <span className="text-sm font-medium">{item.value}%</span>
+                            </div>
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
