@@ -25,30 +25,31 @@ const NODE_SIZE = 80;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 170 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 170 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 380, y: 170 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 520, y: 110 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 520, y: 250 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 660, y: 250 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 800, y: 170 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 940, y: 170 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 260, y: 160 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 420, y: 160 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 580, y: 80 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 580, y: 240 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 740, y: 240 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 900, y: 160 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1060, y: 160 },
 ];
 
 const LINKS_DEF = [
-  { from: "planning", to: "design", type: "critical", labelPos: "top" },
-  { from: "design", to: "sampling", type: "critical", labelPos: "top" },
-  { from: "sampling", to: "testing", type: "up", labelPos: "left" },
-  { from: "sampling", to: "procurement", type: "down", labelPos: "left" },
-  { from: "procurement", to: "stocking", type: "down", labelPos: "top" },
-  { from: "testing", to: "sales", type: "up", labelPos: "right" },
-  { from: "stocking", to: "sales", type: "up", labelPos: "right" },
-  { from: "sales", to: "aftersales", type: "critical", labelPos: "top" },
-  { from: "aftersales", to: "planning", type: "feedback", labelPos: "top" },
+  { from: "planning", to: "design", type: "critical" },
+  { from: "design", to: "sampling", type: "critical" },
+  { from: "sampling", to: "testing", type: "parallel" },
+  { from: "sampling", to: "procurement", type: "parallel" },
+  { from: "testing", to: "procurement", type: "parallel" },
+  { from: "procurement", to: "stocking", type: "parallel" },
+  { from: "testing", to: "sales", type: "parallel" },
+  { from: "stocking", to: "sales", type: "parallel" },
+  { from: "sales", to: "aftersales", type: "critical" },
+  { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1080;
-const CANVAS_HEIGHT = 360;
+const CANVAS_WIDTH = 1180;
+const CANVAS_HEIGHT = 340;
 
 interface ProcessLink {
   id: string;
@@ -156,152 +157,212 @@ export default function HomePage() {
     const from = getNodePos(fromId);
     const to = getNodePos(toId);
     const link = getLink(fromId, toId);
+    const linkId = `${fromId}-${toId}`;
 
-    let x1 = from.x;
-    let y1 = from.y;
-    let x2 = to.x;
-    let y2 = to.y;
+    const isCritical = type === "critical";
+    const isFeedback = type === "feedback";
+    const isParallel = type === "parallel";
 
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    const nx = dx / dist;
-    const ny = dy / dist;
-
-    x1 = from.x + nx * NODE_RADIUS;
-    y1 = from.y + ny * NODE_RADIUS;
-    x2 = to.x - nx * NODE_RADIUS;
-    y2 = to.y - ny * NODE_RADIUS;
-
-    const strokeColor = type === "critical" ? "#ef4444" : type === "feedback" ? "#f59e0b" : "#94a3b8";
-    const strokeWidth = type === "critical" ? 3 : 2;
-    const dashArray = type === "critical" ? "0" : type === "feedback" ? "8 4" : "8 4";
-
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
+    const strokeColor = isCritical ? "#ef4444" : isFeedback ? "#f59e0b" : "#94a3b8";
+    const strokeWidth = isCritical ? 2.5 : 1.5;
+    const dashArray = isCritical ? "0" : "6 4";
 
     const hours = link?.duration_hours || 0;
     const label = hours > 0 ? `${hours}h` : "";
+    const labelWidth = label ? Math.max(48, label.length * 10 + 16) : 0;
+    const labelHeight = 22;
 
-    const markerId = `arrow-${fromId}-${toId}`;
-    const labelWidth = 56;
-    const labelHeight = 24;
-    const labelOffset = type === "feedback" ? 0 : -16;
-    const labelY = midY + labelOffset - labelHeight / 2;
+    const markerId = `arrowhead-${linkId}`;
 
-    const isFeedback = type === "feedback";
-    const arcTopY = 10;
-    const feedbackMidX = (x1 + x2) / 2;
+    // Global arrow marker for small, clean arrowheads
+    const ArrowMarker = (
+      <defs key={`defs-${linkId}`}>
+        <marker
+          id={markerId}
+          markerWidth="8"
+          markerHeight="6"
+          refX="7"
+          refY="3"
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <polygon points="0 0, 8 3, 0 6" fill={strokeColor} />
+        </marker>
+      </defs>
+    );
+
+    // Helper: draw label pill above given point
+    const renderLabel = (cx: number, cy: number, clickable: boolean = true) => (
+      <g
+        key={`label-${linkId}`}
+        className={clickable ? "cursor-pointer" : ""}
+        onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
+      >
+        <rect
+          x={cx - labelWidth / 2 - 4}
+          y={cy - labelHeight / 2 - 4}
+          width={labelWidth + 8}
+          height={labelHeight + 8}
+          fill="transparent"
+        />
+        <rect
+          x={cx - labelWidth / 2}
+          y={cy - labelHeight / 2}
+          width={labelWidth}
+          height={labelHeight}
+          rx={labelHeight / 2}
+          fill="white"
+          stroke={strokeColor}
+          strokeWidth={1.5}
+          className="hover:fill-slate-50 transition-colors"
+        />
+        <text
+          x={cx}
+          y={cy + 4}
+          textAnchor="middle"
+          fontSize={12}
+          fill={strokeColor}
+          fontWeight={600}
+          className="pointer-events-none select-none"
+        >
+          {label}
+        </text>
+      </g>
+    );
+
+    // Critical path: straight horizontal line with label above
+    if (isCritical) {
+      const y = from.y;
+      const x1 = from.x + NODE_RADIUS;
+      const x2 = to.x - NODE_RADIUS - 4;
+      const midX = (x1 + x2) / 2;
+      const labelY = y - 22;
+
+      return (
+        <g key={linkId}>
+          {ArrowMarker}
+          <line
+            x1={x1}
+            y1={y}
+            x2={x2}
+            y2={y}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            markerEnd={`url(#${markerId})`}
+            className="cursor-pointer"
+            onClick={() => handleArrowClick(fromId, toId)}
+          />
+          {label && renderLabel(midX, labelY)}
+        </g>
+      );
+    }
+
+    // Feedback loop: arc over the top
+    if (isFeedback) {
+      const startX = from.x;
+      const startY = from.y - NODE_RADIUS;
+      const endX = to.x;
+      const endY = to.y - NODE_RADIUS;
+      const topY = 24;
+      const midX = (startX + endX) / 2;
+
+      return (
+        <g key={linkId}>
+          {ArrowMarker}
+          <path
+            d={`M ${startX} ${startY}
+                L ${startX} ${topY + 24}
+                Q ${startX} ${topY} ${startX + 28} ${topY}
+                L ${endX - 28} ${topY}
+                Q ${endX} ${topY} ${endX} ${topY + 24}
+                L ${endX} ${endY - 2}`}
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dashArray}
+            markerEnd={`url(#${markerId})`}
+            className="cursor-pointer"
+            onClick={() => handleArrowClick(fromId, toId)}
+          />
+          {label && renderLabel(midX, topY)}
+        </g>
+      );
+    }
+
+    // Parallel connections (vertical/horizontal combinations)
+    // Connect from node edge to node edge, mostly orthogonal or straight diagonal
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+
+    // Determine start/end points on node edges
+    let sx = from.x;
+    let sy = from.y;
+    let ex = to.x;
+    let ey = to.y;
+
+    if (dy < 0) {
+      sy = from.y - NODE_RADIUS;
+      ey = to.y + NODE_RADIUS;
+    } else if (dy > 0) {
+      sy = from.y + NODE_RADIUS;
+      ey = to.y - NODE_RADIUS;
+    }
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      sx = dx > 0 ? from.x + NODE_RADIUS : from.x - NODE_RADIUS;
+      ex = dx > 0 ? to.x - NODE_RADIUS : to.x + NODE_RADIUS;
+    }
+
+    // For vertical connector between testing and procurement
+    if (fromId === "testing" && toId === "procurement") {
+      const startX = from.x;
+      const startY = from.y + NODE_RADIUS;
+      const endX = to.x;
+      const endY = to.y - NODE_RADIUS - 4;
+      const labelX = startX + 34;
+      const labelY = (startY + endY) / 2;
+
+      return (
+        <g key={linkId}>
+          {ArrowMarker}
+          <line
+            x1={startX}
+            y1={startY}
+            x2={endX}
+            y2={endY}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dashArray}
+            markerEnd={`url(#${markerId})`}
+            className="cursor-pointer"
+            onClick={() => handleArrowClick(fromId, toId)}
+          />
+          {label && renderLabel(labelX, labelY)}
+        </g>
+      );
+    }
+
+    // Standard diagonal/horizontal parallel line
+    const midX = (sx + ex) / 2;
+    const midY = (sy + ey) / 2;
+    const labelOffsetY = -18;
 
     return (
-      <g key={`${fromId}-${toId}`}>
-        <defs>
-          <marker id={markerId} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill={strokeColor} />
-          </marker>
-        </defs>
-
-        {isFeedback ? (
-          <>
-            <path
-              d={`M ${x1} ${y1 - NODE_RADIUS}
-                  Q ${x1} ${arcTopY} ${x1 + 40} ${arcTopY}
-                  L ${x2 + NODE_RADIUS + 20} ${arcTopY}
-                  Q ${x2 + NODE_RADIUS} ${arcTopY} ${x2 + NODE_RADIUS} ${arcTopY + 25}
-                  L ${x2 + NODE_RADIUS} ${y2 - 20}`}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              strokeDasharray={dashArray}
-              markerEnd={`url(#${markerId})`}
-            />
-            {label && (
-              <g className="cursor-pointer" onClick={() => handleArrowClick(fromId, toId)}>
-                <rect
-                  x={feedbackMidX - labelWidth / 2}
-                  y={arcTopY - labelHeight / 2}
-                  width={labelWidth}
-                  height={labelHeight}
-                  rx={12}
-                  fill="white"
-                  stroke={strokeColor}
-                  strokeWidth={2}
-                  className="hover:fill-amber-50 transition-colors"
-                />
-                <text
-                  x={feedbackMidX}
-                  y={arcTopY + 4}
-                  textAnchor="middle"
-                  fontSize={12}
-                  fill={strokeColor}
-                  fontWeight={600}
-                  className="pointer-events-none"
-                >
-                  {label}
-                </text>
-              </g>
-            )}
-          </>
-        ) : (
-          <>
-            <line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              strokeDasharray={dashArray}
-              markerEnd={`url(#${markerId})`}
-            />
-            {label && (
-              <g className="cursor-pointer" onClick={() => handleArrowClick(fromId, toId)}>
-                <line
-                  x1={midX - labelWidth / 2 + 8}
-                  y1={midY}
-                  x2={midX - labelWidth / 2 + 8}
-                  y2={labelY + labelHeight}
-                  stroke={strokeColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="2 2"
-                  className="pointer-events-none"
-                />
-                <line
-                  x1={midX + labelWidth / 2 - 8}
-                  y1={midY}
-                  x2={midX + labelWidth / 2 - 8}
-                  y2={labelY + labelHeight}
-                  stroke={strokeColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="2 2"
-                  className="pointer-events-none"
-                />
-                <rect
-                  x={midX - labelWidth / 2}
-                  y={labelY}
-                  width={labelWidth}
-                  height={labelHeight}
-                  rx={12}
-                  fill="white"
-                  stroke={strokeColor}
-                  strokeWidth={2}
-                  className="hover:fill-slate-50 transition-colors"
-                />
-                <text
-                  x={midX}
-                  y={labelY + labelHeight / 2 + 4}
-                  textAnchor="middle"
-                  fontSize={12}
-                  fill={strokeColor}
-                  fontWeight={600}
-                  className="pointer-events-none"
-                >
-                  {label}
-                </text>
-              </g>
-            )}
-          </>
-        )}
+      <g key={linkId}>
+        {ArrowMarker}
+        <line
+          x1={sx}
+          y1={sy}
+          x2={ex}
+          y2={ey}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={dashArray}
+          markerEnd={`url(#${markerId})`}
+          className="cursor-pointer"
+          onClick={() => handleArrowClick(fromId, toId)}
+        />
+        {label && renderLabel(midX, midY + labelOffsetY)}
       </g>
     );
   };
