@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,10 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Loader2,
-  Info,
   Sparkles,
-  Clock,
-  Edit3,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
@@ -29,14 +25,14 @@ const NODE_SIZE = 80;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 120 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 120 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 380, y: 120 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 520, y: 60 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 520, y: 200 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 660, y: 200 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 800, y: 120 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 940, y: 120 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 170 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 240, y: 170 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 380, y: 170 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 520, y: 110 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 520, y: 250 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 660, y: 250 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 800, y: 170 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 940, y: 170 },
 ];
 
 const LINKS_DEF = [
@@ -52,7 +48,7 @@ const LINKS_DEF = [
 ];
 
 const CANVAS_WIDTH = 1080;
-const CANVAS_HEIGHT = 320;
+const CANVAS_HEIGHT = 360;
 
 interface ProcessLink {
   id: string;
@@ -188,6 +184,14 @@ export default function HomePage() {
     const label = hours > 0 ? `${hours}h` : "";
 
     const markerId = `arrow-${fromId}-${toId}`;
+    const labelWidth = 56;
+    const labelHeight = 24;
+    const labelOffset = type === "feedback" ? 0 : -16;
+    const labelY = midY + labelOffset - labelHeight / 2;
+
+    const isFeedback = type === "feedback";
+    const arcTopY = 10;
+    const feedbackMidX = (x1 + x2) / 2;
 
     return (
       <g key={`${fromId}-${toId}`}>
@@ -197,62 +201,106 @@ export default function HomePage() {
           </marker>
         </defs>
 
-        {type === "feedback" ? (
-          <path
-            d={`M ${x1} ${y1 - NODE_RADIUS} Q ${(x1 + x2) / 2} ${-20} ${x2} ${y2 - NODE_RADIUS}`}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={dashArray}
-            markerEnd={`url(#${markerId})`}
-            className="cursor-pointer hover:stroke-amber-400 transition-colors"
-            onClick={() => handleArrowClick(fromId, toId)}
-          />
-        ) : (
-          <line
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={dashArray}
-            markerEnd={`url(#${markerId})`}
-            className="cursor-pointer hover:stroke-blue-400 transition-colors"
-            onClick={() => handleArrowClick(fromId, toId)}
-          />
-        )}
-
-        {label && (
-          <g className="cursor-pointer" onClick={() => handleArrowClick(fromId, toId)}>
-            <rect
-              x={midX - 30}
-              y={midY - 10}
-              width={60}
-              height={20}
-              rx={10}
-              fill="white"
+        {isFeedback ? (
+          <>
+            <path
+              d={`M ${x1} ${y1 - NODE_RADIUS}
+                  Q ${x1} ${arcTopY} ${x1 + 40} ${arcTopY}
+                  L ${x2 + NODE_RADIUS + 20} ${arcTopY}
+                  Q ${x2 + NODE_RADIUS} ${arcTopY} ${x2 + NODE_RADIUS} ${arcTopY + 25}
+                  L ${x2 + NODE_RADIUS} ${y2 - 20}`}
+              fill="none"
               stroke={strokeColor}
-              strokeWidth={1.5}
+              strokeWidth={strokeWidth}
+              strokeDasharray={dashArray}
+              markerEnd={`url(#${markerId})`}
             />
-            <text
-              x={midX}
-              y={midY + 4}
-              textAnchor="middle"
-              fontSize={11}
-              fill={strokeColor}
-              fontWeight={600}
-            >
-              {label}
-            </text>
-            <Edit3
-              x={midX + 18}
-              y={midY - 6}
-              size={12}
-              color={strokeColor}
-              className="opacity-0 group-hover:opacity-100"
+            {label && (
+              <g className="cursor-pointer" onClick={() => handleArrowClick(fromId, toId)}>
+                <rect
+                  x={feedbackMidX - labelWidth / 2}
+                  y={arcTopY - labelHeight / 2}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={12}
+                  fill="white"
+                  stroke={strokeColor}
+                  strokeWidth={2}
+                  className="hover:fill-amber-50 transition-colors"
+                />
+                <text
+                  x={feedbackMidX}
+                  y={arcTopY + 4}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={600}
+                  className="pointer-events-none"
+                >
+                  {label}
+                </text>
+              </g>
+            )}
+          </>
+        ) : (
+          <>
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={dashArray}
+              markerEnd={`url(#${markerId})`}
             />
-          </g>
+            {label && (
+              <g className="cursor-pointer" onClick={() => handleArrowClick(fromId, toId)}>
+                <line
+                  x1={midX - labelWidth / 2 + 8}
+                  y1={midY}
+                  x2={midX - labelWidth / 2 + 8}
+                  y2={labelY + labelHeight}
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  strokeDasharray="2 2"
+                  className="pointer-events-none"
+                />
+                <line
+                  x1={midX + labelWidth / 2 - 8}
+                  y1={midY}
+                  x2={midX + labelWidth / 2 - 8}
+                  y2={labelY + labelHeight}
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  strokeDasharray="2 2"
+                  className="pointer-events-none"
+                />
+                <rect
+                  x={midX - labelWidth / 2}
+                  y={labelY}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={12}
+                  fill="white"
+                  stroke={strokeColor}
+                  strokeWidth={2}
+                  className="hover:fill-slate-50 transition-colors"
+                />
+                <text
+                  x={midX}
+                  y={labelY + labelHeight / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={600}
+                  className="pointer-events-none"
+                >
+                  {label}
+                </text>
+              </g>
+            )}
+          </>
         )}
       </g>
     );
@@ -266,7 +314,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">StyleForge 智能调度中心</h1>
-            <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击箭头编辑工时</p>
+            <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击工时标签编辑</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/dashboard")}>
             <Sparkles className="h-4 w-4 mr-2" />
@@ -274,22 +322,22 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-6 mb-6 text-sm flex-wrap">
+        <div className="flex items-center gap-6 mb-4 text-sm flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-1 bg-red-500 rounded"></div>
+            <div className="w-4 h-0.5 bg-red-500 border-t-2 border-red-500"></div>
             <span className="text-muted-foreground">关键路径</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-slate-400 border-t border-dashed border-slate-400"></div>
+            <div className="w-4 h-0 border-t-2 border-dashed border-slate-400"></div>
             <span className="text-muted-foreground">并行工序</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-amber-500 border-t border-dashed border-amber-500"></div>
+            <div className="w-4 h-0 border-t-2 border-dashed border-amber-500"></div>
             <span className="text-muted-foreground">反馈回路</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-white border border-slate-300 flex items-center justify-center text-[10px] text-slate-500 font-semibold">40h</div>
-            <span className="text-muted-foreground">工时（点击可编辑）</span>
+            <div className="px-2 py-0.5 rounded-full bg-white border-2 border-slate-400 text-[11px] text-slate-600 font-semibold leading-none">40h</div>
+            <span className="text-muted-foreground">工时标签（点击编辑）</span>
           </div>
         </div>
 
@@ -299,104 +347,47 @@ export default function HomePage() {
             加载中...
           </div>
         ) : (
-          <>
-            <Card className="border-0 shadow-lg mb-8 overflow-hidden">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <div
-                    className="relative"
-                    style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, minWidth: CANVAS_WIDTH }}
+          <Card className="border-0 shadow-lg overflow-hidden">
+            <CardContent className="p-0 pt-2">
+              <div className="overflow-x-auto">
+                <div
+                  className="relative"
+                  style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, minWidth: CANVAS_WIDTH }}
+                >
+                  <svg
+                    width={CANVAS_WIDTH}
+                    height={CANVAS_HEIGHT}
+                    style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }}
                   >
-                    <svg
-                      width={CANVAS_WIDTH}
-                      height={CANVAS_HEIGHT}
-                      style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }}
-                    >
-                      {LINKS_DEF.map(link => renderArrow(link.from, link.to, link.type))}
-                    </svg>
+                    {LINKS_DEF.map(link => renderArrow(link.from, link.to, link.type))}
+                  </svg>
 
-                    <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2 }}>
-                      {NODES.map(node => (
-                        <div
-                          key={node.id}
-                          onClick={() => handleNodeClick(node)}
-                          className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
-                          style={{
-                            left: node.x - NODE_RADIUS,
-                            top: node.y - NODE_RADIUS,
-                            width: NODE_SIZE,
-                            height: NODE_SIZE,
-                          }}
-                        >
-                          <div
-                            className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
-                          >
-                            <span className="text-xl mb-0.5">{node.icon}</span>
-                            <span className="font-bold text-sm">{node.name}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    工序工时总览
-                  </h3>
-                  <div className="space-y-2">
-                    {links.map(link => (
+                  <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2 }}>
+                    {NODES.map(node => (
                       <div
-                        key={link.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition"
-                        onClick={() => handleArrowClick(link.from_node, link.to_node)}
+                        key={node.id}
+                        onClick={() => handleNodeClick(node)}
+                        className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
+                        style={{
+                          left: node.x - NODE_RADIUS,
+                          top: node.y - NODE_RADIUS,
+                          width: NODE_SIZE,
+                          height: NODE_SIZE,
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {getNodeName(link.from_node)} → {getNodeName(link.to_node)}
-                          </span>
+                        <div
+                          className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
+                        >
+                          <span className="text-xl mb-0.5">{node.icon}</span>
+                          <span className="font-bold text-sm">{node.name}</span>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {link.duration_hours || 0}h
-                        </Badge>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Info className="h-4 w-4 text-amber-500" />
-                    关键路径说明
-                  </h3>
-                  <div className="space-y-3 text-sm text-muted-foreground">
-                    <p>
-                      <span className="font-medium text-slate-700">关键路径：</span>
-                      企划 → 设计 → 打样 → [测款/采购并行] → 备货 → 销售 → 售后
-                    </p>
-                    <p>
-                      <span className="font-medium text-slate-700">并行工序：</span>
-                      测款（上支路）与采购→备货（下支路）可并行推进
-                    </p>
-                    <p>
-                      <span className="font-medium text-slate-700">反馈回路：</span>
-                      售后数据复盘后反馈到企划端，形成数据闭环
-                    </p>
-                    <p className="text-amber-600">
-                      💡 点击箭头上的工时标签或下方列表项可以编辑：截止日期、工作内容、交付清单
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
