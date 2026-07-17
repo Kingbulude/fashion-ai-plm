@@ -24,6 +24,7 @@ import {
   ChevronRight,
   BarChart3,
   Wand2,
+  User,
 } from "lucide-react";
 
 interface SidebarLayoutProps {
@@ -110,25 +111,37 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           ))}
         </nav>
 
-        <div className="p-2 border-t border-slate-200">
+        <div className="p-3 border-t border-slate-200">
           {!collapsed ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start px-2 py-1.5 h-auto gap-2">
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className="bg-blue-500 text-white text-[10px]">
-                      {user?.email?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-xs font-medium truncate">{user?.email || "用户"}</p>
+                <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                  <div className="relative">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-medium">
+                        {user?.email?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
                   </div>
-                </Button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">用户</p>
+                    <p className="text-[10px] text-slate-400">在线</p>
+                  </div>
+                </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56 py-1">
+                <div className="px-3 py-2 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-800">用户</p>
+                  <p className="text-xs text-slate-500">{user?.email}</p>
+                </div>
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <Settings className="h-4 w-4 mr-2" />
                   设置
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/settings#profile")}>
+                  <User className="h-4 w-4 mr-2" />
+                  个人资料
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
@@ -140,15 +153,21 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="w-full h-8">
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className="bg-blue-500 text-white text-[10px]">
+                <div className="relative p-1 cursor-pointer">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-medium">
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                </Button>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  设置
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                   <LogOut className="h-4 w-4 mr-2" />
                   退出

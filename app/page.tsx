@@ -15,18 +15,18 @@ import {
   Trash2,
 } from "lucide-react";
 
-const NODE_SIZE = 80;
+const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 120, y: 180, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 290, y: 180, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 460, y: 180, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 630, y: 180, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 540, y: 340, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 820, y: 340, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 820, y: 180, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1000, y: 180, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 160, y: 200, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 380, y: 200, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 600, y: 200, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 820, y: 200, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 710, y: 420, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1060, y: 420, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1060, y: 200, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1280, y: 200, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -42,8 +42,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 420;
+const CANVAS_WIDTH = 1400;
+const CANVAS_HEIGHT = 520;
 
 interface ProcessLink {
   id: string;
@@ -312,7 +312,7 @@ export default function HomePage() {
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 48;
+      const topY = 58;
       const midX = (startX + endX) / 2;
 
       return (
@@ -446,12 +446,12 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2">
+          <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
             加载中...
           </div>
         ) : (
-          <div className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
+          <div className="border-2 border-slate-200 shadow-xl rounded-2xl overflow-hidden bg-white p-8">
             <div className="overflow-x-auto">
               <div
                 className="relative"
@@ -482,8 +482,8 @@ export default function HomePage() {
                       <div
                         className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
                       >
-                        <span className="text-xl mb-0.5">{node.icon}</span>
-                        <span className="font-bold text-sm">{node.number}.{node.name}</span>
+                        <span className="text-2xl mb-0.5">{node.icon}</span>
+                        <span className="font-bold text-base">{node.number}.{node.name}</span>
                       </div>
                     </div>
                   ))}
