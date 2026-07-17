@@ -510,13 +510,13 @@ export default function HomePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-slate-700">工时（小时）</Label>
+                <Label className="text-sm font-medium text-slate-700">执行天数</Label>
                 <Input
                   type="number"
                   value={editForm.duration_hours}
                   onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
-                  placeholder="例如：40"
-                  className="h-10"
+                  placeholder="例如：7"
+                  className="h-10 w-32"
                 />
               </div>
             </div>
