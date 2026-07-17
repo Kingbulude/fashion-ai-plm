@@ -62,7 +62,7 @@ export function DraggableDialog({ open, onOpenChange, title, children }: Draggab
       />
       <div
         ref={dialogRef}
-        className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col"
         style={{
           position: "absolute",
           left: position.x,
