@@ -342,18 +342,16 @@ export default function HomePage() {
       while (normalizedRotation > 90) normalizedRotation -= 180;
       while (normalizedRotation < -90) normalizedRotation += 180;
 
-      // "Split along line" mode: two labels distributed along the line direction,
-      // one on each side of the line, both aligned parallel to the line.
+      // "Split along line" mode: two labels distributed PERPENDICULAR to the line,
+      // both aligned parallel to the line, at the same point along the line.
       // Used for diagonal lines (sampling->procurement, testing->procurement).
       if (splitAlongLine) {
         // In the rotated coordinate system, the line goes left-to-right (horizontal).
         // duration goes ABOVE the line, deadline goes BELOW the line.
-        // Both are offset along the line direction (one toward "from", one toward "to")
-        // so they appear separated along the line, not stacked at the same point.
-        const alongOffset = 50;  // distance between the two labels along the line
-        const perpOffset = 8;    // perpendicular distance from the line (tight to line)
-        const durCx = cx - alongOffset;  // duration shifted toward "from" end
-        const dlCx = cx + alongOffset;   // deadline shifted toward "to" end
+        // Both at the same x position (no along-line offset).
+        const perpOffset = 16;   // perpendicular distance from the line (one each side)
+        const durCx = cx;        // both at the same point along the line
+        const dlCx = cx;
         const durCy = cy - perpOffset;   // duration ABOVE the line
         const dlCy = cy + perpOffset;    // deadline BELOW the line
         return (
