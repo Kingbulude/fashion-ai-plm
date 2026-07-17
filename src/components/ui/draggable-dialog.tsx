@@ -62,7 +62,7 @@ export function DraggableDialog({ open, onOpenChange, title, children }: Draggab
       />
       <div
         ref={dialogRef}
-        className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+        className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col"
         style={{
           position: "absolute",
           left: position.x,
@@ -71,7 +71,7 @@ export function DraggableDialog({ open, onOpenChange, title, children }: Draggab
         }}
       >
         <div
-          className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 cursor-move select-none"
+          className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 cursor-move select-none flex-shrink-0"
           onMouseDown={handleMouseDown}
         >
           <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
@@ -82,7 +82,7 @@ export function DraggableDialog({ open, onOpenChange, title, children }: Draggab
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
