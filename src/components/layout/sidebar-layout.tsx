@@ -54,13 +54,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   };
 
   const navItems = [
-    { icon: LayoutDashboard, label: "工作台", href: "/" },
+    { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
+    { icon: BarChart3, label: "智能调度", href: "/" },
     { icon: Sparkles, label: "企划中心", href: "/planning" },
     { icon: Wand2, label: "AI智能分析", href: "/ai" },
     { icon: Shirt, label: "款式管理", href: "/styles" },
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },
-    { icon: BarChart3, label: "数据看板", href: "/dashboard" },
   ];
 
   const isActive = (href: string) => {
@@ -72,7 +72,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <aside
-        className={`${collapsed ? "w-20" : "w-64"} bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0`}
+        className={`${collapsed ? "w-16" : "w-48"} bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0`}
       >
         <div className="h-16 flex items-center px-4 border-b border-slate-200">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -110,23 +110,22 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-200">
+        <div className="p-2 border-t border-slate-200">
           {!collapsed ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start p-2 h-auto">
-                  <Avatar className="h-8 w-8 mr-3">
-                    <AvatarFallback className="bg-blue-500 text-white text-xs">
+                <Button variant="ghost" className="w-full justify-start px-2 py-1.5 h-auto gap-2">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-blue-500 text-white text-[10px]">
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.email || "用户"}</p>
-                    <p className="text-xs text-muted-foreground truncate">个人设置</p>
+                    <p className="text-xs font-medium truncate">{user?.email || "用户"}</p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <Settings className="h-4 w-4 mr-2" />
                   设置
@@ -141,9 +140,9 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="w-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-blue-500 text-white text-xs">
+                <Button variant="ghost" size="icon" className="w-full h-8">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-blue-500 text-white text-[10px]">
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>

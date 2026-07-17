@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Loader2,
-  Sparkles,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
@@ -25,14 +23,14 @@ const NODE_SIZE = 80;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 160, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 230, y: 160, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 360, y: 160, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 490, y: 160, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 490, y: 290, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 640, y: 290, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 640, y: 160, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 790, y: 160, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 120, y: 180, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 290, y: 180, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 460, y: 180, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 630, y: 180, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 540, y: 340, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 820, y: 340, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 820, y: 180, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1000, y: 180, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -48,8 +46,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 960;
-const CANVAS_HEIGHT = 380;
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 420;
 
 interface ProcessLink {
   id: string;
@@ -281,7 +279,7 @@ export default function HomePage() {
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 28;
+      const topY = 48;
       const midX = (startX + endX) / 2;
 
       return (
@@ -393,10 +391,6 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold mb-1">StyleForge 智能调度中心</h1>
             <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
           </div>
-          <Button variant="outline" onClick={() => router.push("/dashboard")}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            数据看板
-          </Button>
         </div>
 
         <div className="flex items-center gap-6 mb-4 text-sm flex-wrap">
@@ -424,48 +418,46 @@ export default function HomePage() {
             加载中...
           </div>
         ) : (
-          <Card className="border-0 shadow-lg overflow-hidden">
-            <CardContent className="p-0 pt-2">
-              <div className="overflow-x-auto">
-                <div
-                  className="relative"
-                  style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, minWidth: CANVAS_WIDTH }}
+          <div className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
+            <div className="overflow-x-auto">
+              <div
+                className="relative"
+                style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, minWidth: CANVAS_WIDTH }}
+              >
+                <svg
+                  width={CANVAS_WIDTH}
+                  height={CANVAS_HEIGHT}
+                  style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }}
                 >
-                  <svg
-                    width={CANVAS_WIDTH}
-                    height={CANVAS_HEIGHT}
-                    style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }}
-                  >
-                    {LINKS_DEF.map(link => renderArrow(link.from, link.to, link.type))}
-                  </svg>
+                  {LINKS_DEF.map(link => renderArrow(link.from, link.to, link.type))}
+                </svg>
 
-                  <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2, pointerEvents: "none" }}>
-                    {NODES.map(node => (
+                <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2, pointerEvents: "none" }}>
+                  {NODES.map(node => (
+                    <div
+                      key={node.id}
+                      onClick={() => handleNodeClick(node)}
+                      className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
+                      style={{
+                        left: node.x - NODE_RADIUS,
+                        top: node.y - NODE_RADIUS,
+                        width: NODE_SIZE,
+                        height: NODE_SIZE,
+                        pointerEvents: "auto",
+                      }}
+                    >
                       <div
-                        key={node.id}
-                        onClick={() => handleNodeClick(node)}
-                        className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
-                        style={{
-                          left: node.x - NODE_RADIUS,
-                          top: node.y - NODE_RADIUS,
-                          width: NODE_SIZE,
-                          height: NODE_SIZE,
-                          pointerEvents: "auto",
-                        }}
+                        className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
                       >
-                        <div
-                          className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
-                        >
-                          <span className="text-xl mb-0.5">{node.icon}</span>
-                          <span className="font-bold text-sm">{node.number}.{node.name}</span>
-                        </div>
+                        <span className="text-xl mb-0.5">{node.icon}</span>
+                        <span className="font-bold text-sm">{node.number}.{node.name}</span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
