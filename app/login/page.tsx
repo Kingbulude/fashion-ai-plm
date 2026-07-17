@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, User, Lock, Sparkles, Shirt, Palette, Factory } from "lucide-react";
+import { Eye, EyeOff, User, Lock, Sparkles, Shirt, Palette, Factory, AlertCircle } from "lucide-react";
+
+const isSupabaseConfigured = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return !!(url && key && !url.includes("placeholder") && !url.includes("your-project-id"));
+};
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -145,6 +151,14 @@ function LoginForm() {
               <p className="text-muted-foreground">登录您的账号继续管理款式</p>
             </div>
 
+            {!isSupabaseConfigured() && (
+              <Alert className="mb-6 bg-amber-50 border-amber-200 text-amber-800">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                <AlertDescription>
+                  请配置 <code className="px-1 py-0.5 bg-black/10 rounded text-xs">.env.local</code> 文件中的 Supabase 环境变量，否则登录功能无法正常工作。
+                </AlertDescription>
+              </Alert>
+            )}
             {error && (
               <Alert variant="destructive" className="mb-6">
                 <AlertDescription>{error}</AlertDescription>
