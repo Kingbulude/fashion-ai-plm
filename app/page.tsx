@@ -260,19 +260,22 @@ export default function HomePage() {
       const halfH = labelHeight / 2;
       const gap = 3; // small gap between label and line
 
-      // Vertical line: two labels horizontal, one on each side, tight to the line
+      // Vertical line: two labels stacked on the same side of the line, tight to the line
       if (isVerticalLine) {
+        // Both labels go to the left side of the vertical line, separated vertically
+        // (duration above, deadline below) - never crossing the line
+        const sideX = cx - halfW - labelWidth - gap;
         return (
           <g
             key={`label-${linkId}`}
             onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
             style={{ cursor: clickable ? "pointer" : "default" }}
           >
-            {/* Duration label - left side of the line */}
+            {/* Duration label - same side, above */}
             <g>
               <rect
-                x={cx - halfW - labelWidth - gap}
-                y={cy - halfH}
+                x={sideX}
+                y={cy - labelHeight - gap}
                 width={labelWidth}
                 height={labelHeight}
                 rx={halfH}
@@ -283,8 +286,8 @@ export default function HomePage() {
                 opacity={showPlaceholder ? 0.6 : 1}
               />
               <text
-                x={cx - halfW - labelWidth / 2 - gap}
-                y={cy + 4}
+                x={sideX + halfW}
+                y={cy - gap - 2}
                 textAnchor="middle"
                 fontSize={12}
                 fill={strokeColor}
@@ -294,11 +297,11 @@ export default function HomePage() {
                 {displayDuration}
               </text>
             </g>
-            {/* Deadline label - right side of the line */}
+            {/* Deadline label - same side, below */}
             <g>
               <rect
-                x={cx + halfW + gap}
-                y={cy - halfH}
+                x={sideX}
+                y={cy + gap}
                 width={labelWidth}
                 height={labelHeight}
                 rx={halfH}
@@ -310,8 +313,8 @@ export default function HomePage() {
                 opacity={showPlaceholder ? 0.6 : 1}
               />
               <text
-                x={cx + halfW + labelWidth / 2 + gap}
-                y={cy + 4}
+                x={sideX + halfW}
+                y={cy + labelHeight + gap + 2}
                 textAnchor="middle"
                 fontSize={12}
                 fill={strokeColor}
@@ -482,12 +485,13 @@ export default function HomePage() {
       }
 
       const midX = (sx + ex) / 2;
-      const midY = (sy + ey) / 2;
       const isPureVertical = dx === 0;
       // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
       // Keep labels horizontal (no rotation) for cleaner look
       const labelRotation = 0;
+      // For vertical lines, place labels near the target node center
+      const labelMidY = isPureVertical ? to.y : (sy + ey) / 2;
 
       return (
         <g key={linkId}>
@@ -503,7 +507,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, midY, labelRotation, 18, false, true, useVerticalLayout)}
+          {renderDualLabels(midX, labelMidY, labelRotation, 18, false, true, useVerticalLayout)}
         </g>
       );
     }
