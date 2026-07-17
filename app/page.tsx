@@ -448,7 +448,9 @@ export default function HomePage() {
       if (isDiagonal) {
         const angleRad = Math.atan2(dy, dx);
         const perpOffset = 30;
-        // Shift label group to the right side of the line (perpendicular to direction)
+        // Shift label group to the right side of the line
+        // Using clockwise perpendicular: (sin(angle), -cos(angle))
+        // This ensures both lines shift labels to the same "right" side
         labelCx = midX + Math.sin(angleRad) * perpOffset;
         labelCy = midY - Math.cos(angleRad) * perpOffset;
         // Rotate the entire label group to align with the line
@@ -542,9 +544,10 @@ export default function HomePage() {
       const angleRad = Math.atan2(tdy, tdx);
       const angle = angleRad * 180 / Math.PI;
       // Shift label group to the right side of the line
+      // Same logic as sampling->procurement (critical)
       const perpOffset = 30;
       const labelCx = midX + Math.sin(angleRad) * perpOffset;
-      const labelCy = midY - Math.cos(angleRad) * perpOffset;
+      const labelCy = midY + Math.abs(Math.cos(angleRad)) * perpOffset;
 
       return (
         <g key={linkId}>
