@@ -348,11 +348,12 @@ export default function HomePage() {
       if (splitAlongLine) {
         // In the rotated coordinate system, the line goes left-to-right (horizontal).
         // duration goes ABOVE the line, deadline goes BELOW the line.
-        // Both are slightly offset along the line direction so they don't overlap.
-        const alongOffset = 8;  // distance between the two labels along the line
-        const perpOffset = 12;  // perpendicular distance from the line
-        const durCx = cx - alongOffset;  // duration slightly toward "from"
-        const dlCx = cx + alongOffset;   // deadline slightly toward "to"
+        // Both are offset along the line direction (one toward "from", one toward "to")
+        // so they appear separated along the line, not stacked at the same point.
+        const alongOffset = 50;  // distance between the two labels along the line
+        const perpOffset = 8;    // perpendicular distance from the line (tight to line)
+        const durCx = cx - alongOffset;  // duration shifted toward "from" end
+        const dlCx = cx + alongOffset;   // deadline shifted toward "to" end
         const durCy = cy - perpOffset;   // duration ABOVE the line
         const dlCy = cy + perpOffset;    // deadline BELOW the line
         return (
