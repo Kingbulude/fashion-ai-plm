@@ -19,14 +19,14 @@ const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 160, y: 200, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 380, y: 200, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 600, y: 200, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 820, y: 200, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 710, y: 420, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1060, y: 420, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1060, y: 200, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1280, y: 200, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 200, y: 240, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 480, y: 240, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 760, y: 240, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1040, y: 240, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 900, y: 540, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1480, y: 540, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1480, y: 240, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1760, y: 240, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -42,8 +42,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1400;
-const CANVAS_HEIGHT = 520;
+const CANVAS_WIDTH = 1960;
+const CANVAS_HEIGHT = 720;
 
 interface ProcessLink {
   id: string;
@@ -200,10 +200,11 @@ export default function HomePage() {
 
     const hours = link?.duration_hours || 0;
     const deadline = link?.deadline;
-    const label = deadline
+    const deadlineLabel = deadline
       ? new Date(deadline).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })
-      : (hours > 0 ? `${hours}h` : "");
-    const labelWidth = label ? Math.max(64, label.length * 11 + 20) : 0;
+      : "";
+    const durationLabel = hours > 0 ? `${hours}天` : "";
+    const labelWidth = deadlineLabel ? Math.max(64, deadlineLabel.length * 11 + 20) : 0;
     const labelHeight = 26;
 
     const markerId = `arrowhead-${linkId}`;
@@ -225,40 +226,76 @@ export default function HomePage() {
       </defs>
     );
 
-    // Helper: draw deadline button above given point
-    const renderLabel = (cx: number, cy: number, clickable: boolean = true) => {
-      if (!label) return null;
+    // Helper: draw dual labels (duration above, deadline below)
+    const renderDualLabels = (cx: number, cy: number, clickable: boolean = true) => {
+      const hasDeadline = !!deadlineLabel;
+      const hasDuration = !!durationLabel;
+      if (!hasDeadline && !hasDuration) return null;
+
       const halfW = labelWidth / 2;
       const halfH = labelHeight / 2;
+
       return (
         <g
           key={`label-${linkId}`}
           onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
           style={{ cursor: clickable ? "pointer" : "default" }}
         >
-          <rect
-            x={cx - halfW}
-            y={cy - halfH}
-            width={labelWidth}
-            height={labelHeight}
-            rx={halfH}
-            fill="white"
-            stroke={strokeColor}
-            strokeWidth={1.5}
-            style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
-            className="hover:brightness-95 transition-all"
-          />
-          <text
-            x={cx}
-            y={cy + 4}
-            textAnchor="middle"
-            fontSize={12}
-            fill={strokeColor}
-            fontWeight={700}
-            style={{ pointerEvents: "none", userSelect: "none" }}
-          >
-            {label}
-          </text>
+          {/* Duration label (above) */}
+          {hasDuration && (
+            <g>
+              <rect
+                x={cx - halfW}
+                y={cy - halfH - 30}
+                width={labelWidth}
+                height={labelHeight}
+                rx={halfH}
+                fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                stroke={strokeColor}
+                strokeWidth={1.5}
+                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+              />
+              <text
+                x={cx}
+                y={cy + 4 - 30}
+                textAnchor="middle"
+                fontSize={12}
+                fill={strokeColor}
+                fontWeight={700}
+                style={{ pointerEvents: "none", userSelect: "none" }}
+              >
+                {durationLabel}
+              </text>
+            </g>
+          )}
+          {/* Deadline label (below) */}
+          {hasDeadline && (
+            <g>
+              <rect
+                x={cx - halfW}
+                y={cy - halfH}
+                width={labelWidth}
+                height={labelHeight}
+                rx={halfH}
+                fill="white"
+                stroke={strokeColor}
+                strokeWidth={1.5}
+                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+                className="hover:brightness-95 transition-all"
+              />
+              <text
+                x={cx}
+                y={cy + 4}
+                textAnchor="middle"
+                fontSize={12}
+                fill={strokeColor}
+                fontWeight={700}
+                style={{ pointerEvents: "none", userSelect: "none" }}
+              >
+                {deadlineLabel}
+              </text>
+            </g>
+          )}
         </g>
       );
     };
@@ -284,7 +321,9 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isVertical = Math.abs(dx) < Math.abs(dy);
-      const labelX = isVertical ? midX + 50 : midX;
+      // For sampling->procurement diagonal, put label on the left side
+      const isSamplingToProcurement = fromId === "sampling" && toId === "procurement";
+      const labelX = isVertical ? midX + 50 : (isSamplingToProcurement ? midX - 70 : midX);
       const labelY = isVertical ? midY : midY - 22;
 
       return (
@@ -301,7 +340,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {label && renderLabel(labelX, labelY)}
+          {renderDualLabels(labelX, labelY)}
         </g>
       );
     }
@@ -312,7 +351,7 @@ export default function HomePage() {
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 58;
+      const topY = 72;
       const midX = (startX + endX) / 2;
 
       return (
@@ -331,7 +370,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {label && renderLabel(midX, topY - 16)}
+          {renderDualLabels(midX, topY - 16)}
         </g>
       );
     }
@@ -366,7 +405,8 @@ export default function HomePage() {
       const startY = from.y + NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS - 4;
-      const labelX = startX + 34;
+      // Move label to the left, close to the dashed line
+      const labelX = startX - labelWidth / 2 - 12;
       const labelY = (startY + endY) / 2;
 
       return (
@@ -384,7 +424,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {label && renderLabel(labelX, labelY)}
+          {renderDualLabels(labelX, labelY)}
         </g>
       );
     }
@@ -409,7 +449,7 @@ export default function HomePage() {
           style={{ cursor: "pointer" }}
           onClick={() => handleArrowClick(fromId, toId)}
         />
-        {label && renderLabel(midX, midY + labelOffsetY)}
+        {renderDualLabels(midX, midY + labelOffsetY)}
       </g>
     );
   };
