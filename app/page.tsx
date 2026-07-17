@@ -241,10 +241,10 @@ export default function HomePage() {
       </defs>
     );
 
-    // Helper: draw dual labels (duration above, deadline below)
+    // Helper: draw dual labels on opposite sides of the arrow line
     // rotation: angle in degrees to rotate labels (0 for horizontal)
-    // perpOffset: offset perpendicular to the arrow direction (positive = left side)
-    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 0, clickable: boolean = true) => {
+    // perpOffset: offset perpendicular to the arrow direction for duration label (deadline goes opposite)
+    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 22, clickable: boolean = true) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
       if (!hasDeadline && !hasDuration) return null;
@@ -259,63 +259,61 @@ export default function HomePage() {
           style={{ cursor: clickable ? "pointer" : "default" }}
         >
           <g transform={`rotate(${rotation}, ${cx}, ${cy})`}>
-            <g transform={`translate(0, ${perpOffset})`}>
-              {/* Duration label (above) */}
-              {hasDuration && (
-                <g>
-                  <rect
-                    x={cx - halfW}
-                    y={cy - halfH - 30}
-                    width={labelWidth}
-                    height={labelHeight}
-                    rx={halfH}
-                    fill={isCritical ? "#fef2f2" : "#f8fafc"}
-                    stroke={strokeColor}
-                    strokeWidth={1.5}
-                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
-                  />
-                  <text
-                    x={cx}
-                    y={cy + 4 - 30}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fill={strokeColor}
-                    fontWeight={700}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {durationLabel}
-                  </text>
-                </g>
-              )}
-              {/* Deadline label (below) */}
-              {hasDeadline && (
-                <g>
-                  <rect
-                    x={cx - halfW}
-                    y={cy - halfH}
-                    width={labelWidth}
-                    height={labelHeight}
-                    rx={halfH}
-                    fill="white"
-                    stroke={strokeColor}
-                    strokeWidth={1.5}
-                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
-                    className="hover:brightness-95 transition-all"
-                  />
-                  <text
-                    x={cx}
-                    y={cy + 4}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fill={strokeColor}
-                    fontWeight={700}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {deadlineLabel}
-                  </text>
-                </g>
-              )}
-            </g>
+            {/* Duration label (above the line) */}
+            {hasDuration && (
+              <g transform={`translate(0, ${-perpOffset - halfH})`}>
+                <rect
+                  x={cx - halfW}
+                  y={cy - halfH}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={halfH}
+                  fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+                />
+                <text
+                  x={cx}
+                  y={cy + 4}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={700}
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {durationLabel}
+                </text>
+              </g>
+            )}
+            {/* Deadline label (below the line) */}
+            {hasDeadline && (
+              <g transform={`translate(0, ${perpOffset + halfH})`}>
+                <rect
+                  x={cx - halfW}
+                  y={cy - halfH}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={halfH}
+                  fill="white"
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+                  className="hover:brightness-95 transition-all"
+                />
+                <text
+                  x={cx}
+                  y={cy + 4}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={700}
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {deadlineLabel}
+                </text>
+              </g>
+            )}
           </g>
         </g>
       );
@@ -343,12 +341,8 @@ export default function HomePage() {
       const midY = (sy + ey) / 2;
       const isVertical = Math.abs(dx) < Math.abs(dy);
       const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0 && Math.abs(Math.abs(dx) - Math.abs(dy)) > 20;
-      // For diagonal lines, rotate labels to align with arrow
-      const isSamplingToProcurement = fromId === "sampling" && toId === "procurement";
       const angle = isDiagonal ? Math.atan2(dy, dx) * 180 / Math.PI : 0;
       const labelRotation = isDiagonal ? angle : 0;
-      const labelPerpOffset = isVertical ? 50 : (isDiagonal ? 42 : 0);
-      const labelCy = isVertical ? midY : (isDiagonal ? midY : midY - 22);
 
       return (
         <g key={linkId}>
@@ -364,7 +358,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, labelCy, labelRotation, labelPerpOffset)}
+          {renderDualLabels(midX, midY, labelRotation, 22)}
         </g>
       );
     }
@@ -394,7 +388,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, topY - 16, 0, 0)}
+          {renderDualLabels(midX, topY - 16, 0, 22)}
         </g>
       );
     }
@@ -450,7 +444,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, midY, angle, 42)}
+          {renderDualLabels(midX, midY, angle, 22)}
         </g>
       );
     }
@@ -481,7 +475,7 @@ export default function HomePage() {
           style={{ cursor: "pointer" }}
           onClick={() => handleArrowClick(fromId, toId)}
         />
-        {renderDualLabels(pmidX, pLabelCy, pAngle, pPerpOffset)}
+        {renderDualLabels(pmidX, pLabelCy, pAngle, 22)}
       </g>
     );
   };
