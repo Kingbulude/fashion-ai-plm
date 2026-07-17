@@ -242,7 +242,9 @@ export default function HomePage() {
     );
 
     // Helper: draw dual labels (duration above, deadline below)
-    const renderDualLabels = (cx: number, cy: number, clickable: boolean = true) => {
+    // rotation: angle in degrees to rotate labels (0 for horizontal)
+    // perpOffset: offset perpendicular to the arrow direction (positive = left side)
+    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 0, clickable: boolean = true) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
       if (!hasDeadline && !hasDuration) return null;
@@ -256,61 +258,65 @@ export default function HomePage() {
           onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
           style={{ cursor: clickable ? "pointer" : "default" }}
         >
-          {/* Duration label (above) */}
-          {hasDuration && (
-            <g>
-              <rect
-                x={cx - halfW}
-                y={cy - halfH - 30}
-                width={labelWidth}
-                height={labelHeight}
-                rx={halfH}
-                fill={isCritical ? "#fef2f2" : "#f8fafc"}
-                stroke={strokeColor}
-                strokeWidth={1.5}
-                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
-              />
-              <text
-                x={cx}
-                y={cy + 4 - 30}
-                textAnchor="middle"
-                fontSize={12}
-                fill={strokeColor}
-                fontWeight={700}
-                style={{ pointerEvents: "none", userSelect: "none" }}
-              >
-                {durationLabel}
-              </text>
+          <g transform={`rotate(${rotation}, ${cx}, ${cy})`}>
+            <g transform={`translate(0, ${perpOffset})`}>
+              {/* Duration label (above) */}
+              {hasDuration && (
+                <g>
+                  <rect
+                    x={cx - halfW}
+                    y={cy - halfH - 30}
+                    width={labelWidth}
+                    height={labelHeight}
+                    rx={halfH}
+                    fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                    stroke={strokeColor}
+                    strokeWidth={1.5}
+                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+                  />
+                  <text
+                    x={cx}
+                    y={cy + 4 - 30}
+                    textAnchor="middle"
+                    fontSize={12}
+                    fill={strokeColor}
+                    fontWeight={700}
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {durationLabel}
+                  </text>
+                </g>
+              )}
+              {/* Deadline label (below) */}
+              {hasDeadline && (
+                <g>
+                  <rect
+                    x={cx - halfW}
+                    y={cy - halfH}
+                    width={labelWidth}
+                    height={labelHeight}
+                    rx={halfH}
+                    fill="white"
+                    stroke={strokeColor}
+                    strokeWidth={1.5}
+                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+                    className="hover:brightness-95 transition-all"
+                  />
+                  <text
+                    x={cx}
+                    y={cy + 4}
+                    textAnchor="middle"
+                    fontSize={12}
+                    fill={strokeColor}
+                    fontWeight={700}
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {deadlineLabel}
+                  </text>
+                </g>
+              )}
             </g>
-          )}
-          {/* Deadline label (below) */}
-          {hasDeadline && (
-            <g>
-              <rect
-                x={cx - halfW}
-                y={cy - halfH}
-                width={labelWidth}
-                height={labelHeight}
-                rx={halfH}
-                fill="white"
-                stroke={strokeColor}
-                strokeWidth={1.5}
-                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
-                className="hover:brightness-95 transition-all"
-              />
-              <text
-                x={cx}
-                y={cy + 4}
-                textAnchor="middle"
-                fontSize={12}
-                fill={strokeColor}
-                fontWeight={700}
-                style={{ pointerEvents: "none", userSelect: "none" }}
-              >
-                {deadlineLabel}
-              </text>
-            </g>
-          )}
+          </g>
         </g>
       );
     };
@@ -336,10 +342,13 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isVertical = Math.abs(dx) < Math.abs(dy);
-      // For sampling->procurement diagonal, put label on the left side, aligned with arrow
+      const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0 && Math.abs(Math.abs(dx) - Math.abs(dy)) > 20;
+      // For diagonal lines, rotate labels to align with arrow
       const isSamplingToProcurement = fromId === "sampling" && toId === "procurement";
-      const labelX = isVertical ? midX + 50 : (isSamplingToProcurement ? midX - 120 : midX);
-      const labelY = isVertical ? midY : midY - 22;
+      const angle = isDiagonal ? Math.atan2(dy, dx) * 180 / Math.PI : 0;
+      const labelRotation = isDiagonal ? angle : 0;
+      const labelPerpOffset = isVertical ? 50 : (isDiagonal ? 42 : 0);
+      const labelCy = isVertical ? midY : (isDiagonal ? midY : midY - 22);
 
       return (
         <g key={linkId}>
@@ -355,7 +364,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(labelX, labelY)}
+          {renderDualLabels(midX, labelCy, labelRotation, labelPerpOffset)}
         </g>
       );
     }
@@ -385,7 +394,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, topY - 16)}
+          {renderDualLabels(midX, topY - 16, 0, 0)}
         </g>
       );
     }
@@ -414,15 +423,17 @@ export default function HomePage() {
       ex = dx > 0 ? to.x - NODE_RADIUS : to.x + NODE_RADIUS;
     }
 
-    // For vertical connector between testing and procurement
+    // For diagonal connector between testing and procurement
     if (fromId === "testing" && toId === "procurement") {
       const startX = from.x;
       const startY = from.y + NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS - 4;
-      // Move label to the left side, close to the dashed line
-      const labelX = startX - labelWidth - 18;
-      const labelY = (startY + endY) / 2;
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      const tdx = endX - startX;
+      const tdy = endY - startY;
+      const angle = Math.atan2(tdy, tdx) * 180 / Math.PI;
 
       return (
         <g key={linkId}>
@@ -439,15 +450,21 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(labelX, labelY)}
+          {renderDualLabels(midX, midY, angle, 42)}
         </g>
       );
     }
 
     // Standard diagonal/horizontal parallel line
-    const midX = (sx + ex) / 2;
-    const midY = (sy + ey) / 2;
+    const pmidX = (sx + ex) / 2;
+    const pmidY = (sy + ey) / 2;
     const labelOffsetY = -18;
+    const pdx = ex - sx;
+    const pdy = ey - sy;
+    const isPDiagonal = Math.abs(pdx) > 0 && Math.abs(pdy) > 0 && Math.abs(Math.abs(pdx) - Math.abs(pdy)) > 20;
+    const pAngle = isPDiagonal ? Math.atan2(pdy, pdx) * 180 / Math.PI : 0;
+    const pPerpOffset = isPDiagonal ? 42 : 0;
+    const pLabelCy = isPDiagonal ? pmidY : pmidY + labelOffsetY;
 
     return (
       <g key={linkId}>
@@ -464,7 +481,7 @@ export default function HomePage() {
           style={{ cursor: "pointer" }}
           onClick={() => handleArrowClick(fromId, toId)}
         />
-        {renderDualLabels(midX, midY + labelOffsetY)}
+        {renderDualLabels(pmidX, pLabelCy, pAngle, pPerpOffset)}
       </g>
     );
   };
