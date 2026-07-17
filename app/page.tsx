@@ -260,11 +260,11 @@ export default function HomePage() {
       const halfW = labelWidth / 2;
       const gap = 3; // small gap between label and line
 
-      // Vertical line: two labels stacked on the same side of the line, tight to the line
+      // Vertical line: two labels stacked on the right side of the line, tight to the line
       if (isVerticalLine) {
-        // Both labels go to the left side of the vertical line, separated vertically
+        // Both labels go to the right side of the vertical line, separated vertically
         // (duration above, deadline below) - never crossing the line
-        const sideX = cx - halfW - labelWidth - gap;
+        const sideX = cx + gap;
         // Duration rect: top side above the line, rect middle at cy - halfH
         const durRectY = cy - labelHeight - gap;
         const durCenterY = durRectY + labelHeight / 2;
@@ -437,10 +437,23 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isPureVertical = dx === 0;
+      const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0 && Math.abs(Math.abs(dx) - Math.abs(dy)) > 20;
       // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
-      // Critical path: always keep labels horizontal (no rotation) for cleaner look
-      const labelRotation = 0;
+      // For diagonal lines, rotate labels and shift them to the right side of the line
+      // For horizontal/vertical lines, keep labels horizontal at the midpoint
+      let labelCx = midX;
+      let labelCy = midY;
+      let labelRotation = 0;
+      if (isDiagonal) {
+        const angleRad = Math.atan2(dy, dx);
+        const perpOffset = 30;
+        // Shift label group to the right side of the line (perpendicular to direction)
+        labelCx = midX + Math.sin(angleRad) * perpOffset;
+        labelCy = midY - Math.cos(angleRad) * perpOffset;
+        // Rotate the entire label group to align with the line
+        labelRotation = angleRad * 180 / Math.PI;
+      }
 
       return (
         <g key={linkId}>
@@ -456,7 +469,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, midY, labelRotation, 18, false, true, useVerticalLayout)}
+          {renderDualLabels(labelCx, labelCy, labelRotation, 18, false, true, useVerticalLayout)}
         </g>
       );
     }
@@ -526,7 +539,12 @@ export default function HomePage() {
       // Rotate labels to align with the arrow direction (parallel to the line)
       const tdx = endX - startX;
       const tdy = endY - startY;
-      const angle = Math.atan2(tdy, tdx) * 180 / Math.PI;
+      const angleRad = Math.atan2(tdy, tdx);
+      const angle = angleRad * 180 / Math.PI;
+      // Shift label group to the right side of the line
+      const perpOffset = 30;
+      const labelCx = midX + Math.sin(angleRad) * perpOffset;
+      const labelCy = midY - Math.cos(angleRad) * perpOffset;
 
       return (
         <g key={linkId}>
@@ -543,7 +561,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, midY, angle, 18, false, true, false)}
+          {renderDualLabels(labelCx, labelCy, angle, 18, false, true, false)}
         </g>
       );
     }
