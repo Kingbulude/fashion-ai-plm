@@ -16,7 +16,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [redirect, setRedirect] = useState("/dashboard");
+  const [redirect, setRedirect] = useState("/");
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,44 +30,52 @@ function LoginForm() {
   const handleLogin = async () => {
     setLoading(true);
     setError("");
-    
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (authError) {
-      if (authError.message.includes("email") && authError.message.includes("confirmed")) {
-        setError("邮箱尚未验证，请检查邮箱完成验证后再登录。");
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        if (authError.message.includes("email") && authError.message.includes("confirmed")) {
+          setError("邮箱尚未验证，请检查邮箱完成验证后再登录。");
+        } else {
+          setError(authError.message || "邮箱或密码错误，请重试。");
+        }
       } else {
-        setError("邮箱或密码错误，请重试。");
+        router.push(redirect);
       }
-    } else {
-      router.push(redirect);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "登录失败，请检查网络或环境变量配置。");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleSignUp = async () => {
     setLoading(true);
     setError("");
-    
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
-    });
-    
-    if (authError) {
-      setError(authError.message);
-    } else {
-      setError("注册成功！请检查邮箱完成验证后再登录。");
+
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
+      });
+
+      if (authError) {
+        setError(authError.message);
+      } else {
+        setError("注册成功！请检查邮箱完成验证后再登录。");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "注册失败，请检查网络或环境变量配置。");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const features = [
