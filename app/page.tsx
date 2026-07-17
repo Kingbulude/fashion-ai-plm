@@ -249,7 +249,7 @@ export default function HomePage() {
     // - diagonal mode: rotate entire group so labels align with arrow direction
     // - if no data, show a placeholder label "未设置" so the user can click to edit
     // All texts use dominantBaseline="central" so labels are vertically centered in the rect
-    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 18, combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false) => {
+    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 18, combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false, splitAlongLine: boolean = false) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
       const showPlaceholder = !hasDeadline && !hasDuration;
@@ -342,6 +342,87 @@ export default function HomePage() {
       while (normalizedRotation > 90) normalizedRotation -= 180;
       while (normalizedRotation < -90) normalizedRotation += 180;
 
+      // "Split along line" mode: two labels distributed along the line direction,
+      // both on the same perpendicular side, aligned with the line direction.
+      // Used for diagonal lines (sampling->procurement, testing->procurement).
+      if (splitAlongLine) {
+        // In the rotated coordinate system, the line goes left-to-right (horizontal).
+        // We place one label to the left of cx, one to the right of cx, both slightly above the line.
+        // After the parent rotation, they will appear along the diagonal line direction.
+        const alongOffset = 12; // distance between the two labels along the line
+        const perpOffset = 14;  // perpendicular distance from the line
+        const durCx = cx - alongOffset;
+        const dlCx = cx + alongOffset;
+        const durCy = cy - perpOffset;
+        const dlCy = cy - perpOffset;
+        return (
+          <g
+            key={`label-${linkId}`}
+            onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
+            style={{ cursor: clickable ? "pointer" : "default" }}
+          >
+            <g transform={`rotate(${normalizedRotation}, ${cx}, ${cy})`}>
+              {/* Duration label - on one side of the line, slightly toward "from" */}
+              <g>
+                <rect
+                  x={durCx - halfW}
+                  y={durCy - labelHeight / 2}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={labelHeight / 2}
+                  fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+                  opacity={showPlaceholder ? 0.6 : 1}
+                />
+                <text
+                  x={durCx}
+                  y={durCy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={700}
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {displayDuration}
+                </text>
+              </g>
+              {/* Deadline label - on same side, slightly toward "to" */}
+              <g>
+                <rect
+                  x={dlCx - halfW}
+                  y={dlCy - labelHeight / 2}
+                  width={labelWidth}
+                  height={labelHeight}
+                  rx={labelHeight / 2}
+                  fill="white"
+                  stroke={strokeColor}
+                  strokeWidth={1.5}
+                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
+                  className="hover:brightness-95 transition-all"
+                  opacity={showPlaceholder ? 0.6 : 1}
+                />
+                <text
+                  x={dlCx}
+                  y={dlCy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={12}
+                  fill={strokeColor}
+                  fontWeight={700}
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {displayDeadline}
+                </text>
+              </g>
+            </g>
+          </g>
+        );
+      }
+
+      // Default mode (horizontal/diagonal): rotate entire group so labels align with arrow direction
       // Duration rect: top side above the line, rect middle at cy - labelHeight/2 - gap
       const durRectY = cy - labelHeight - gap;
       const durCenterY = durRectY + labelHeight / 2;
@@ -440,29 +521,17 @@ export default function HomePage() {
       const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0 && Math.abs(Math.abs(dx) - Math.abs(dy)) > 20;
       // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
-      // For diagonal lines, rotate labels and shift them to the right side of the line
-      // For horizontal/vertical lines, keep labels horizontal at the midpoint
+      // For diagonal lines (sampling->procurement), use "split along line" mode:
+      // two labels distributed along the line direction, parallel to the line.
       let labelCx = midX;
       let labelCy = midY;
       let labelRotation = 0;
+      let useSplitAlongLine = false;
       if (isDiagonal) {
         const angleRad = Math.atan2(dy, dx);
-        const perpOffset = 32;
-        // Shift label group to the "lower-right" perpendicular of the line
-        // Using (-sin(angle), cos(angle)) - this gives the LEFT side of the direction of travel
-        // For sampling->procurement (down-right), labels go to the right (visual lower side)
-        // For testing->procurement (down-left), labels go to the left (visual lower side)
-        // To put both labels on the SAME visual side (e.g. below both lines),
-        // we need to check the direction:
-        // - if dx > 0 (line goes right), put labels on the lower-right (cos>0)
-        // - if dx < 0 (line goes left), put labels on the lower-left (cos>0)
-        // In both cases: labelCy = midY + |cos(angle)| * perpOffset (shift down)
-        //               labelCx = midX + sin(angle) * perpOffset
-        //               (sin is positive when going right, negative when going left - this gives "outside" of the V)
-        labelCx = midX + Math.sin(angleRad) * perpOffset;
-        labelCy = midY + Math.abs(Math.cos(angleRad)) * perpOffset;
         // Rotate the entire label group to align with the line
         labelRotation = angleRad * 180 / Math.PI;
+        useSplitAlongLine = true;
       }
 
       return (
@@ -479,7 +548,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(labelCx, labelCy, labelRotation, 18, false, true, useVerticalLayout)}
+          {renderDualLabels(labelCx, labelCy, labelRotation, 18, false, true, useVerticalLayout, useSplitAlongLine)}
         </g>
       );
     }
@@ -551,13 +620,6 @@ export default function HomePage() {
       const tdy = endY - startY;
       const angleRad = Math.atan2(tdy, tdx);
       const angle = angleRad * 180 / Math.PI;
-      // Shift label group to the "outside" of the V formed by the two diagonal lines
-      // - For sampling->procurement (down-right): sin>0, labelCx > midX (right of mid)
-      // - For testing->procurement (down-left): sin<0, labelCx < midX (left of mid)
-      // Both labels go to the lower side of their lines (labelCy > midY)
-      const perpOffset = 32;
-      const labelCx = midX + Math.sin(angleRad) * perpOffset;
-      const labelCy = midY + Math.abs(Math.cos(angleRad)) * perpOffset;
 
       return (
         <g key={linkId}>
@@ -574,7 +636,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(labelCx, labelCy, angle, 18, false, true, false)}
+          {renderDualLabels(midX, midY, angle, 18, false, true, false, true)}
         </g>
       );
     }
