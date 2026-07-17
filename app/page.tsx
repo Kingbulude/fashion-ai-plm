@@ -345,14 +345,14 @@ export default function HomePage() {
       // "Split along line" mode: two labels on opposite sides of the line,
       // both aligned parallel to the line, at the same point along the line.
       // Used for diagonal lines (sampling->procurement, testing->procurement).
+      // Reference: two labels straddling the line tightly, parallel to it.
       if (splitAlongLine) {
         // In the rotated coordinate system, the line goes left-to-right (horizontal).
         // duration goes ABOVE the line, deadline goes BELOW the line.
         // Both at the same x position (no along-line offset).
-        // perpOffset must be large enough to make the two labels clearly on
-        // different sides of the diagonal line in screen space.
-        const perpOffset = 22;   // perpendicular distance from the line (one each side)
-        const durCx = cx;        // both at the same point along the line
+        // perpOffset = labelHeight/2 + small gap, so labels are tight to the line on each side.
+        const perpOffset = labelHeight / 2 + 4;   // 13+4=17: half height + small gap
+        const durCx = cx;
         const dlCx = cx;
         const durCy = cy - perpOffset;   // duration ABOVE the line (in rotated coords)
         const dlCy = cy + perpOffset;    // deadline BELOW the line (in rotated coords)
