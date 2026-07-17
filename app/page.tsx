@@ -519,7 +519,10 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isPureVertical = dx === 0;
-      const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0 && Math.abs(Math.abs(dx) - Math.abs(dy)) > 20;
+      // A line is diagonal if both dx and dy are non-zero.
+      // Don't require the difference to be large - even a mostly-horizontal line
+      // with a small vertical component is a diagonal.
+      const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0;
       // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
       // For diagonal lines (sampling->procurement), use "split along line" mode:
