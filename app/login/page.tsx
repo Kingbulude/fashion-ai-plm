@@ -21,6 +21,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirect, setRedirect] = useState("/");
   
@@ -36,21 +37,29 @@ function LoginForm() {
   const handleLogin = async () => {
     setLoading(true);
     setError("");
+    setSuccess("");
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) {
-        if (authError.message.includes("email") && authError.message.includes("confirmed")) {
+        const message = authError.message.toLowerCase();
+        if (message.includes("rate limit")) {
+          setError("操作过于频繁，请稍等 1 分钟后再试。");
+        } else if (message.includes("email") && message.includes("confirmed")) {
           setError("邮箱尚未验证，请检查邮箱完成验证后再登录。");
+        } else if (message.includes("invalid login credentials")) {
+          setError("邮箱或密码错误，请确认后重试。");
         } else {
           setError(authError.message || "邮箱或密码错误，请重试。");
         }
-      } else {
+      } else if (data?.user) {
         router.push(redirect);
+      } else {
+        setError("登录失败，请检查邮箱是否已完成验证。");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请检查网络或环境变量配置。");
@@ -60,8 +69,14 @@ function LoginForm() {
   };
 
   const handleSignUp = async () => {
+    if (password.length < 6) {
+      setError("密码长度至少为 6 位。");
+      return;
+    }
+
     setLoading(true);
     setError("");
+    setSuccess("");
 
     try {
       const { error: authError } = await supabase.auth.signUp({
@@ -73,9 +88,16 @@ function LoginForm() {
       });
 
       if (authError) {
-        setError(authError.message);
+        const message = authError.message.toLowerCase();
+        if (message.includes("rate limit")) {
+          setError("操作过于频繁，请稍等 1 分钟后再试。");
+        } else if (message.includes("already registered")) {
+          setError("该邮箱已注册，请直接登录。");
+        } else {
+          setError(authError.message);
+        }
       } else {
-        setError("注册成功！请检查邮箱完成验证后再登录。");
+        setSuccess("注册成功！请检查邮箱并点击验证链接，验证后再登录。");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "注册失败，请检查网络或环境变量配置。");
@@ -157,6 +179,11 @@ function LoginForm() {
                 <AlertDescription>
                   请配置 <code className="px-1 py-0.5 bg-black/10 rounded text-xs">.env.local</code> 文件中的 Supabase 环境变量，否则登录功能无法正常工作。
                 </AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
             {error && (
