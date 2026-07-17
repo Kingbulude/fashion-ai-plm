@@ -248,6 +248,7 @@ export default function HomePage() {
     // - vertical arrow mode: duration on left, deadline on right (both tight to the line)
     // - diagonal mode: rotate entire group so labels align with arrow direction
     // - if no data, show a placeholder label "未设置" so the user can click to edit
+    // All texts use dominantBaseline="central" so labels are vertically centered in the rect
     const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 18, combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
@@ -257,7 +258,6 @@ export default function HomePage() {
       if (!hasDeadline && !hasDuration && !showPlaceholder) return null;
 
       const halfW = labelWidth / 2;
-      const halfH = labelHeight / 2;
       const gap = 3; // small gap between label and line
 
       // Vertical line: two labels stacked on the same side of the line, tight to the line
@@ -265,6 +265,12 @@ export default function HomePage() {
         // Both labels go to the left side of the vertical line, separated vertically
         // (duration above, deadline below) - never crossing the line
         const sideX = cx - halfW - labelWidth - gap;
+        // Duration rect: top side above the line, rect middle at cy - halfH
+        const durRectY = cy - labelHeight - gap;
+        const durCenterY = durRectY + labelHeight / 2;
+        // Deadline rect: top side just below the line, rect middle at cy + halfH
+        const dlRectY = cy + gap;
+        const dlCenterY = dlRectY + labelHeight / 2;
         return (
           <g
             key={`label-${linkId}`}
@@ -275,10 +281,10 @@ export default function HomePage() {
             <g>
               <rect
                 x={sideX}
-                y={cy - labelHeight - gap}
+                y={durRectY}
                 width={labelWidth}
                 height={labelHeight}
-                rx={halfH}
+                rx={labelHeight / 2}
                 fill={isCritical ? "#fef2f2" : "#f8fafc"}
                 stroke={strokeColor}
                 strokeWidth={1.5}
@@ -287,8 +293,9 @@ export default function HomePage() {
               />
               <text
                 x={sideX + halfW}
-                y={cy - gap - 2}
+                y={durCenterY}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={12}
                 fill={strokeColor}
                 fontWeight={700}
@@ -301,10 +308,10 @@ export default function HomePage() {
             <g>
               <rect
                 x={sideX}
-                y={cy + gap}
+                y={dlRectY}
                 width={labelWidth}
                 height={labelHeight}
-                rx={halfH}
+                rx={labelHeight / 2}
                 fill="white"
                 stroke={strokeColor}
                 strokeWidth={1.5}
@@ -314,8 +321,9 @@ export default function HomePage() {
               />
               <text
                 x={sideX + halfW}
-                y={cy + labelHeight + gap + 2}
+                y={dlCenterY}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={12}
                 fill={strokeColor}
                 fontWeight={700}
@@ -328,78 +336,18 @@ export default function HomePage() {
         );
       }
 
-      // Combined mode: deprecated, kept for backward compatibility (no longer used)
-      if (combined) {
-        return (
-          <g
-            key={`label-${linkId}`}
-            onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
-            style={{ cursor: clickable ? "pointer" : "default" }}
-          >
-            <g transform={`translate(${halfW + 10}, 0)`}>
-              {hasDuration && (
-                <g>
-                  <rect
-                    x={cx - halfW}
-                    y={cy - labelHeight - gap}
-                    width={labelWidth}
-                    height={labelHeight}
-                    rx={halfH}
-                    fill={isCritical ? "#fef2f2" : "#f8fafc"}
-                    stroke={strokeColor}
-                    strokeWidth={1.5}
-                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
-                  />
-                  <text
-                    x={cx}
-                    y={cy - gap - 2}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fill={strokeColor}
-                    fontWeight={700}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {durationLabel}
-                  </text>
-                </g>
-              )}
-              {hasDeadline && (
-                <g>
-                  <rect
-                    x={cx - halfW}
-                    y={cy + gap}
-                    width={labelWidth}
-                    height={labelHeight}
-                    rx={halfH}
-                    fill="white"
-                    stroke={strokeColor}
-                    strokeWidth={1.5}
-                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
-                    className="hover:brightness-95 transition-all"
-                  />
-                  <text
-                    x={cx}
-                    y={cy + labelHeight + gap + 2}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fill={strokeColor}
-                    fontWeight={700}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {deadlineLabel}
-                  </text>
-                </g>
-              )}
-            </g>
-          </g>
-        );
-      }
-
       // Default mode (horizontal/diagonal): rotate entire group so labels align with arrow direction
       // Normalize rotation to keep labels readable (not upside down)
       let normalizedRotation = rotation;
       while (normalizedRotation > 90) normalizedRotation -= 180;
       while (normalizedRotation < -90) normalizedRotation += 180;
+
+      // Duration rect: top side above the line, rect middle at cy - labelHeight/2 - gap
+      const durRectY = cy - labelHeight - gap;
+      const durCenterY = durRectY + labelHeight / 2;
+      // Deadline rect: top side just below the line, rect middle at cy + labelHeight/2 + gap
+      const dlRectY = cy + gap;
+      const dlCenterY = dlRectY + labelHeight / 2;
 
       return (
         <g
@@ -412,10 +360,10 @@ export default function HomePage() {
             <g>
               <rect
                 x={cx - halfW}
-                y={cy - halfH - labelHeight - gap}
+                y={durRectY}
                 width={labelWidth}
                 height={labelHeight}
-                rx={halfH}
+                rx={labelHeight / 2}
                 fill={isCritical ? "#fef2f2" : "#f8fafc"}
                 stroke={strokeColor}
                 strokeWidth={1.5}
@@ -424,8 +372,9 @@ export default function HomePage() {
               />
               <text
                 x={cx}
-                y={cy - gap - 2}
+                y={durCenterY}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={12}
                 fill={strokeColor}
                 fontWeight={700}
@@ -438,10 +387,10 @@ export default function HomePage() {
             <g>
               <rect
                 x={cx - halfW}
-                y={cy + gap}
+                y={dlRectY}
                 width={labelWidth}
                 height={labelHeight}
-                rx={halfH}
+                rx={labelHeight / 2}
                 fill="white"
                 stroke={strokeColor}
                 strokeWidth={1.5}
@@ -451,8 +400,9 @@ export default function HomePage() {
               />
               <text
                 x={cx}
-                y={cy + labelHeight + gap + 2}
+                y={dlCenterY}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={12}
                 fill={strokeColor}
                 fontWeight={700}
@@ -485,13 +435,12 @@ export default function HomePage() {
       }
 
       const midX = (sx + ex) / 2;
+      const midY = (sy + ey) / 2;
       const isPureVertical = dx === 0;
       // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
-      // Keep labels horizontal (no rotation) for cleaner look
+      // Critical path: always keep labels horizontal (no rotation) for cleaner look
       const labelRotation = 0;
-      // For vertical lines, place labels near the target node center
-      const labelMidY = isPureVertical ? to.y : (sy + ey) / 2;
 
       return (
         <g key={linkId}>
@@ -507,7 +456,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, labelMidY, labelRotation, 18, false, true, useVerticalLayout)}
+          {renderDualLabels(midX, midY, labelRotation, 18, false, true, useVerticalLayout)}
         </g>
       );
     }
@@ -537,7 +486,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, topY - 16, 0, 18, false)}
+          {renderDualLabels(midX, topY, 0, 18, false)}
         </g>
       );
     }
@@ -574,6 +523,10 @@ export default function HomePage() {
       const endY = to.y - NODE_RADIUS - 4;
       const midX = (startX + endX) / 2;
       const midY = (startY + endY) / 2;
+      // Rotate labels to align with the arrow direction (parallel to the line)
+      const tdx = endX - startX;
+      const tdy = endY - startY;
+      const angle = Math.atan2(tdy, tdx) * 180 / Math.PI;
 
       return (
         <g key={linkId}>
@@ -590,7 +543,7 @@ export default function HomePage() {
             style={{ cursor: "pointer" }}
             onClick={() => handleArrowClick(fromId, toId)}
           />
-          {renderDualLabels(midX, midY, 0, 18, false, true, false)}
+          {renderDualLabels(midX, midY, angle, 18, false, true, false)}
         </g>
       );
     }
