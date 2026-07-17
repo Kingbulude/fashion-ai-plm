@@ -54,3 +54,36 @@ INSERT INTO process_links (from_node, to_node, link_type, duration_hours, deadli
   ('sales', 'aftersales', 'critical', 0, NULL, '销售运营、订单处理、物流配送', '销售订单、发货单、物流信息', 9),
   ('aftersales', 'planning', 'feedback', 10, NULL, '售后复盘、客户反馈收集、数据沉淀', '售后报告、客户反馈汇总、复盘分析报告', 10)
 ON CONFLICT (from_node, to_node) DO NOTHING;
+
+-- 启用 RLS（行级安全）
+ALTER TABLE IF EXISTS process_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS process_nodes ENABLE ROW LEVEL SECURITY;
+
+-- 允许匿名用户（anon）读取和更新 process_links
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'process_links' AND policyname = 'allow_anon_all'
+  ) THEN
+    CREATE POLICY allow_anon_all ON process_links
+      FOR ALL
+      TO anon
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END
+$$;
+
+-- 允许匿名用户读取 process_nodes
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'process_nodes' AND policyname = 'allow_anon_read'
+  ) THEN
+    CREATE POLICY allow_anon_read ON process_nodes
+      FOR SELECT
+      TO anon
+      USING (true);
+  END IF;
+END
+$$;
