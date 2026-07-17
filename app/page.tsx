@@ -447,12 +447,20 @@ export default function HomePage() {
       let labelRotation = 0;
       if (isDiagonal) {
         const angleRad = Math.atan2(dy, dx);
-        const perpOffset = 30;
-        // Shift label group to the right side of the line
-        // Using clockwise perpendicular: (sin(angle), -cos(angle))
-        // This ensures both lines shift labels to the same "right" side
+        const perpOffset = 32;
+        // Shift label group to the "lower-right" perpendicular of the line
+        // Using (-sin(angle), cos(angle)) - this gives the LEFT side of the direction of travel
+        // For sampling->procurement (down-right), labels go to the right (visual lower side)
+        // For testing->procurement (down-left), labels go to the left (visual lower side)
+        // To put both labels on the SAME visual side (e.g. below both lines),
+        // we need to check the direction:
+        // - if dx > 0 (line goes right), put labels on the lower-right (cos>0)
+        // - if dx < 0 (line goes left), put labels on the lower-left (cos>0)
+        // In both cases: labelCy = midY + |cos(angle)| * perpOffset (shift down)
+        //               labelCx = midX + sin(angle) * perpOffset
+        //               (sin is positive when going right, negative when going left - this gives "outside" of the V)
         labelCx = midX + Math.sin(angleRad) * perpOffset;
-        labelCy = midY - Math.cos(angleRad) * perpOffset;
+        labelCy = midY + Math.abs(Math.cos(angleRad)) * perpOffset;
         // Rotate the entire label group to align with the line
         labelRotation = angleRad * 180 / Math.PI;
       }
@@ -543,9 +551,11 @@ export default function HomePage() {
       const tdy = endY - startY;
       const angleRad = Math.atan2(tdy, tdx);
       const angle = angleRad * 180 / Math.PI;
-      // Shift label group to the right side of the line
-      // Same logic as sampling->procurement (critical)
-      const perpOffset = 30;
+      // Shift label group to the "outside" of the V formed by the two diagonal lines
+      // - For sampling->procurement (down-right): sin>0, labelCx > midX (right of mid)
+      // - For testing->procurement (down-left): sin<0, labelCx < midX (left of mid)
+      // Both labels go to the lower side of their lines (labelCy > midY)
+      const perpOffset = 32;
       const labelCx = midX + Math.sin(angleRad) * perpOffset;
       const labelCy = midY + Math.abs(Math.cos(angleRad)) * perpOffset;
 
