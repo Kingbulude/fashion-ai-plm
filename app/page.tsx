@@ -343,18 +343,18 @@ export default function HomePage() {
       while (normalizedRotation < -90) normalizedRotation += 180;
 
       // "Split along line" mode: two labels distributed along the line direction,
-      // both on the same perpendicular side, aligned with the line direction.
+      // one on each side of the line, both aligned parallel to the line.
       // Used for diagonal lines (sampling->procurement, testing->procurement).
       if (splitAlongLine) {
         // In the rotated coordinate system, the line goes left-to-right (horizontal).
-        // We place one label to the left of cx, one to the right of cx, both slightly above the line.
-        // After the parent rotation, they will appear along the diagonal line direction.
-        const alongOffset = 12; // distance between the two labels along the line
-        const perpOffset = 14;  // perpendicular distance from the line
-        const durCx = cx - alongOffset;
-        const dlCx = cx + alongOffset;
-        const durCy = cy - perpOffset;
-        const dlCy = cy - perpOffset;
+        // duration goes ABOVE the line, deadline goes BELOW the line.
+        // Both are slightly offset along the line direction so they don't overlap.
+        const alongOffset = 8;  // distance between the two labels along the line
+        const perpOffset = 12;  // perpendicular distance from the line
+        const durCx = cx - alongOffset;  // duration slightly toward "from"
+        const dlCx = cx + alongOffset;   // deadline slightly toward "to"
+        const durCy = cy - perpOffset;   // duration ABOVE the line
+        const dlCy = cy + perpOffset;    // deadline BELOW the line
         return (
           <g
             key={`label-${linkId}`}
@@ -362,7 +362,7 @@ export default function HomePage() {
             style={{ cursor: clickable ? "pointer" : "default" }}
           >
             <g transform={`rotate(${normalizedRotation}, ${cx}, ${cy})`}>
-              {/* Duration label - on one side of the line, slightly toward "from" */}
+              {/* Duration label - above the line, slightly toward "from" */}
               <g>
                 <rect
                   x={durCx - halfW}
@@ -389,7 +389,7 @@ export default function HomePage() {
                   {displayDuration}
                 </text>
               </g>
-              {/* Deadline label - on same side, slightly toward "to" */}
+              {/* Deadline label - below the line, slightly toward "to" */}
               <g>
                 <rect
                   x={dlCx - halfW}
