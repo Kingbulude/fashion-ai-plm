@@ -32,7 +32,19 @@ function LoginForm() {
     if (searchParams) {
       setRedirect(searchParams.get("redirect") || "/dashboard");
     }
-  }, [searchParams]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user?.email_confirmed_at) {
+        router.push(redirect);
+      } else if (event === "PASSWORD_RECOVERY") {
+        setSuccess("密码重置链接已发送，请检查邮箱。");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [searchParams, router, redirect]);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -253,6 +265,34 @@ function LoginForm() {
               >
                 {loading ? "注册中..." : "注册新账号"}
               </Button>
+              {error?.includes("未验证") && email && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const { error: resendError } = await supabase.auth.resend({
+                        type: "signup",
+                        email,
+                      });
+                      if (resendError) {
+                        setError(resendError.message);
+                      } else {
+                        setSuccess("验证邮件已重新发送，请检查邮箱。");
+                        setError("");
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "发送失败，请稍后重试。");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                >
+                  重新发送验证邮件
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>

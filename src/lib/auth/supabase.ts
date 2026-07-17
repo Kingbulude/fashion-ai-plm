@@ -20,7 +20,7 @@ function createSupabaseClient(): SupabaseClient {
   return createClient(url, key, {
     auth: {
       persistSession: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: true,
       autoRefreshToken: true,
     },
   });
