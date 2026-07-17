@@ -4,19 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DraggableDialog } from "@/components/ui/draggable-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 const NODE_SIZE = 80;
@@ -72,8 +68,8 @@ export default function HomePage() {
   const [editForm, setEditForm] = useState({
     duration_hours: 0,
     deadline: "",
-    work_content: "",
-    deliverables: "",
+    work_content: [] as string[],
+    deliverables: [] as string[],
   });
 
   const showToast = (type: "success" | "error", message: string) => {
@@ -107,6 +103,11 @@ export default function HomePage() {
     return links.find(l => l.from_node === from && l.to_node === to);
   };
 
+  const parseLines = (str: string): string[] => {
+    if (!str) return [""];
+    return str.split("\n").filter(line => line.trim()).map(line => line.trim());
+  };
+
   const handleArrowClick = (from: string, to: string) => {
     const link = getLink(from, to);
     if (link) {
@@ -114,8 +115,8 @@ export default function HomePage() {
       setEditForm({
         duration_hours: link.duration_hours || 0,
         deadline: link.deadline || "",
-        work_content: link.work_content || "",
-        deliverables: link.deliverables || "",
+        work_content: parseLines(link.work_content || ""),
+        deliverables: parseLines(link.deliverables || ""),
       });
       setEditDialogOpen(true);
     }
@@ -132,8 +133,8 @@ export default function HomePage() {
           id: editingLink.id,
           duration_hours: Number(editForm.duration_hours) || 0,
           deadline: editForm.deadline || null,
-          work_content: editForm.work_content,
-          deliverables: editForm.deliverables,
+          work_content: editForm.work_content.filter(item => item.trim()).join("\n"),
+          deliverables: editForm.deliverables.filter(item => item.trim()).join("\n"),
         }),
       });
       if (!res.ok) throw new Error("保存失败");
@@ -145,6 +146,38 @@ export default function HomePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addWorkContent = () => {
+    setEditForm({ ...editForm, work_content: [...editForm.work_content, ""] });
+  };
+
+  const removeWorkContent = (index: number) => {
+    if (editForm.work_content.length <= 1) return;
+    const newList = editForm.work_content.filter((_, i) => i !== index);
+    setEditForm({ ...editForm, work_content: newList });
+  };
+
+  const updateWorkContent = (index: number, value: string) => {
+    const newList = [...editForm.work_content];
+    newList[index] = value;
+    setEditForm({ ...editForm, work_content: newList });
+  };
+
+  const addDeliverable = () => {
+    setEditForm({ ...editForm, deliverables: [...editForm.deliverables, ""] });
+  };
+
+  const removeDeliverable = (index: number) => {
+    if (editForm.deliverables.length <= 1) return;
+    const newList = editForm.deliverables.filter((_, i) => i !== index);
+    setEditForm({ ...editForm, deliverables: newList });
+  };
+
+  const updateDeliverable = (index: number, value: string) => {
+    const newList = [...editForm.deliverables];
+    newList[index] = value;
+    setEditForm({ ...editForm, deliverables: newList });
   };
 
   const handleNodeClick = (node: typeof NODES[0]) => {
@@ -460,61 +493,125 @@ export default function HomePage() {
           </div>
         )}
 
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-lg bg-white">
-            <DialogHeader>
-              <DialogTitle>
-                编辑工序：{editingLink && `${getNodeName(editingLink.from_node)} → ${getNodeName(editingLink.to_node)}`}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>截止时间</Label>
-                  <Input
-                    type="date"
-                    value={editForm.deadline}
-                    onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>工时（小时）</Label>
-                  <Input
-                    type="number"
-                    value={editForm.duration_hours}
-                    onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
-                    placeholder="例如：40"
-                  />
-                </div>
-              </div>
+        <DraggableDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          title={`编辑工序：${editingLink && `${getNodeName(editingLink.from_node)} → ${getNodeName(editingLink.to_node)}`}`}
+        >
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>需要完成的工作内容</Label>
-                <textarea
-                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={editForm.work_content}
-                  onChange={e => setEditForm({ ...editForm, work_content: e.target.value })}
-                  placeholder="描述该工序需要完成的具体工作..."
+                <Label className="text-sm font-medium text-slate-700">截止时间</Label>
+                <Input
+                  type="date"
+                  value={editForm.deadline}
+                  onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
+                  className="h-10"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>给下一个工序的交付清单</Label>
-                <textarea
-                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={editForm.deliverables}
-                  onChange={e => setEditForm({ ...editForm, deliverables: e.target.value })}
-                  placeholder="列出该工序完成后需要交付给下一工序的内容..."
+                <Label className="text-sm font-medium text-slate-700">工时（小时）</Label>
+                <Input
+                  type="number"
+                  value={editForm.duration_hours}
+                  onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
+                  placeholder="例如：40"
+                  className="h-10"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>取消</Button>
-              <Button onClick={handleSaveEdit} disabled={saving}>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700">工作内容</Label>
+              <div className="space-y-2">
+                {editForm.work_content.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    <Input
+                      value={item}
+                      onChange={e => updateWorkContent(index, e.target.value)}
+                      placeholder="输入工作内容..."
+                      className="flex-1 h-10"
+                    />
+                    {editForm.work_content.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeWorkContent(index)}
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addWorkContent}
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                添加工作内容
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700">交付清单</Label>
+              <div className="space-y-2">
+                {editForm.deliverables.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs flex items-center justify-center flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    <Input
+                      value={item}
+                      onChange={e => updateDeliverable(index, e.target.value)}
+                      placeholder="输入交付内容..."
+                      className="flex-1 h-10"
+                    />
+                    {editForm.deliverables.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDeliverable(index)}
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addDeliverable}
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                添加交付内容
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                className="h-10 px-6"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 保存
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          </div>
+        </DraggableDialog>
 
         {toast && (
           <div className="fixed top-6 right-6 z-50 max-w-sm">
