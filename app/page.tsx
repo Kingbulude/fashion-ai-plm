@@ -19,14 +19,14 @@ const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 200, y: 240, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 480, y: 240, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 760, y: 240, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1040, y: 240, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 900, y: 540, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1480, y: 540, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1480, y: 240, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1760, y: 240, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 180, y: 216, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 432, y: 216, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 684, y: 216, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 936, y: 216, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 810, y: 486, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1332, y: 486, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1332, y: 216, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1584, y: 216, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -42,8 +42,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1960;
-const CANVAS_HEIGHT = 720;
+const CANVAS_WIDTH = 1764;
+const CANVAS_HEIGHT = 648;
 
 interface ProcessLink {
   id: string;
@@ -82,7 +82,22 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/process-links");
       const data = await res.json();
-      setLinks(Array.isArray(data) ? data : []);
+      const fetched = Array.isArray(data) ? data : [];
+      // Ensure all defined links have a record (even if empty)
+      const existingKeys = new Set(fetched.map((l: ProcessLink) => `${l.from_node}-${l.to_node}`));
+      const defaults = LINKS_DEF
+        .filter(def => !existingKeys.has(`${def.from}-${def.to}`))
+        .map(def => ({
+          id: `default-${def.from}-${def.to}`,
+          from_node: def.from,
+          to_node: def.to,
+          link_type: def.type,
+          duration_hours: 0,
+          deadline: null,
+          work_content: "",
+          deliverables: "",
+        }));
+      setLinks([...fetched, ...defaults]);
     } catch (err) {
       console.error("Failed to fetch links", err);
     } finally {
@@ -209,19 +224,19 @@ export default function HomePage() {
 
     const markerId = `arrowhead-${linkId}`;
 
-    // Global arrow marker for small, clean arrowheads
+    // Global arrow marker (slightly larger head, same line width)
     const ArrowMarker = (
       <defs key={`defs-${linkId}`}>
         <marker
           id={markerId}
-          markerWidth="8"
-          markerHeight="6"
-          refX="7"
-          refY="3"
+          markerWidth="12"
+          markerHeight="9"
+          refX="10"
+          refY="4.5"
           orient="auto"
           markerUnits="userSpaceOnUse"
         >
-          <polygon points="0 0, 8 3, 0 6" fill={strokeColor} />
+          <polygon points="0 0, 12 4.5, 0 9" fill={strokeColor} />
         </marker>
       </defs>
     );
@@ -321,9 +336,9 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isVertical = Math.abs(dx) < Math.abs(dy);
-      // For sampling->procurement diagonal, put label on the left side
+      // For sampling->procurement diagonal, put label on the left side, aligned with arrow
       const isSamplingToProcurement = fromId === "sampling" && toId === "procurement";
-      const labelX = isVertical ? midX + 50 : (isSamplingToProcurement ? midX - 70 : midX);
+      const labelX = isVertical ? midX + 50 : (isSamplingToProcurement ? midX - 120 : midX);
       const labelY = isVertical ? midY : midY - 22;
 
       return (
@@ -405,8 +420,8 @@ export default function HomePage() {
       const startY = from.y + NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS - 4;
-      // Move label to the left, close to the dashed line
-      const labelX = startX - labelWidth / 2 - 12;
+      // Move label to the left side, close to the dashed line
+      const labelX = startX - labelWidth - 18;
       const labelY = (startY + endY) / 2;
 
       return (
