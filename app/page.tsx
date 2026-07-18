@@ -532,8 +532,10 @@ export default function HomePage() {
       let labelRotation = 0;
       let useSplitAlongLine = false;
       if (isDiagonal) {
-        const angleRad = Math.atan2(dy, dx);
-        // Rotate the entire label group to align with the line
+        const lineDx = ex - sx;
+        const lineDy = ey - sy;
+        const angleRad = Math.atan2(lineDy, lineDx);
+        // Rotate the entire label group to align with the actual line direction
         labelRotation = angleRad * 180 / Math.PI;
         useSplitAlongLine = true;
       }
