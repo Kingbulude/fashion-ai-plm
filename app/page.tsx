@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
@@ -19,14 +19,14 @@ const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 180, y: 216, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 432, y: 216, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 684, y: 216, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 936, y: 216, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 810, y: 486, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1332, y: 486, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1332, y: 216, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1584, y: 216, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 130, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 490, y: 130, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 880, y: 130, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1270, y: 130, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 1075, y: 470, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1660, y: 470, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1660, y: 130, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 2050, y: 130, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -42,8 +42,8 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 1764;
-const CANVAS_HEIGHT = 648;
+const CANVAS_WIDTH = 2160;
+const CANVAS_HEIGHT = 600;
 
 interface ProcessLink {
   id: string;
@@ -76,6 +76,22 @@ export default function HomePage() {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
   };
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  const updateScale = useCallback(() => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    const newScale = Math.min(1, containerWidth / CANVAS_WIDTH);
+    setScale(newScale);
+  }, []);
+
+  useEffect(() => {
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, [updateScale]);
 
   const fetchLinks = async () => {
     setLoading(true);
@@ -565,7 +581,7 @@ export default function HomePage() {
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 72;
+      const topY = 35;
       const midX = (startX + endX) / 2;
 
       return (
@@ -716,10 +732,19 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="border-2 border-slate-200 shadow-xl rounded-2xl overflow-hidden bg-white p-8">
-            <div className="overflow-x-auto">
+            <div
+              ref={containerRef}
+              className="w-full overflow-hidden"
+              style={{ height: CANVAS_HEIGHT * scale }}
+            >
               <div
                 className="relative"
-                style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, minWidth: CANVAS_WIDTH }}
+                style={{
+                  width: CANVAS_WIDTH,
+                  height: CANVAS_HEIGHT,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                }}
               >
                 <svg
                   width={CANVAS_WIDTH}
