@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Upload, Check, Loader2 } from "lucide-react";
+import { Upload, Check, Loader2, User, Briefcase, Building2, AlertCircle } from "lucide-react";
 
 interface ProfileData {
   name: string;
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [editName, setEditName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"success" | "error" | "">("");
 
   useEffect(() => {
     fetchProfile();
@@ -50,6 +51,8 @@ export default function SettingsPage() {
   };
 
   const handleSaveProfile = async () => {
+    setSaveMessage("");
+    setSaveStatus("");
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -60,16 +63,28 @@ export default function SettingsPage() {
         }),
       });
       if (res.ok) {
+        setSaveStatus("success");
         setSaveMessage("保存成功");
         setProfile(prev => ({ ...prev, name: editName || "小芳" }));
-        setTimeout(() => setSaveMessage(""), 3000);
+        setTimeout(() => {
+          setSaveMessage("");
+          setSaveStatus("");
+        }, 3000);
       } else {
-        setSaveMessage("保存失败");
-        setTimeout(() => setSaveMessage(""), 3000);
+        setSaveStatus("error");
+        setSaveMessage("保存失败，请重试");
+        setTimeout(() => {
+          setSaveMessage("");
+          setSaveStatus("");
+        }, 3000);
       }
     } catch (error) {
-      setSaveMessage("保存失败");
-      setTimeout(() => setSaveMessage(""), 3000);
+      setSaveStatus("error");
+      setSaveMessage("保存失败，请检查网络");
+      setTimeout(() => {
+        setSaveMessage("");
+        setSaveStatus("");
+      }, 3000);
     }
   };
 
@@ -95,31 +110,33 @@ export default function SettingsPage() {
   return (
     <SidebarLayout>
       <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold mb-1">个人设置</h1>
             <p className="text-muted-foreground">管理您的个人资料和偏好设置</p>
           </div>
         </div>
 
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>个人资料</CardTitle>
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-xl">个人资料</CardTitle>
+            <p className="text-sm text-muted-foreground">更新您的个人信息</p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
+          <CardContent className="space-y-8">
+            {/* 头像区域 */}
+            <div className="flex flex-col items-center">
+              <div className="relative group">
+                <Avatar className="h-28 w-28 border-4 border-white shadow-lg shadow-slate-200">
                   {profile.avatarUrl ? (
-                    <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+                    <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover" />
                   ) : (
-                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-2xl font-medium">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-3xl font-semibold">
                       {profile.name.charAt(0)}
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors">
-                  <Upload className="h-4 w-4 text-white" />
+                <label className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-all shadow-md hover:scale-110 border-4 border-white">
+                  <Upload className="h-5 w-5 text-white" />
                   <input
                     type="file"
                     accept="image/*"
@@ -127,49 +144,84 @@ export default function SettingsPage() {
                     className="hidden"
                   />
                 </label>
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground">点击图标更换头像</p>
+              <p className="text-sm text-muted-foreground mt-3">点击图标更换头像</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">姓名</Label>
+            {/* 表单区域 */}
+            <div className="space-y-6">
+              {/* 姓名 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="name">姓名</Label>
+                </div>
                 <Input
                   id="name"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   placeholder="请输入您的姓名"
-                  className="h-10"
+                  className="h-11 px-4"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>职位权限</Label>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm font-medium text-slate-700">{profile.role}</span>
-                  <span className="text-xs text-slate-400">(由管理员分配)</span>
+              {/* 职位权限 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <Label>职位权限</Label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-800">{profile.role}</p>
+                    <p className="text-xs text-slate-400">由管理员分配，无法修改</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>所属品牌</Label>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm font-medium text-slate-700">{profile.brandName}</span>
+              {/* 所属品牌 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <Label>所属品牌</Label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-800">{profile.brandName}</p>
+                    <p className="text-xs text-slate-400">品牌信息由管理员配置</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            {/* 操作按钮 */}
+            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
               {saveMessage && (
-                <span className={`text-sm ${saveMessage === "保存成功" ? "text-green-600" : "text-red-600"}`}>
+                <div className={`flex items-center gap-2 text-sm ${saveStatus === "success" ? "text-green-600" : "text-red-600"}`}>
+                  {saveStatus === "success" ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
                   {saveMessage}
-                </span>
+                </div>
               )}
               <div className="flex gap-3">
-                <Button variant="outline" onClick={fetchProfile}>
+                <Button variant="outline" onClick={fetchProfile} className="h-10 px-6">
                   取消
                 </Button>
-                <Button onClick={handleSaveProfile} disabled={uploading}>
+                <Button onClick={handleSaveProfile} disabled={uploading} className="h-10 px-8">
                   {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   保存更改
                 </Button>

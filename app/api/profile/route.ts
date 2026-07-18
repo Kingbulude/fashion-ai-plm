@@ -68,13 +68,15 @@ export async function PUT(request: Request) {
 
     const { data, error } = await supabase
       .from("profiles")
-      .upsert({
-        user_id: session.user.id,
-        name: name || "小芳",
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", session.user.id)
+      .upsert(
+        {
+          user_id: session.user.id,
+          name: name || "小芳",
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      )
       .select();
 
     if (error) {

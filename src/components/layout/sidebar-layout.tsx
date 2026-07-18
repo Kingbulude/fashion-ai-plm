@@ -154,7 +154,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                   <div className="relative">
                     <Avatar className="h-9 w-9">
                       {profile.avatarUrl ? (
-                        <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+                        <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover" />
                       ) : (
                         <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium">
                           {profile.name.charAt(0)}
