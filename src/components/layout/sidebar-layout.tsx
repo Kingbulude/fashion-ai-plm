@@ -152,11 +152,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
                   <div className="relative">
-                    <Avatar className="h-9 w-9">
+                    <Avatar className="h-9 w-9 rounded-full overflow-hidden">
                       {profile.avatarUrl ? (
-                        <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover" />
+                        <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
                       ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium">
+                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-full w-full h-full">
                           {profile.name.charAt(0)}
                         </AvatarFallback>
                       )}
@@ -193,11 +193,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="relative p-1 cursor-pointer">
-                  <Avatar className="h-9 w-9">
+                  <Avatar className="h-9 w-9 rounded-full">
                     {profile.avatarUrl ? (
-                      <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+                      <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full" />
                     ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium">
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-full">
                         {profile.name.charAt(0)}
                       </AvatarFallback>
                     )}

@@ -126,11 +126,11 @@ export default function SettingsPage() {
             {/* 头像区域 */}
             <div className="flex flex-col items-center">
               <div className="relative group">
-                <Avatar className="h-28 w-28 border-4 border-white shadow-lg shadow-slate-200">
+                <Avatar className="h-28 w-28 rounded-full border-4 border-white shadow-lg shadow-slate-200 overflow-hidden">
                   {profile.avatarUrl ? (
-                    <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover" />
+                    <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
                   ) : (
-                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-3xl font-semibold">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-3xl font-semibold rounded-full w-full h-full">
                       {profile.name.charAt(0)}
                     </AvatarFallback>
                   )}
@@ -206,9 +206,9 @@ export default function SettingsPage() {
             </div>
 
             {/* 操作按钮 */}
-            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
               {saveMessage && (
-                <div className={`flex items-center gap-2 text-sm ${saveStatus === "success" ? "text-green-600" : "text-red-600"}`}>
+                <div className={`flex items-center gap-2 text-sm ${saveStatus === "success" ? "text-green-600" : "text-red-600"} mr-auto`}>
                   {saveStatus === "success" ? (
                     <Check className="h-4 w-4" />
                   ) : (
@@ -217,15 +217,13 @@ export default function SettingsPage() {
                   {saveMessage}
                 </div>
               )}
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={fetchProfile} className="h-10 px-6">
-                  取消
-                </Button>
-                <Button onClick={handleSaveProfile} disabled={uploading} className="h-10 px-8">
-                  {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  保存更改
-                </Button>
-              </div>
+              <Button variant="outline" onClick={fetchProfile} className="h-10 px-6">
+                取消
+              </Button>
+              <Button onClick={handleSaveProfile} disabled={uploading} className="h-10 px-8">
+                {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                保存更改
+              </Button>
             </div>
           </CardContent>
         </Card>

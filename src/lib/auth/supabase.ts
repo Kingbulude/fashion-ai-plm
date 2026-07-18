@@ -50,10 +50,10 @@ function ensureRuntimeConfig() {
   }
 }
 
-export async function getSession(request: NextRequest) {
+export async function getSession(request: Request | NextRequest) {
   const supabaseClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key",
     {
       auth: {
         autoRefreshToken: false,
@@ -66,17 +66,51 @@ export async function getSession(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
-    await supabaseClient.auth.setSession({ access_token: token, refresh_token: "" });
+    try {
+      const { data, error } = await supabaseClient.auth.getUser(token);
+      if (!error && data?.user) {
+        return { user: data.user };
+      }
+    } catch (e) {
+      console.error("Bearer auth error:", e);
+    }
   }
 
-  const { data, error } = await supabaseClient.auth.getUser();
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookiePairs = cookieHeader.split(";").filter(Boolean).map(c => {
+    const [k, ...v] = c.trim().split("=");
+    return [k, decodeURIComponent(v.join("="))] as const;
+  });
+  const cookies: Record<string, string> = Object.fromEntries(cookiePairs);
 
-  if (error || !data.user) {
-    console.error("Auth error:", error);
-    return null;
+  for (const [name, value] of Object.entries(cookies)) {
+    if (name.endsWith("-auth-token")) {
+      try {
+        const authData = JSON.parse(value);
+        if (authData.access_token) {
+          const { data, error } = await supabaseClient.auth.getUser(authData.access_token);
+          if (!error && data?.user) {
+            return { user: data.user };
+          }
+        }
+      } catch (e) {
+        console.error("Auth token cookie error:", e);
+      }
+    }
   }
 
-  return { user: data.user };
+  if (cookies["sb-access-token"]) {
+    try {
+      const { data, error } = await supabaseClient.auth.getUser(cookies["sb-access-token"]);
+      if (!error && data?.user) {
+        return { user: data.user };
+      }
+    } catch (e) {
+      console.error("Access token auth error:", e);
+    }
+  }
+
+  return null;
 }
 
 export async function requireAuth(request: NextRequest) {
