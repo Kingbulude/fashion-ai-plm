@@ -1,20 +1,29 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { supabase } from "@/lib/db/client";
+import { getSession } from "@/lib/auth/supabase";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await getSession(request as any);
+    
+    let userId: string | null = null;
+    if (session?.user) {
+      userId = session.user.id;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("name, avatar_url, role, brand_id")
-      .eq("user_id", user.id)
-      .single();
+    let profile: any = null;
+    if (userId) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, avatar_url, role, brand_id")
+        .eq("user_id", userId)
+        .single();
+      if (!error && data) {
+        profile = data;
+      }
+    }
 
     let brandName = "TEPNIX步戌";
     if (profile?.brand_id) {
@@ -23,7 +32,7 @@ export async function GET() {
         .select("name")
         .eq("id", profile.brand_id)
         .single();
-      if (brand?.name) {
+      if (!brandError && brand?.name) {
         brandName = brand.name;
       }
     }
@@ -36,17 +45,20 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch profile", name: "小芳", role: "设计师", brandName: "TEPNIX步戌" },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      name: "小芳",
+      avatarUrl: null,
+      role: "设计师",
+      brandName: "TEPNIX步戌",
+    });
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const session = await getSession(request as any);
+    
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -60,7 +72,7 @@ export async function PUT(request: Request) {
         avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq("user_id", user.id);
+      .eq("user_id", session.user.id);
 
     if (error) {
       throw error;

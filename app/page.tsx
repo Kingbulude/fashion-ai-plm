@@ -121,6 +121,10 @@ export default function HomePage() {
     }
   };
 
+  useEffect(() => {
+    fetchLinks();
+  }, []);
+
   const [brandName, setBrandName] = useState("TEPNIX步戌");
 
   useEffect(() => {
