@@ -317,3 +317,22 @@ export const moodBoardAssets = pgTable("mood_board_assets", {
   category: text("category"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const brands = pgTable("brands", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const profiles = pgTable("profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(),
+  brandId: uuid("brand_id").references(() => brands.id),
+  name: text("name").notNull().default("小芳"),
+  avatarUrl: text("avatar_url"),
+  role: text("role").notNull().default("设计师"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

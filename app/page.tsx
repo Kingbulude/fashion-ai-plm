@@ -121,8 +121,21 @@ export default function HomePage() {
     }
   };
 
+  const [brandName, setBrandName] = useState("TEPNIX步戌");
+
   useEffect(() => {
-    fetchLinks();
+    const fetchBrandName = async () => {
+      try {
+        const res = await fetch("/api/profile");
+        const data = await res.json();
+        if (data.brandName) {
+          setBrandName(data.brandName);
+        }
+      } catch (error) {
+        console.error("Failed to fetch brand name");
+      }
+    };
+    fetchBrandName();
   }, []);
 
   const getNodePos = (id: string) => {
@@ -701,7 +714,7 @@ export default function HomePage() {
       <div className="p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold mb-1">StyleForge 智能调度中心</h1>
+            <h1 className="text-2xl font-bold mb-1">{brandName} 全链路工序图</h1>
             <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
           </div>
         </div>

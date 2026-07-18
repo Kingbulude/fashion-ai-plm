@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/auth/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,9 +31,22 @@ interface SidebarLayoutProps {
   children: React.ReactNode;
 }
 
+interface UserProfile {
+  name: string;
+  avatarUrl: string | null;
+  role: string;
+  brandName: string;
+}
+
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile>({
+    name: "小芳",
+    avatarUrl: null,
+    role: "设计师",
+    brandName: "TEPNIX步戌",
+  });
   const router = useRouter();
   const pathname = usePathname();
 
@@ -42,12 +55,30 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser(data.user);
+        fetchProfile();
       } else {
         router.push("/login");
       }
     };
     getUser();
   }, [router]);
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch("/api/profile");
+      const data = await res.json();
+      if (data) {
+        setProfile({
+          name: data.name || "小芳",
+          avatarUrl: data.avatarUrl || null,
+          role: data.role || "设计师",
+          brandName: data.brandName || "TEPNIX步戌",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile");
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -82,7 +113,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <h1 className="font-bold text-sm truncate">StyleForge</h1>
+                <h1 className="font-bold text-sm truncate">{profile.brandName}</h1>
                 <p className="text-xs text-muted-foreground truncate">全链路管理</p>
               </div>
             )}
@@ -117,23 +148,27 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
                   <div className="relative">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-medium">
-                        {user?.email?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
+                    <Avatar className="h-9 w-9">
+                      {profile.avatarUrl ? (
+                        <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+                      ) : (
+                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium">
+                          {profile.name.charAt(0)}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">用户</p>
-                    <p className="text-[10px] text-slate-400">在线</p>
+                    <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
+                    <p className="text-[10px] text-slate-400">{profile.role}</p>
                   </div>
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 py-1">
                 <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-sm font-semibold text-slate-800">用户</p>
-                  <p className="text-xs text-slate-500">{user?.email}</p>
+                  <p className="text-sm font-semibold text-slate-800">{profile.name}</p>
+                  <p className="text-xs text-slate-500">{profile.role}</p>
                 </div>
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <Settings className="h-4 w-4 mr-2" />
@@ -154,10 +189,14 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="relative p-1 cursor-pointer">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-medium">
-                      {user?.email?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
+                  <Avatar className="h-9 w-9">
+                    {profile.avatarUrl ? (
+                      <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium">
+                        {profile.name.charAt(0)}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
                 </div>
