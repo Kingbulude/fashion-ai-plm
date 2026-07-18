@@ -65,20 +65,23 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { name, avatarUrl } = body;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        user_id: session.user.id,
         name: name || "小芳",
         avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq("user_id", session.user.id);
+      .eq("user_id", session.user.id)
+      .select();
 
     if (error) {
+      console.error("Supabase upsert error:", error);
       throw error;
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("Failed to update profile:", error);
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
