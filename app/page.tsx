@@ -19,14 +19,14 @@ const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 100, y: 130, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 490, y: 130, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 880, y: 130, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1270, y: 130, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 1075, y: 470, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1660, y: 470, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1660, y: 130, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 2050, y: 130, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 110, y: 130, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 410, y: 130, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 710, y: 130, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1010, y: 130, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 860, y: 470, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1310, y: 470, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1310, y: 130, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1610, y: 130, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -42,7 +42,7 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
-const CANVAS_WIDTH = 2160;
+const CANVAS_WIDTH = 1720;
 const CANVAS_HEIGHT = 600;
 
 interface ProcessLink {
