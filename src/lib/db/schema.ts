@@ -429,3 +429,27 @@ export const approvalFlows = pgTable("approval_flows", {
   reviewComment: text("review_comment"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// AI建议表
+export const aiSuggestions = pgTable("ai_suggestions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  aiRoleLevel: text("ai_role_level").notNull(),
+  specialistType: text("specialist_type"),
+  assistantType: text("assistant_type"),
+  brandId: uuid("brand_id").references(() => brands.id),
+  processNode: text("process_node"),
+  type: text("type").notNull(),
+  priority: text("priority").notNull().default("medium"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  proposedData: jsonb("proposed_data"),
+  targetTable: text("target_table"),
+  targetId: text("target_id"),
+  status: text("status").notNull().default("pending"),
+  createdBy: text("created_by").notNull().default("ai_system"),
+  reviewedBy: uuid("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComment: text("review_comment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expireAt: timestamp("expire_at"),
+});

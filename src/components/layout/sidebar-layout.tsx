@@ -26,6 +26,7 @@ import {
   Wand2,
   User,
   Building2,
+  Brain,
 } from "lucide-react";
 
 interface SidebarLayoutProps {
@@ -91,6 +92,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: BarChart3, label: "智能调度", href: "/" },
     { icon: Sparkles, label: "企划中心", href: "/planning" },
     { icon: Wand2, label: "AI智能分析", href: "/ai" },
+    { icon: Brain, label: "AI审核中心", href: "/ai-review" },
     { icon: Shirt, label: "款式管理", href: "/styles" },
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },

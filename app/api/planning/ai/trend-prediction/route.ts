@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/auth/supabase";
+import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
+import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 
 export const runtime = "edge";
 
@@ -47,6 +49,24 @@ export async function POST(request: Request) {
       result: { trends, season, category },
       confidence_score: 86,
     }]);
+
+    // 将趋势预测结果转为AI建议（需人工审核）
+    const suggestionContent = trends
+      .filter(t => t.confidence >= 85)
+      .map(t => `【${t.trend}】(置信度${t.confidence}%)\n${t.description}\n影响程度：${t.impact === "high" ? "高" : "中"}`)
+      .join("\n\n");
+
+    await createAISuggestion({
+      aiRoleLevel: AIRoleLevel.AI_SPECIALIST,
+      specialistType: AISpecialistType.PLANNING_AI,
+      processNode: "planning",
+      type: AISuggestionType.PREDICTION,
+      priority: AISuggestionPriority.HIGH,
+      title: `${season || "最新季次"}趋势预测 - ${category || "全品类"}`,
+      content: `AI企划专员基于市场数据分析，发现以下高置信度趋势：\n\n${suggestionContent}\n\n建议在企划阶段重点参考这些趋势方向。`,
+      proposedData: { trends, season, category },
+      targetTable: "planning_ai_results",
+    });
 
     return NextResponse.json({ trends, confidence: 86 });
   } catch (err) {

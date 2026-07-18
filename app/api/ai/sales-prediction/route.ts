@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
+import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
+import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 
 export const runtime = "edge";
 
@@ -32,6 +34,20 @@ export async function POST(request: Request) {
     if (styleId) {
       await supabase.from("styles").update({ sales_prediction: result }).eq("id", styleId);
     }
+
+    // 将销售预测结果转为AI建议（需人工审核）
+    await createAISuggestion({
+      aiRoleLevel: AIRoleLevel.AI_SPECIALIST,
+      specialistType: AISpecialistType.SALES_AI,
+      processNode: "sales",
+      type: AISuggestionType.PREDICTION,
+      priority: AISuggestionPriority.HIGH,
+      title: `销售预测 - ${styleName}`,
+      content: `AI销售专员对款式"${styleName}"的销量预估：\n\n${result}\n\n建议参考此预测进行备货和补货决策。`,
+      proposedData: { styleId, prediction: result },
+      targetTable: "styles",
+      targetId: styleId,
+    });
 
     return NextResponse.json({ prediction: result });
   } catch {
