@@ -318,10 +318,20 @@ export const moodBoardAssets = pgTable("mood_board_assets", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// 公司表
+export const companies = pgTable("companies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const brands = pgTable("brands", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   logoUrl: text("logo_url"),
+  companyId: uuid("company_id").references(() => companies.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -333,6 +343,89 @@ export const profiles = pgTable("profiles", {
   name: text("name").notNull().default("小芳"),
   avatarUrl: text("avatar_url"),
   role: text("role").notNull().default("设计师"),
+  roleLevel: text("role_level").notNull().default("executor"),
+  companyId: uuid("company_id").references(() => companies.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// 用户-品牌多对多关联
+export const userBrands = pgTable("user_brands", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(),
+  brandId: uuid("brand_id").notNull().references(() => brands.id),
+  roleLevel: text("role_level").notNull().default("executor"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 季次表（SS/FW）
+export const seasons = pgTable("seasons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandId: uuid("brand_id").notNull().references(() => brands.id),
+  name: text("name").notNull(),
+  seasonType: text("season_type").notNull(),
+  year: integer("year").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// 操作日志
+export const operationLogs = pgTable("operation_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id"),
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  action: text("action").notNull(),
+  targetTable: text("target_table").notNull(),
+  targetId: text("target_id"),
+  beforeData: jsonb("before_data"),
+  afterData: jsonb("after_data"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 数据版本
+export const dataVersions = pgTable("data_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tableName: text("table_name").notNull(),
+  recordId: text("record_id").notNull(),
+  version: integer("version").notNull().default(1),
+  data: jsonb("data").notNull(),
+  changedBy: uuid("changed_by"),
+  changeReason: text("change_reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 临时授权
+export const tempAuthorizations = pgTable("temp_authorizations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fromUserId: uuid("from_user_id").notNull(),
+  toUserId: uuid("to_user_id").notNull(),
+  brandId: uuid("brand_id").references(() => brands.id),
+  dataScope: text("data_scope").notNull(),
+  recordIds: jsonb("record_ids"),
+  expireAt: timestamp("expire_at").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 审批流
+export const approvalFlows = pgTable("approval_flows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandId: uuid("brand_id").references(() => brands.id),
+  tableName: text("table_name").notNull(),
+  recordId: text("record_id").notNull(),
+  action: text("action").notNull(),
+  proposedData: jsonb("proposed_data").notNull(),
+  submittedBy: uuid("submitted_by").notNull(),
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  reviewedBy: uuid("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  status: text("status").notNull().default("pending"),
+  reviewComment: text("review_comment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
