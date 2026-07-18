@@ -25,6 +25,7 @@ import {
   BarChart3,
   Wand2,
   User,
+  Building2,
 } from "lucide-react";
 
 interface SidebarLayoutProps {
@@ -93,6 +94,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Shirt, label: "款式管理", href: "/styles" },
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },
+    { icon: Building2, label: "品牌管理", href: "/brands" },
   ];
 
   const isActive = (href: string) => {

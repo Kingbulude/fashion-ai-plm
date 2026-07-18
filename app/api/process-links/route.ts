@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
+import { getSession } from "@/lib/auth/supabase";
+import { logOperation, recordVersion } from "@/lib/auth/audit";
 
 export const runtime = "edge";
 
@@ -35,12 +37,24 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, duration_hours, deadline, work_content, deliverables } = body;
 
     if (!id) {
       return NextResponse.json({ error: "缺少ID参数" }, { status: 400 });
     }
+
+    // 获取修改前的数据（用于操作日志）
+    const { data: beforeData } = await supabase
+      .from("process_links")
+      .select("*")
+      .eq("id", id)
+      .single();
 
     const updateData: any = {};
     if (duration_hours !== undefined) updateData.duration_hours = duration_hours;
@@ -56,6 +70,27 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // 记录操作日志和数据版本
+    await Promise.all([
+      logOperation({
+        userId: session.user.id,
+        action: "update",
+        targetTable: "process_links",
+        targetId: id,
+        beforeData,
+        afterData: data,
+        request,
+      }),
+      recordVersion({
+        tableName: "process_links",
+        recordId: id,
+        data: data,
+        changedBy: session.user.id,
+        changeReason: "更新工序链接",
+      }),
+    ]);
+
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "更新失败" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { getSession } from "@/lib/auth/supabase";
+import { logOperation } from "@/lib/auth/audit";
 
 export const runtime = "edge";
 
@@ -80,6 +81,15 @@ export async function PUT(request: Request) {
       console.error("Supabase upsert error:", error);
       throw error;
     }
+
+    await logOperation({
+      userId: session.user.id,
+      action: "update",
+      targetTable: "profiles",
+      targetId: session.user.id,
+      afterData: data,
+      request,
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
