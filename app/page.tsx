@@ -14,6 +14,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { supabase } from "@/lib/auth/supabase";
 
 const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
@@ -174,9 +175,16 @@ export default function HomePage() {
     if (!editingLink) return;
     setSaving(true);
     try {
+      // 获取 access_token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch("/api/process-links", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           id: editingLink.id,
           duration_hours: Number(editForm.duration_hours) || 0,
@@ -185,7 +193,10 @@ export default function HomePage() {
           deliverables: editForm.deliverables.filter(item => item.trim()).join("\n"),
         }),
       });
-      if (!res.ok) throw new Error("保存失败");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || "保存失败");
+      }
       showToast("success", "更新成功");
       setEditDialogOpen(false);
       fetchLinks();

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload, Check, Loader2, User, Briefcase, Building2, AlertCircle } from "lucide-react";
+import { supabase } from "@/lib/auth/supabase";
 
 interface ProfileData {
   name: string;
@@ -32,9 +33,25 @@ export default function SettingsPage() {
     fetchProfile();
   }, []);
 
+  // 获取当前用户的 access_token
+  const getAccessToken = async (): Promise<string | null> => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token || null;
+    } catch (e) {
+      console.error("Failed to get access token:", e);
+      return null;
+    }
+  };
+
   const fetchProfile = async () => {
     try {
-      const res = await fetch("/api/profile");
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/profile", { headers });
       const data = await res.json();
       if (data) {
         setProfile({
@@ -54,9 +71,14 @@ export default function SettingsPage() {
     setSaveMessage("");
     setSaveStatus("");
     try {
+      const token = await getAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch("/api/profile", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           name: editName || "小芳",
           avatarUrl: profile.avatarUrl,
