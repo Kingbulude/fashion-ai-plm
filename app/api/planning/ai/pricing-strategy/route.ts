@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       ],
     };
 
-    await supabase.from("planning_ai_results").insert([{
+    await dbAdmin.from("planning_ai_results").insert([{
       planning_id: null,
       skill_type: "pricing_strategy",
       skill_name: "定价策略",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     ];
 
     try {
-      await supabase.from("color_trends").insert(
+      await dbAdmin.from("color_trends").insert(
         colorRecommendations.map(c => ({
           season: season || "2026AW",
           color_hex: c.hex,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       );
     } catch {}
 
-    await supabase.from("planning_ai_results").insert([{
+    await dbAdmin.from("planning_ai_results").insert([{
       planning_id: null,
       skill_type: "color_recommendation",
       skill_name: "色彩推荐",

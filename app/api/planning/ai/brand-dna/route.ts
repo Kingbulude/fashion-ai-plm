@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 
 export const runtime = "edge";
 
 export async function GET() {
   try {
-    const { data, error } = await supabase.from("brand_dna").select("*").limit(1).single();
+    const { data, error } = await dbAdmin.from("brand_dna").select("*").limit(1).single();
     
     if (error) {
       return NextResponse.json({

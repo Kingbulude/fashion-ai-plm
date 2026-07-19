@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       },
     ];
 
-    await supabase.from("planning_ai_results").insert([{
+    await dbAdmin.from("planning_ai_results").insert([{
       planning_id: null,
       skill_type: "trend_prediction",
       skill_name: "趋势预测",

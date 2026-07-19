@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     };
 
     try {
-      const { data } = await supabase.from("brand_dna").select("*").limit(1).single();
+      const { data } = await dbAdmin.from("brand_dna").select("*").limit(1).single();
       if (data) brandDna = data;
     } catch {}
 
@@ -95,7 +95,7 @@ ${fabricRecommendations.map(f => `- ${f.name}: ${f.price}`).join("\n")}
       overallConfidence: 86,
     };
 
-    const newPlan = await supabase.from("planning").insert([{
+    const newPlan = await dbAdmin.from("planning").insert([{
       season,
       theme,
       category,
@@ -108,7 +108,7 @@ ${fabricRecommendations.map(f => `- ${f.name}: ${f.price}`).join("\n")}
 
     if (newPlan.data) {
       comprehensivePlan.planId = newPlan.data.id;
-      await supabase.from("planning_ai_results").insert([{
+      await dbAdmin.from("planning_ai_results").insert([{
         planning_id: newPlan.data.id,
         skill_type: "comprehensive_planning",
         skill_name: "统筹企划",

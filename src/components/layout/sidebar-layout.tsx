@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/auth/supabase";
+import { dbAdmin } from "@/lib/db/client";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,7 +54,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data } = await dbAdmin.auth.getUser();
       if (data.user) {
         setUser(data.user);
         fetchProfile();
@@ -100,7 +100,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await dbAdmin.auth.signOut();
     router.push("/login");
   };
 
