@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 function getSupabaseConfig() {
@@ -11,7 +12,6 @@ function createSupabaseClient(): SupabaseClient {
   const { url, key, valid } = getSupabaseConfig();
 
   if (!valid) {
-    // 构建阶段允许使用占位符；运行时再校验
     return createClient("https://placeholder.supabase.co", "placeholder-key", {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -43,70 +43,52 @@ export const supabase = new Proxy({} as SupabaseClient, {
   },
 });
 
-function ensureRuntimeConfig() {
-  const { valid } = getSupabaseConfig();
-  if (!valid) {
-    throw new Error("Supabase 环境变量未配置：NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  }
-}
-
-export async function getSession(request: Request | NextRequest) {
-  const supabaseClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key",
+export function getServerSupabase(request: Request | NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
+      cookies: {
+        get: (key: string) => {
+          const cookieHeader = request.headers.get("cookie") || "";
+          const cookies: Record<string, string> = {};
+          cookieHeader.split(";").forEach(cookie => {
+            const [name, value] = cookie.trim().split("=");
+            cookies[name] = decodeURIComponent(value || "");
+          });
+          return cookies[key] || null;
+        },
       },
     }
   );
+}
+
+export async function getSession(request: Request | NextRequest) {
+  try {
+    const supabaseServerClient = getServerSupabase(request);
+    const { data, error } = await supabaseServerClient.auth.getUser();
+    if (!error && data?.user) {
+      return { user: data.user };
+    }
+  } catch (e) {
+    console.error("Server auth error:", e);
+  }
 
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
     try {
+      const supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
       const { data, error } = await supabaseClient.auth.getUser(token);
       if (!error && data?.user) {
         return { user: data.user };
       }
     } catch (e) {
       console.error("Bearer auth error:", e);
-    }
-  }
-
-  const cookieHeader = request.headers.get("cookie") || "";
-  const cookiePairs = cookieHeader.split(";").filter(Boolean).map(c => {
-    const [k, ...v] = c.trim().split("=");
-    return [k, decodeURIComponent(v.join("="))] as const;
-  });
-  const cookies: Record<string, string> = Object.fromEntries(cookiePairs);
-
-  for (const [name, value] of Object.entries(cookies)) {
-    if (name.endsWith("-auth-token")) {
-      try {
-        const authData = JSON.parse(value);
-        if (authData.access_token) {
-          const { data, error } = await supabaseClient.auth.getUser(authData.access_token);
-          if (!error && data?.user) {
-            return { user: data.user };
-          }
-        }
-      } catch (e) {
-        console.error("Auth token cookie error:", e);
-      }
-    }
-  }
-
-  if (cookies["sb-access-token"]) {
-    try {
-      const { data, error } = await supabaseClient.auth.getUser(cookies["sb-access-token"]);
-      if (!error && data?.user) {
-        return { user: data.user };
-      }
-    } catch (e) {
-      console.error("Access token auth error:", e);
     }
   }
 

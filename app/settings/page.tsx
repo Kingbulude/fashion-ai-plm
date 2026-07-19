@@ -254,21 +254,33 @@ export default function SettingsPage() {
             </div>
 
             {/* 操作按钮 */}
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 bg-gradient-to-b from-slate-50/50 to-transparent -mx-6 -mb-6 px-6 pb-6">
               {saveMessage && (
-                <div className={`flex items-center gap-2 text-sm ${saveStatus === "success" ? "text-green-600" : "text-red-600"} mr-auto`}>
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                  saveStatus === "success" 
+                    ? "bg-green-50 text-green-700 border border-green-200" 
+                    : "bg-red-50 text-red-700 border border-red-200"
+                } mr-auto shadow-sm`}>
                   {saveStatus === "success" ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="h-4 w-4 text-green-600" />
                   ) : (
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4 text-red-600" />
                   )}
                   {saveMessage}
                 </div>
               )}
-              <Button variant="outline" onClick={fetchProfile} className="h-10 px-6">
+              <Button 
+                variant="outline" 
+                onClick={fetchProfile} 
+                className="h-11 px-7 rounded-xl font-medium text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+              >
                 取消
               </Button>
-              <Button onClick={handleSaveProfile} disabled={uploading} className="h-10 px-8">
+              <Button 
+                onClick={handleSaveProfile} 
+                disabled={uploading} 
+                className="h-11 px-8 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
                 {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 保存更改
               </Button>
