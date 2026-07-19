@@ -60,42 +60,88 @@ export async function PUT(request: Request) {
     const session = await getSession(request as any);
     
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized", detail: "无法获取用户会话，请重新登录" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
     const { name, avatarUrl } = body;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(
-        {
-          user_id: session.user.id,
-          name: name || "小芳",
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      )
-      .select();
+    const userId = session.user.id;
+    const userName = name || "小芳";
+    const userAvatarUrl = avatarUrl || null;
 
-    if (error) {
-      console.error("Supabase upsert error:", error);
-      throw error;
+    const { data: existingProfile, error: checkError } = await supabase
+      .from("profiles")
+      .select("id, user_id")
+      .eq("user_id", userId)
+      .single();
+
+    let resultData: any = null;
+
+    if (checkError || !existingProfile) {
+      const { data: insertData, error: insertError } = await supabase
+        .from("profiles")
+        .insert({
+          user_id: userId,
+          name: userName,
+          avatar_url: userAvatarUrl,
+          role: "设计师",
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        return NextResponse.json(
+          { error: "Insert failed", detail: insertError.message, code: insertError.code },
+          { status: 500 }
+        );
+      }
+      resultData = insertData;
+    } else {
+      const { data: updateData, error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          name: userName,
+          avatar_url: userAvatarUrl,
+        })
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Supabase update error:", updateError);
+        return NextResponse.json(
+          { error: "Update failed", detail: updateError.message, code: updateError.code },
+          { status: 500 }
+        );
+      }
+      resultData = updateData;
     }
 
-    await logOperation({
-      userId: session.user.id,
-      action: "update",
-      targetTable: "profiles",
-      targetId: session.user.id,
-      afterData: data,
-      request,
-    });
+    try {
+      await logOperation({
+        userId: userId,
+        action: "update",
+        targetTable: "profiles",
+        targetId: userId,
+        afterData: resultData,
+        request,
+      });
+    } catch (logError) {
+      console.error("Failed to log operation:", logError);
+    }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: resultData });
   } catch (error) {
     console.error("Failed to update profile:", error);
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      { error: "Failed to update profile", detail: errorMessage },
+      { status: 500 }
+    );
   }
 }

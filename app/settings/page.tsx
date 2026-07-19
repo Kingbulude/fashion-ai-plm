@@ -71,12 +71,23 @@ export default function SettingsPage() {
           setSaveStatus("");
         }, 3000);
       } else {
+        let errorMsg = "保存失败，请重试";
+        try {
+          const errData = await res.json();
+          if (errData?.detail) {
+            errorMsg = `保存失败：${errData.detail}`;
+          } else if (errData?.error) {
+            errorMsg = `保存失败：${errData.error}`;
+          }
+        } catch (e) {
+          // ignore
+        }
         setSaveStatus("error");
-        setSaveMessage("保存失败，请重试");
+        setSaveMessage(errorMsg);
         setTimeout(() => {
           setSaveMessage("");
           setSaveStatus("");
-        }, 3000);
+        }, 5000);
       }
     } catch (error) {
       setSaveStatus("error");
@@ -94,17 +105,54 @@ export default function SettingsPage() {
 
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string;
-        setProfile(prev => ({ ...prev, avatarUrl: base64Data }));
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const compressedImage = await compressImage(file, 200, 0.8);
+      setProfile(prev => ({ ...prev, avatarUrl: compressedImage }));
     } catch (error) {
-      console.error("Failed to upload avatar");
+      console.error("Failed to upload avatar:", error);
+    } finally {
       setUploading(false);
     }
+  };
+
+  const compressImage = (file: File, maxSize: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas not supported"));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error("File read failed"));
+      reader.readAsDataURL(file);
+    });
   };
 
   return (
