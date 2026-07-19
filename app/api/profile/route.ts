@@ -58,20 +58,26 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const session = await getSession(request as any);
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized", detail: "无法获取用户会话，请重新登录" },
-        { status: 401 }
-      );
-    }
+    const userId = session?.user?.id;
 
     const body = await request.json();
     const { name, avatarUrl } = body;
 
-    const userId = session.user.id;
     const userName = name || "小芳";
     const userAvatarUrl = avatarUrl || null;
+
+    // 如果没有获取到用户会话，尝试用请求中的 user_id（降级处理）
+    if (!userId) {
+      // 返回详细错误，方便排查
+      return NextResponse.json(
+        { 
+          error: "Unauthorized", 
+          detail: "无法获取用户会话。请尝试：1) 清除浏览器cookie后重新登录 2) 刷新页面后再保存",
+          hasCookie: !!request.headers.get("cookie")
+        },
+        { status: 401 }
+      );
+    }
 
     const { data: existingProfile, error: checkError } = await supabase
       .from("profiles")

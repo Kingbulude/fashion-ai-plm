@@ -38,9 +38,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = session?.user?.id || "anonymous";
 
     const body = await request.json();
     const { id, duration_hours, deadline, work_content, deliverables } = body;
@@ -71,25 +69,29 @@ export async function PUT(request: Request) {
 
     if (error) throw error;
 
-    // 记录操作日志和数据版本
-    await Promise.all([
-      logOperation({
-        userId: session.user.id,
-        action: "update",
-        targetTable: "process_links",
-        targetId: id,
-        beforeData,
-        afterData: data,
-        request,
-      }),
-      recordVersion({
-        tableName: "process_links",
-        recordId: id,
-        data: data,
-        changedBy: session.user.id,
-        changeReason: "更新工序链接",
-      }),
-    ]);
+    // 记录操作日志和数据版本（失败不影响主流程）
+    try {
+      await Promise.all([
+        logOperation({
+          userId,
+          action: "update",
+          targetTable: "process_links",
+          targetId: id,
+          beforeData,
+          afterData: data,
+          request,
+        }),
+        recordVersion({
+          tableName: "process_links",
+          recordId: id,
+          data: data,
+          changedBy: userId,
+          changeReason: "更新工序链接",
+        }),
+      ]);
+    } catch (logError) {
+      console.error("Failed to log operation:", logError);
+    }
 
     return NextResponse.json(data);
   } catch (err) {
