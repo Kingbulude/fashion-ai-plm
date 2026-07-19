@@ -117,17 +117,33 @@ export default function PlanningPage() {
     }
 
     try {
-      const response = await fetch(`${skill.endpoint}${cached?.conversationId ? `?conversationId=${cached.conversationId}` : ""}`);
+      const response = await fetch(skill.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userMessage: "开始",
+          conversationId: cached?.conversationId || null,
+        }),
+      });
       const data = await response.json();
       
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages);
-        setConversationId(data.conversationId || cached?.conversationId || null);
+        setConversationId(data.conversationId);
         setIsCompleted(data.isCompleted || false);
+
+        setSkillConversations(prev => ({
+          ...prev,
+          [skill.id]: {
+            messages: data.messages,
+            conversationId: data.conversationId,
+            isCompleted: data.isCompleted || false,
+          },
+        }));
       } else {
         const welcomeMessage: Message = {
           id: "welcome",
-          content: `您好！我是${skill.name}AI助手。${skill.description}`,
+          content: `您好！我是${skill.name}AI助手。${skill.description}\n\n请问有什么可以帮您的？`,
           sender: "ai",
           timestamp: new Date().toISOString(),
         };
@@ -138,7 +154,7 @@ export default function PlanningPage() {
     } catch {
       const welcomeMessage: Message = {
         id: "welcome",
-        content: `您好！我是${skill.name}AI助手。${skill.description}`,
+        content: `您好！我是${skill.name}AI助手。${skill.description}\n\n请问有什么可以帮您的？`,
         sender: "ai",
         timestamp: new Date().toISOString(),
       };
