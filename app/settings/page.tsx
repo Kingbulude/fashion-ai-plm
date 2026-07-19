@@ -88,6 +88,8 @@ export default function SettingsPage() {
         setSaveStatus("success");
         setSaveMessage("保存成功");
         setProfile(prev => ({ ...prev, name: editName || "小芳" }));
+        // 通知侧边栏等其他组件刷新个人资料
+        window.dispatchEvent(new Event("profile-updated"));
         setTimeout(() => {
           setSaveMessage("");
           setSaveStatus("");

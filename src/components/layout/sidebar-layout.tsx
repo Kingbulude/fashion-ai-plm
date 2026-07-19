@@ -65,9 +65,26 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     getUser();
   }, [router]);
 
+  // 监听个人资料更新事件
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchProfile();
+    };
+    window.addEventListener("profile-updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profile-updated", handleProfileUpdate);
+    };
+  }, []);
+
   const fetchProfile = async () => {
     try {
-      const res = await fetch("/api/profile");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/profile", { headers });
       const data = await res.json();
       if (data) {
         setProfile({
