@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Brain,
@@ -12,12 +12,11 @@ import {
   Lightbulb,
   Package,
   Palette,
-  Wind,
   Sparkles,
-  MessageSquare,
-  ChevronRight,
+  Wind,
   CheckCircle2,
   Loader2,
+  ChevronUp,
 } from "lucide-react";
 
 interface Message {
@@ -33,40 +32,45 @@ interface Skill {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  bgGradient: string;
   endpoint: string;
 }
 
 const SKILLS: Skill[] = [
   {
     id: "brand-dna",
-    name: "品牌基因AI对话",
+    name: "品牌基因",
     description: "品牌基因拆解规划，对齐品牌核心定位",
     icon: Brain,
-    color: "bg-blue-500",
+    color: "text-blue-600",
+    bgGradient: "from-blue-50 to-indigo-50",
     endpoint: "/api/planning/ai/brand-dna/chat",
   },
   {
     id: "market-insight",
-    name: "市场需求洞察",
+    name: "市场需求",
     description: "爬虫分析市场趋势、热门商品和消费者需求",
     icon: Search,
-    color: "bg-green-500",
+    color: "text-green-600",
+    bgGradient: "from-green-50 to-emerald-50",
     endpoint: "/api/planning/ai/market-insight/chat",
   },
   {
     id: "theme-inspiration",
-    name: "企划主题灵感",
+    name: "企划主题",
     description: "分析大牌企划主题，提供灵感参考",
     icon: Lightbulb,
-    color: "bg-amber-500",
+    color: "text-amber-600",
+    bgGradient: "from-amber-50 to-orange-50",
     endpoint: "/api/planning/ai/theme-inspiration/chat",
   },
   {
     id: "product-planning",
-    name: "商品企划生成",
+    name: "商品企划",
     description: "基于市场洞察生成完整商品企划方案",
     icon: Package,
-    color: "bg-purple-500",
+    color: "text-purple-600",
+    bgGradient: "from-purple-50 to-violet-50",
     endpoint: "/api/planning/ai/product-planning/chat",
   },
   {
@@ -74,7 +78,8 @@ const SKILLS: Skill[] = [
     name: "设计企划",
     description: "辅助设计师寻找灵感和搭配方向",
     icon: Palette,
-    color: "bg-pink-500",
+    color: "text-pink-600",
+    bgGradient: "from-pink-50 to-rose-50",
     endpoint: "/api/planning/ai/design-planning/chat",
   },
   {
@@ -82,7 +87,8 @@ const SKILLS: Skill[] = [
     name: "色彩企划",
     description: "基于流行趋势和品牌基因制定色彩方案",
     icon: Sparkles,
-    color: "bg-cyan-500",
+    color: "text-cyan-600",
+    bgGradient: "from-cyan-50 to-teal-50",
     endpoint: "/api/planning/ai/color-planning/chat",
   },
   {
@@ -90,7 +96,8 @@ const SKILLS: Skill[] = [
     name: "面料企划",
     description: "搜索面料商信息，找到符合主题的面料",
     icon: Wind,
-    color: "bg-indigo-500",
+    color: "text-indigo-600",
+    bgGradient: "from-indigo-50 to-blue-50",
     endpoint: "/api/planning/ai/fabric-planning/chat",
   },
 ];
@@ -251,124 +258,55 @@ export default function PlanningPage() {
     setMessages([welcomeMessage]);
   };
 
+  const PLANNING_SKILLS = SKILLS.slice(1);
+
   return (
     <SidebarLayout>
-      <div className="flex h-[calc(100vh-72px)] gap-4 p-4">
-        <div className="w-72 flex-shrink-0">
-          <Card className="h-full flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-amber-500" />
-                AI企划助手
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto space-y-2">
-              {SKILLS.map((skill) => {
-                const Icon = skill.icon;
-                const isActive = activeSkill.id === skill.id;
-                const hasUnread = skillConversations[skill.id]?.messages.length > 0 && !skillConversations[skill.id]?.isCompleted;
-                const isFinished = skillConversations[skill.id]?.isCompleted;
-
-                return (
+      <div className="h-[calc(100vh-72px)] flex flex-col p-4 gap-4">
+        <div className="flex-1 min-h-0">
+          <Card className="h-full flex flex-col overflow-hidden bg-gradient-to-br bg-white">
+            <div className={`border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-gradient-to-r ${activeSkill.bgGradient}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-white shadow-md`}>
+                  {(() => {
+                    const Icon = activeSkill.icon;
+                    return <Icon className={`h-6 w-6 ${activeSkill.color}`} />;
+                  })()}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-slate-800">{activeSkill.name}</h3>
+                  <p className="text-sm text-slate-500">{activeSkill.description}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isCompleted && (
+                  <Badge className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    已完成
+                  </Badge>
+                )}
+                {messages.length > 0 && (
                   <Button
-                    key={skill.id}
-                    variant={isActive ? "default" : "ghost"}
-                    className={`w-full h-auto p-3 text-left transition-all ${
-                      isActive 
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg" 
-                        : "hover:bg-slate-100"
-                    }`}
-                    onClick={() => handleSkillChange(skill)}
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNewConversation}
+                    className="hover:bg-white/50"
                   >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isActive ? "bg-white/20" : skill.color
-                        }`}
-                      >
-                        <Icon className={`h-5 w-5 ${isActive ? "text-white" : "text-white"}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`font-medium text-sm ${isActive ? "text-white" : "text-slate-800"} truncate`}>
-                            {skill.name}
-                          </span>
-                          {isFinished && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          )}
-                        </div>
-                        <p className={`text-xs mt-0.5 ${isActive ? "text-white/80" : "text-slate-500"} line-clamp-2`}>
-                          {skill.description}
-                        </p>
-                        {hasUnread && !isFinished && (
-                          <Badge variant="secondary" className={`mt-1 ${isActive ? "bg-white/20 text-white" : ""}`}>
-                            进行中
-                          </Badge>
-                        )}
-                      </div>
-                      <ChevronRight className={`h-4 w-4 flex-shrink-0 transition-transform ${
-                        isActive ? "text-white rotate-90" : "text-slate-400"
-                      }`} />
-                    </div>
+                    新建对话
                   </Button>
-                );
-              })}
-            </CardContent>
+                )}
+              </div>
+            </div>
             
-            <div className="border-t border-slate-100 p-4">
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4">
-                <h4 className="font-medium text-amber-800 text-sm mb-2">💡 企划流程建议</h4>
-                <p className="text-xs text-amber-700">
-                  建议按顺序使用：品牌基因 → 市场洞察 → 主题灵感 → 商品企划 → 设计企划 → 色彩企划 → 面料企划
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {isLoading && messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 text-amber-500 animate-spin mx-auto mb-4" />
-                <p className="text-slate-500">加载中...</p>
-              </div>
-            </div>
-          ) : (
-            <Card className="h-full flex flex-col overflow-hidden">
-              <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-white">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activeSkill.color}`}>
-                    {(() => {
-                      const Icon = activeSkill.icon;
-                      return <Icon className="h-5 w-5 text-white" />;
-                    })()}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800">{activeSkill.name}</h3>
-                    <p className="text-xs text-slate-500">{activeSkill.description}</p>
+            <div className="flex-1 overflow-hidden">
+              {isLoading && messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 text-amber-500 animate-spin mx-auto mb-4" />
+                    <p className="text-slate-500">加载中...</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {isCompleted && (
-                    <Badge className="bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      已完成
-                    </Badge>
-                  )}
-                  {messages.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleNewConversation}
-                    >
-                      新建对话
-                    </Button>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-hidden">
+              ) : (
                 <ChatPanel
                   messages={messages}
                   onSendMessage={handleSendMessage}
@@ -377,9 +315,64 @@ export default function PlanningPage() {
                   subtitle={activeSkill.description}
                   placeholder="输入您的问题或需求..."
                 />
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="h-32 flex-shrink-0">
+          <Card className="h-full bg-gradient-to-r from-slate-50 to-white">
+            <CardContent className="h-full flex items-center justify-center gap-6">
+              <div className="flex items-center gap-6">
+                {PLANNING_SKILLS.map((skill) => {
+                  const Icon = skill.icon;
+                  const isActive = activeSkill.id === skill.id;
+                  const hasUnread = skillConversations[skill.id]?.messages.length > 0 && !skillConversations[skill.id]?.isCompleted;
+                  const isFinished = skillConversations[skill.id]?.isCompleted;
+
+                  return (
+                    <button
+                      key={skill.id}
+                      onClick={() => handleSkillChange(skill)}
+                      className={`group relative flex flex-col items-center justify-center transition-all duration-300 ${
+                        isActive ? "scale-110" : "hover:scale-105"
+                      }`}
+                    >
+                      <div
+                        className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          isActive
+                            ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-200"
+                            : "bg-white shadow-md hover:shadow-lg"
+                        }`}
+                      >
+                        <Icon className={`h-7 w-7 ${isActive ? "text-white" : skill.color}`} />
+                        {isFinished && !isActive && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+                        {hasUnread && !isFinished && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-medium">!</span>
+                          </div>
+                        )}
+                      </div>
+                      <span
+                        className={`mt-2 text-sm font-medium transition-colors ${
+                          isActive ? "text-orange-600" : "text-slate-600 group-hover:text-slate-800"
+                        }`}
+                      >
+                        {skill.name}
+                      </span>
+                      {isActive && (
+                        <div className="absolute -bottom-1 w-12 h-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            </Card>
-          )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </SidebarLayout>
