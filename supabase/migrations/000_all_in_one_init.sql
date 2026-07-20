@@ -5,6 +5,11 @@
 -- 创建时间：2026-07-19
 -- ============================================
 
+-- ⚠️ 如果是重置，请在 Supabase SQL Editor 单独运行以下清空语句，然后才执行本脚本：
+-- DROP SCHEMA public CASCADE;
+-- CREATE SCHEMA public;
+-- GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role;
+
 -- ============================================
 -- 001_init_schema.sql
 -- ============================================
