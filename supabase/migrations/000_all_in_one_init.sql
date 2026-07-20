@@ -358,19 +358,13 @@ END $$;
 -- ============================================
 -- 004_knowledge_base.sql
 -- ============================================
-CREATE TABLE IF NOT EXISTS brand_dna (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  brand_name VARCHAR(100) NOT NULL,
-  brand_slogan TEXT,
-  target_audience TEXT,
-  style_direction TEXT[],
-  price_position VARCHAR(50),
-  color_palette VARCHAR(7)[],
-  core_values TEXT[],
-  competitive_advantage TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- 004 中的简化版 brand_dna 已被 010 的完整版替代，此处只补全 010 缺失的字段
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS brand_mission TEXT;
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS age_range VARCHAR(50);
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS visual_identity JSONB;
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS brand_story TEXT;
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'draft';
+ALTER TABLE brand_dna ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS market_intelligence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -936,6 +930,21 @@ CREATE TABLE IF NOT EXISTS color_planning (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS fabric_suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  contact_name VARCHAR(100),
+  contact_email VARCHAR(100),
+  contact_phone VARCHAR(50),
+  location VARCHAR(255),
+  website VARCHAR(255),
+  fabric_categories TEXT[],
+  certifications TEXT[],
+  rating DECIMAL(3,1),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS fabric_planning (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   planning_id UUID REFERENCES planning(id),
@@ -948,21 +957,6 @@ CREATE TABLE IF NOT EXISTS fabric_planning (
   properties JSONB,
   eco_certification VARCHAR(100),
   sample_status VARCHAR(20) DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS fabric_suppliers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  contact_name VARCHAR(100),
-  contact_email VARCHAR(100),
-  contact_phone VARCHAR(50),
-  location VARCHAR(255),
-  website VARCHAR(255),
-  fabric_categories TEXT[],
-  certifications TEXT[],
-  rating DECIMAL(3,1),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
