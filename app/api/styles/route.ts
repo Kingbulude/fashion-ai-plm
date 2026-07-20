@@ -1,3 +1,6 @@
+// 款式 API - 列表（多品牌隔离 + 多维度筛选）/ 创建
+// 集团多品牌架构下，所有款式都自动归属当前选中品牌
+
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
@@ -67,20 +70,66 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const headerTenant = getTenantFromHeaders(request);
     const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
+    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+    const statusFilter = url.searchParams.get("status");
+    const categoryFilter = url.searchParams.get("category");
+    const search = url.searchParams.get("search");
+    const sortBy = url.searchParams.get("sortBy") || "updated_at";
+    const order = url.searchParams.get("order") || "desc";
+    const includeStats = url.searchParams.get("includeStats") === "true";
 
-    let query = supabase.from("styles").select("*").order("created_at", { ascending: false });
+    let query = supabase
+      .from("styles")
+      .select("*")
+      .order(sortBy, { ascending: order === "asc" });
+
     if (brandId) {
       query = query.eq("brand_id", brandId);
+    }
+    if (seasonId) {
+      query = query.eq("season_id", seasonId);
+    }
+    if (statusFilter) {
+      // 支持逗号分隔的多状态: "planning,designing"
+      const statuses = statusFilter.split(",").map((s) => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        query = query.eq("status", statuses[0]);
+      } else if (statuses.length > 1) {
+        query = query.in("status", statuses);
+      }
+    }
+    if (categoryFilter) {
+      query = query.eq("category", categoryFilter);
+    }
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,style_no.ilike.%${search}%`);
     }
 
     const { data, error } = await query;
 
     if (error) {
+      console.error("获取款式列表失败:", error);
       return NextResponse.json({ error: "获取款式列表失败" }, { status: 500 });
     }
 
-    return NextResponse.json(toCamelCase(data) || []);
+    const styles = (toCamelCase(data) as any[]) || [];
+
+    // 包含阶段统计
+    if (includeStats) {
+      const stats: Record<string, number> = {};
+      for (const s of styles) {
+        stats[s.status] = (stats[s.status] || 0) + 1;
+      }
+      return NextResponse.json({
+        data: styles,
+        total: styles.length,
+        stats,
+      });
+    }
+
+    return NextResponse.json(styles);
   } catch (error) {
+    console.error("获取款式列表失败:", error);
     return NextResponse.json({ error: "获取款式列表失败" }, { status: 500 });
   }
 }
