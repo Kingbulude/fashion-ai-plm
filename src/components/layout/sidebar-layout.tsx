@@ -117,6 +117,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },
     { icon: Building2, label: "品牌管理", href: "/brands" },
+    { icon: BarChart3, label: "经营反馈", href: "/analytics" },
   ];
 
   const isActive = (href: string) => {

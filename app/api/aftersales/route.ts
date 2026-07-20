@@ -1,14 +1,39 @@
+// 售后 API - 多品牌隔离
+// 售后记录按款式 -> 品牌链路隔离
+
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const headerTenant = getTenantFromHeaders(request);
+    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
+    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+
+    // 先获取本品牌的款式 ID
+    let styleQuery = supabase.from("styles").select("id");
+    if (brandId) styleQuery = styleQuery.eq("brand_id", brandId);
+    if (seasonId) styleQuery = styleQuery.eq("season_id", seasonId);
+
+    const { data: styles } = await styleQuery;
+    const styleIds = (styles || []).map((s) => s.id);
+
+    if (styleIds.length === 0) {
+      return NextResponse.json({
+        records: [],
+        summary: { totalCount: 0, returnCount: 0, exchangeCount: 0, complaintCount: 0 },
+      });
+    }
+
     const { data, error } = await supabase
       .from("aftersales")
-      .select("*, styles:style_id(name)")
+      .select("*, styles:style_id(name, style_no)")
+      .in("style_id", styleIds)
       .order("created_at", { ascending: false });
 
     if (error) {
