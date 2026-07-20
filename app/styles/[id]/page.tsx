@@ -63,10 +63,43 @@ export default function StyleDetailPage() {
       if (!response.ok) throw new Error("获取款式信息失败");
       const data = await response.json();
       setStyle(data);
+      // 加载可用状态转换
+      fetchTransitions();
     } catch (err) {
       setError("获取款式信息失败");
     }
     setLoading(false);
+  };
+
+  const [transitions, setTransitions] = useState<any[]>([]);
+  const [completion, setCompletion] = useState<any>({});
+
+  const fetchTransitions = async () => {
+    try {
+      const res = await fetch(`/api/styles/${id}/transitions`);
+      if (res.ok) {
+        const data = await res.json();
+        setTransitions(data.available || []);
+        setCompletion(data.completion || {});
+      }
+    } catch {}
+  };
+
+  const handleTransition = async (toStatus: string, event: string) => {
+    if (!confirm(`确定将状态变更为"${toStatus}"？`)) return;
+    try {
+      const res = await fetch(`/api/styles/${id}/transitions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toStatus, event }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "转换失败");
+      showToast("success", "状态已更新");
+      fetchStyle();
+    } catch (err: any) {
+      showToast("error", err.message || "转换失败");
+    }
   };
 
   const fetchAssets = async () => {
@@ -275,6 +308,9 @@ export default function StyleDetailPage() {
                 const element = document.querySelector(`[data-state="inactive"][value="${tab}"]`) as HTMLElement;
                 element?.click();
               }}
+              transitions={transitions}
+              completion={completion}
+              onTransition={handleTransition}
             />
           </TabsContent>
 

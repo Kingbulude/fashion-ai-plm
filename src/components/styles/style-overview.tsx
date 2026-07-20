@@ -31,6 +31,9 @@ interface StyleOverviewProps {
   styleId: string;
   style: any;
   onNavigate: (tab: string) => void;
+  transitions?: any[];
+  completion?: any;
+  onTransition?: (toStatus: string, event: string) => void;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; progress: number }> = {
@@ -57,7 +60,7 @@ const stageFlow = [
   { key: "inventory", label: "库存", icon: Box, tabs: "inventory" },
 ];
 
-export function StyleOverview({ styleId, style, onNavigate }: StyleOverviewProps) {
+export function StyleOverview({ styleId, style, onNavigate, transitions = [], completion = {}, onTransition }: StyleOverviewProps) {
   const [bomCount, setBomCount] = useState<number | null>(null);
   const [samplingCount, setSamplingCount] = useState<number | null>(null);
   const [assetCount, setAssetCount] = useState<number | null>(null);
@@ -281,7 +284,37 @@ export function StyleOverview({ styleId, style, onNavigate }: StyleOverviewProps
         </CardContent>
       </Card>
 
-      {/* 4. 关键信息速览 */}
+      {/* 4. 状态机：可执行的状态转换 */}
+      {transitions.length > 0 && (
+        <Card className="border-0 shadow-sm bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-500" />
+              推进到下一阶段
+            </CardTitle>
+            <CardDescription className="text-xs">
+              状态机会自动校验必填数据并生成待办
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {transitions.map((t: any) => (
+                <Button
+                  key={t.event}
+                  size="sm"
+                  onClick={() => onTransition?.(t.to, t.event)}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                >
+                  {t.description}
+                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 5. 关键信息速览 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
