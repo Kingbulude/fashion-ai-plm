@@ -34,6 +34,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { StyleOverview } from "@/components/styles/style-overview";
+import { StyleStateFlow } from "@/components/styles/style-state-flow";
 
 export const runtime = "edge";
 
@@ -86,7 +87,6 @@ export default function StyleDetailPage() {
   };
 
   const handleTransition = async (toStatus: string, event: string) => {
-    if (!confirm(`确定将状态变更为"${toStatus}"？`)) return;
     try {
       const res = await fetch(`/api/styles/${id}/transitions`, {
         method: "POST",
@@ -95,10 +95,12 @@ export default function StyleDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "转换失败");
-      showToast("success", "状态已更新");
+      showToast("success", `状态已推进到「${toStatus}」`);
       fetchStyle();
+      fetchTransitions();
     } catch (err: any) {
       showToast("error", err.message || "转换失败");
+      throw err; // 让 StateFlow 组件能捕获
     }
   };
 
@@ -280,6 +282,17 @@ export default function StyleDetailPage() {
               删除
             </Button>
           </div>
+        </div>
+
+        {/* 状态机可视化 - 始终可见 */}
+        <div className="mb-6">
+          <StyleStateFlow
+            styleId={id}
+            currentStatus={style.status}
+            availableTransitions={transitions}
+            completion={completion}
+            onTransition={handleTransition}
+          />
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
