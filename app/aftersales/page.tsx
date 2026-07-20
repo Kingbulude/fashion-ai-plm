@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,9 +103,9 @@ export default function AftersalesPage() {
 
   const summary = {
     total: records.length,
-    returns: records.filter((r) => r.type === "return").length,
-    exchanges: records.filter((r) => r.type === "exchange").length,
-    complaints: records.filter((r) => r.type === "complaint").length,
+    returns: records.filter((r: any) => r.type === "return").length,
+    exchanges: records.filter((r: any) => r.type === "exchange").length,
+    complaints: records.filter((r: any) => r.type === "complaint").length,
   };
 
   const typeConfig: Record<string, { label: string; icon: any; color: string; bg: string }> = {
