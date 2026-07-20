@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -60,18 +61,30 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "物料项和数量不能为空" }, { status: 400 });
     }
 
+    // 自动从款式继承租户字段
+    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    if (tenantError) {
+      return NextResponse.json({ error: tenantError }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from("material_procurement")
-      .insert({
-        style_id: id,
-        bom_item_id: bomItemId,
-        supplier_id: supplierId || null,
-        status: status || "pending",
-        order_date: orderDate || null,
-        expected_date: expectedDate || null,
-        quantity: Number(quantity),
-        unit_price: unitPrice ? Number(unitPrice) : null,
-      })
+      .insert(
+        withTenant(
+          {
+            style_id: id,
+            bom_item_id: bomItemId,
+            supplier_id: supplierId || null,
+            status: status || "pending",
+            order_date: orderDate || null,
+            expected_date: expectedDate || null,
+            order_quantity: Number(quantity),
+            received_quantity: 0,
+            unit_price: unitPrice ? Number(unitPrice) : null,
+          },
+          tenant
+        )
+      )
       .select()
       .single();
 

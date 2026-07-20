@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -11,7 +12,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     const { id } = await params;
     const { data, error } = await supabase
       .from("production_orders")
-      .select("*, suppliers:factory_id(name)")
+      .select("*")
       .eq("style_id", id)
       .order("created_at", { ascending: false });
 
@@ -29,29 +30,42 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { factoryId, status, quantity, colorSizeRatio, materialReady, startDate, expectedEndDate } = body;
+    const { quantity, status, schedule, startDate, expectedEndDate } = body;
 
     if (!quantity) {
       return NextResponse.json({ error: "订单数量不能为空" }, { status: 400 });
     }
 
+    // 自动从款式继承租户字段
+    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    if (tenantError) {
+      return NextResponse.json({ error: tenantError }, { status: 400 });
+    }
+
+    const orderNo = `PO-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
     const { data, error } = await supabase
       .from("production_orders")
-      .insert({
-        style_id: id,
-        factory_id: factoryId || null,
-        status: status || "pending",
-        quantity: Number(quantity),
-        color_size_ratio: colorSizeRatio || null,
-        material_ready: materialReady || false,
-        start_date: startDate || null,
-        expected_end_date: expectedEndDate || null,
-      })
+      .insert(
+        withTenant(
+          {
+            style_id: id,
+            order_no: orderNo,
+            quantity: Number(quantity),
+            status: status || "pending",
+            schedule: schedule || null,
+            start_date: startDate || null,
+            expected_end_date: expectedEndDate || null,
+          },
+          tenant
+        )
+      )
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json({ error: "创建生产订单失败" }, { status: 500 });
+      console.error("创建生产订单失败:", error);
+      return NextResponse.json({ error: "创建生产订单失败", detail: error.message }, { status: 500 });
     }
 
     return NextResponse.json(toCamelCase(data), { status: 201 });
