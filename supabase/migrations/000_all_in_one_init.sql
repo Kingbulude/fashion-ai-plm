@@ -920,6 +920,7 @@ ALTER TABLE aftersales_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_test_results ENABLE ROW LEVEL SECURITY;
 
 -- 公共读策略（所有表都允许读，对写做限制）
+-- 关键：只对有 brand_id 字段的表做品牌隔离，否则用 WITH CHECK (true)
 DO $$
 DECLARE
   t text;
@@ -932,32 +933,42 @@ DECLARE
     'styles','design_assets','tech_packs','bom_items','sampling_records','material_procurement',
     'production_orders','inventory_records','stock_in_records','sales_records','aftersales_records','ai_test_results'
   ];
+  has_brand_id boolean;
 BEGIN
   FOR t IN SELECT unnest(tables) LOOP
     -- 公共读
     EXECUTE format('CREATE POLICY "public_read_%I" ON %I FOR SELECT USING (true)', t, t);
-    -- 多品牌写隔离
-    EXECUTE format('CREATE POLICY "brand_isolation_insert_%I" ON %I FOR INSERT WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
-    EXECUTE format('CREATE POLICY "brand_isolation_update_%I" ON %I FOR UPDATE USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
-    EXECUTE format('CREATE POLICY "brand_isolation_delete_%I" ON %I FOR DELETE USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
+
+    -- 检查表是否有 brand_id 字段
+    EXECUTE format(
+      'SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = %L AND table_name = %L AND column_name = %L)',
+      'public', t, 'brand_id'
+    ) INTO has_brand_id;
+
+    IF has_brand_id THEN
+      -- 有 brand_id 字段：用品牌隔离
+      EXECUTE format('CREATE POLICY "brand_isolation_insert_%I" ON %I FOR INSERT WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
+      EXECUTE format('CREATE POLICY "brand_isolation_update_%I" ON %I FOR UPDATE USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
+      EXECUTE format('CREATE POLICY "brand_isolation_delete_%I" ON %I FOR DELETE USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()))', t, t);
+    ELSE
+      -- 没有 brand_id 字段（如 companies）：允许所有写
+      EXECUTE format('CREATE POLICY "public_write_%I" ON %I FOR INSERT WITH CHECK (true)', t, t);
+      EXECUTE format('CREATE POLICY "public_update_%I" ON %I FOR UPDATE USING (true)', t, t);
+      EXECUTE format('CREATE POLICY "public_delete_%I" ON %I FOR DELETE USING (true)', t, t);
+    END IF;
   END LOOP;
 END $$;
 
--- profiles 单独处理（特殊字段名）
+-- profiles 单独处理（用 user_id 而不是 brand_id）
 DROP POLICY IF EXISTS "brand_isolation_insert_profiles" ON profiles;
 DROP POLICY IF EXISTS "brand_isolation_update_profiles" ON profiles;
 DROP POLICY IF EXISTS "brand_isolation_delete_profiles" ON profiles;
+DROP POLICY IF EXISTS "public_write_profiles" ON profiles;
+DROP POLICY IF EXISTS "public_update_profiles" ON profiles;
+DROP POLICY IF EXISTS "public_delete_profiles" ON profiles;
 CREATE POLICY "user_isolation_insert_profiles" ON profiles FOR INSERT WITH CHECK (user_id = auth.uid() OR auth.uid() IS NULL);
 CREATE POLICY "user_isolation_update_profiles" ON profiles FOR UPDATE USING (user_id = auth.uid() OR auth.uid() IS NULL);
 CREATE POLICY "user_isolation_delete_profiles" ON profiles FOR DELETE USING (user_id = auth.uid() OR auth.uid() IS NULL);
-
--- companies 单独处理
-DROP POLICY IF EXISTS "brand_isolation_insert_companies" ON companies;
-DROP POLICY IF EXISTS "brand_isolation_update_companies" ON companies;
-DROP POLICY IF EXISTS "brand_isolation_delete_companies" ON companies;
-CREATE POLICY "public_write_companies" ON companies FOR INSERT WITH CHECK (true);
-CREATE POLICY "public_update_companies" ON companies FOR UPDATE USING (true);
-CREATE POLICY "public_delete_companies" ON companies FOR DELETE USING (true);
 
 -- 授权
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
