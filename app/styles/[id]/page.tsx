@@ -31,7 +31,9 @@ import {
   DollarSign,
   Sparkles,
   Loader2,
+  LayoutDashboard,
 } from "lucide-react";
+import { StyleOverview } from "@/components/styles/style-overview";
 
 export const runtime = "edge";
 
@@ -247,8 +249,12 @@ export default function StyleDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="mb-6 h-10 p-1">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="mb-6 h-10 p-1 flex-wrap">
+            <TabsTrigger value="overview" className="h-8 px-4">
+              <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
+              作战室
+            </TabsTrigger>
             <TabsTrigger value="info" className="h-8 px-4">基本信息</TabsTrigger>
             <TabsTrigger value="assets" className="h-8 px-4">设计资产</TabsTrigger>
             <TabsTrigger value="techpack" className="h-8 px-4">工艺包</TabsTrigger>
@@ -259,6 +265,18 @@ export default function StyleDetailPage() {
             <TabsTrigger value="production" className="h-8 px-4">生产</TabsTrigger>
             <TabsTrigger value="inventory" className="h-8 px-4">库存</TabsTrigger>
           </TabsList>
+
+          {/* 作战室概览 Tab */}
+          <TabsContent value="overview" className="mt-0">
+            <StyleOverview
+              styleId={id}
+              style={style}
+              onNavigate={(tab) => {
+                const element = document.querySelector(`[data-state="inactive"][value="${tab}"]`) as HTMLElement;
+                element?.click();
+              }}
+            />
+          </TabsContent>
 
           <TabsContent value="info" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

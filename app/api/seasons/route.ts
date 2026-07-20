@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const brandId = url.searchParams.get("brand_id");
 
     if (!brandId) {
-      return NextResponse.json([]);
+      return NextResponse.json({ data: [] });
     }
 
     const { data: seasons } = await supabase
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       .order("year", { ascending: false })
       .order("season_type", { ascending: false });
 
-    return NextResponse.json(seasons || []);
+    return NextResponse.json({ data: seasons || [] });
   } catch (error) {
     console.error("Failed to fetch seasons:", error);
     return NextResponse.json([]);
