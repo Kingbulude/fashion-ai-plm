@@ -29,6 +29,7 @@ import {
   Brain,
   Bell,
   Search,
+  Store,
 } from "lucide-react";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 
@@ -68,7 +69,6 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     getUser();
   }, [router]);
 
-  // 监听个人资料更新事件
   useEffect(() => {
     const handleProfileUpdate = () => {
       fetchProfile();
@@ -117,6 +117,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },
     { icon: Building2, label: "品牌管理", href: "/brands" },
+    { icon: Store, label: "供应商", href: "/suppliers" },
     { icon: BarChart3, label: "经营反馈", href: "/analytics" },
   ];
 
@@ -127,73 +128,79 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-background flex">
       <aside
-        className={`${collapsed ? "w-16" : "w-48"} bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0`}
+        className={`${collapsed ? "w-[72px]" : "w-56"} bg-sidebar border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0`}
       >
-        <div className="h-16 flex items-center px-4 border-b border-slate-200">
+        {/* Brand */}
+        <div className="h-16 flex items-center px-4 border-b border-[var(--sidebar-border)]">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20">
+            <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center flex-shrink-0 shadow-premium">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <h1 className="font-bold text-sm truncate">{profile.brandName}</h1>
-                <p className="text-xs text-muted-foreground truncate">全链路管理</p>
+                <h1 className="font-bold text-sm truncate text-foreground">{profile.brandName}</h1>
+                <p className="text-[10px] text-muted-foreground truncate tracking-wide uppercase font-medium">全链路管理</p>
               </div>
             )}
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="flex-shrink-0"
+            className="flex-shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item, index) => (
-            <Button
-              key={index}
-              variant={isActive(item.href) ? "secondary" : "ghost"}
-              className={`w-full justify-start ${collapsed ? "px-2" : "px-3"} h-10`}
-              onClick={() => router.push(item.href)}
-            >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && <span className="ml-3 text-sm">{item.label}</span>}
-            </Button>
-          ))}
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {navItems.map((item, index) => {
+            const active = isActive(item.href);
+            return (
+              <button
+                key={index}
+                onClick={() => router.push(item.href)}
+                className={`nav-item w-full ${active ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+                title={collapsed ? item.label : undefined}
+              >
+                <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${active ? "text-terracotta-500" : ""}`} />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-3 border-t border-slate-200">
+        {/* User */}
+        <div className="p-3 border-t border-[var(--sidebar-border)]">
           {!collapsed ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-                  <div className="relative">
-                    <Avatar className="h-9 w-9 rounded-full overflow-hidden">
+                <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--sidebar-accent)] cursor-pointer transition-colors">
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-9 w-9 rounded-full ring-2 ring-white shadow-sm">
                       {profile.avatarUrl ? (
                         <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
                       ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-full w-full h-full">
+                        <AvatarFallback className="gradient-terracotta text-white text-sm font-medium rounded-full w-full h-full">
                           {profile.name.charAt(0)}
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
-                    <p className="text-[10px] text-slate-400">{profile.role}</p>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-semibold text-foreground truncate">{profile.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{profile.role}</p>
                   </div>
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 py-1">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-sm font-semibold text-slate-800">{profile.name}</p>
-                  <p className="text-xs text-slate-500">{profile.role}</p>
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-sm font-semibold text-foreground">{profile.name}</p>
+                  <p className="text-xs text-muted-foreground">{profile.role}</p>
                 </div>
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <Settings className="h-4 w-4 mr-2" />
@@ -204,7 +211,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                   个人资料
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
                   退出登录
                 </DropdownMenuItem>
@@ -213,17 +220,17 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="relative p-1 cursor-pointer">
-                  <Avatar className="h-9 w-9 rounded-full">
+                <div className="relative p-1 cursor-pointer flex justify-center">
+                  <Avatar className="h-9 w-9 rounded-full ring-2 ring-white shadow-sm">
                     {profile.avatarUrl ? (
                       <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full" />
                     ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-full">
+                      <AvatarFallback className="gradient-terracotta text-white text-sm font-medium rounded-full">
                         {profile.name.charAt(0)}
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                  <span className="absolute bottom-0 right-2 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -232,7 +239,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                   设置
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
                   退出
                 </DropdownMenuItem>
@@ -243,20 +250,20 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        {/* 全局品牌/季节上下文栏 - 按文档要求必须常驻 */}
-        <div className="h-14 border-b border-slate-200 bg-white/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-30">
+        {/* Glass header */}
+        <div className="h-14 header-glass flex items-center justify-between px-6">
           <TenantSwitcher />
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Search className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground">
+              <Search className="h-[18px] w-[18px]" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9 relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground relative">
+              <Bell className="h-[18px] w-[18px]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-terracotta-500 rounded-full ring-2 ring-white" />
             </Button>
           </div>
         </div>
-        {children}
+        <div className="p-6 min-h-[calc(100vh-3.5rem)]">{children}</div>
       </main>
     </div>
   );

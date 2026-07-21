@@ -1,6 +1,3 @@
-// 工作台首页 - 集团多品牌"作战室"
-// 核心目标：3 秒看清"今天该做什么"——待办、逾期、风险、款式进度
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -27,7 +24,6 @@ import {
   Box,
   ArrowRight,
   Check,
-  X,
   RefreshCw,
   Loader2,
   ChevronRight,
@@ -39,7 +35,6 @@ import {
   BarChart3,
 } from "lucide-react";
 
-// 7 大阶段展示顺序
 const PIPELINE_STAGES = [
   { key: "planning", label: "企划中", icon: Sparkles, color: "slate" },
   { key: "designing", label: "设计中", icon: Palette, color: "blue" },
@@ -50,52 +45,28 @@ const PIPELINE_STAGES = [
   { key: "selling", label: "销售中", icon: ShoppingCart, color: "purple" },
 ];
 
-const STAGE_COLOR_MAP: Record<string, { bg: string; text: string; ring: string }> = {
-  slate: { bg: "bg-slate-50", text: "text-slate-700", ring: "ring-slate-200" },
-  blue: { bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
-  amber: { bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200" },
-  yellow: { bg: "bg-yellow-50", text: "text-yellow-700", ring: "ring-yellow-200" },
-  green: { bg: "bg-green-50", text: "text-green-700", ring: "ring-green-200" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200" },
-  purple: { bg: "bg-purple-50", text: "text-purple-700", ring: "ring-purple-200" },
+const STAGE_COLOR_MAP: Record<string, { bg: string; text: string; bar: string }> = {
+  slate: { bg: "bg-slate-100", text: "text-slate-700", bar: "bg-slate-500" },
+  blue: { bg: "bg-blue-100", text: "text-blue-700", bar: "bg-blue-500" },
+  amber: { bg: "bg-amber-100", text: "text-amber-700", bar: "bg-amber-500" },
+  yellow: { bg: "bg-yellow-100", text: "text-yellow-700", bar: "bg-yellow-500" },
+  green: { bg: "bg-green-100", text: "text-green-700", bar: "bg-green-500" },
+  emerald: { bg: "bg-emerald-100", text: "text-emerald-700", bar: "bg-emerald-500" },
+  purple: { bg: "bg-purple-100", text: "text-purple-700", bar: "bg-purple-500" },
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: "紧急", color: "bg-red-100 text-red-700 border-red-200" },
-  high: { label: "高", color: "bg-orange-100 text-orange-700 border-orange-200" },
-  medium: { label: "中", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  low: { label: "低", color: "bg-slate-100 text-slate-600 border-slate-200" },
+const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
+  urgent: { label: "紧急", className: "badge-destructive" },
+  high: { label: "高", className: "badge-warning" },
+  medium: { label: "中", className: "bg-navy-100 text-navy-700" },
+  low: { label: "低", className: "bg-sand-200 text-slate-600" },
 };
 
-const RISK_LEVEL_CONFIG: Record<string, { label: string; bg: string; text: string; border: string; icon: any }> = {
-  urgent: {
-    label: "紧急",
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-    icon: AlertTriangle,
-  },
-  high: {
-    label: "高",
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    border: "border-orange-200",
-    icon: AlertTriangle,
-  },
-  medium: {
-    label: "中",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
-    icon: AlertCircle,
-  },
-  low: {
-    label: "低",
-    bg: "bg-slate-50",
-    text: "text-slate-700",
-    border: "border-slate-200",
-    icon: CircleDot,
-  },
+const RISK_LEVEL_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+  urgent: { label: "紧急", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
+  high: { label: "高", className: "bg-orange-50 text-orange-700 border-orange-200", icon: AlertTriangle },
+  medium: { label: "中", className: "bg-amber-50 text-amber-700 border-amber-200", icon: AlertCircle },
+  low: { label: "低", className: "bg-sand-100 text-slate-700 border-sand-200", icon: CircleDot },
 };
 
 export default function DashboardPage() {
@@ -143,7 +114,6 @@ export default function DashboardPage() {
         },
         body: JSON.stringify({ status: "completed" }),
       });
-      // 重新加载工作台
       await loadWorkspace(true);
     } catch (err) {
       console.error("完成待办失败:", err);
@@ -152,7 +122,6 @@ export default function DashboardPage() {
     }
   };
 
-  // 计算阶段数量
   const stageCounts = useMemo(() => {
     if (!workspace?.stylesByStatus) {
       return PIPELINE_STAGES.reduce((acc, s) => ({ ...acc, [s.key]: 0 }), {} as Record<string, number>);
@@ -163,10 +132,7 @@ export default function DashboardPage() {
     }, {} as Record<string, number>);
   }, [workspace]);
 
-  const totalActive = useMemo(
-    () => Object.values(stageCounts).reduce((sum, n) => sum + n, 0),
-    [stageCounts]
-  );
+  const totalActive = useMemo(() => Object.values(stageCounts).reduce((sum, n) => sum + n, 0), [stageCounts]);
 
   const summary = workspace?.summary || {
     totalStyles: 0,
@@ -177,18 +143,18 @@ export default function DashboardPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
-        {/* 顶部标题栏 */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-[1600px] mx-auto space-y-6 animate-fadeIn">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">工作台</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">工作台</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               {currentBrand ? (
                 <>
-                  <span className="font-medium text-slate-700">{currentBrand.name}</span>
-                  {currentSeason && <span className="mx-2">·</span>}
+                  <span className="font-medium text-foreground">{currentBrand.name}</span>
+                  {currentSeason && <span className="mx-2 text-border">·</span>}
                   {currentSeason && <span>{currentSeason.name}</span>}
-                  <span className="mx-2">·</span>
+                  <span className="mx-2 text-border">·</span>
                   <span>今天该做什么</span>
                 </>
               ) : (
@@ -197,16 +163,11 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadWorkspace(true)}
-              disabled={refreshing}
-            >
+            <Button variant="outline" size="sm" onClick={() => loadWorkspace(true)} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
               刷新
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" className="bg-primary hover:bg-navy-800 shadow-premium" asChild>
               <Link href="/planning">
                 <Plus className="h-4 w-4 mr-1.5" />
                 新建企划
@@ -216,18 +177,18 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="py-20 text-center text-slate-500 flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            加载工作台数据...
+          <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-terracotta-500" />
+            <p className="text-sm">加载工作台数据...</p>
           </div>
         ) : error ? (
-          <Card className="border-red-200 bg-red-50">
+          <Card className="border-destructive/30 bg-destructive/5">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <AlertTriangle className="h-5 w-5 text-destructive" />
                 <div>
-                  <p className="font-medium text-red-700">加载失败</p>
-                  <p className="text-sm text-red-600 mt-0.5">{error}</p>
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => loadWorkspace()} className="ml-auto">
                   重试
@@ -237,13 +198,13 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
-            {/* 1. 4 大关键指标卡 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* KPI Metrics - Bento Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <SummaryCard
                 title="款式总数"
                 value={summary.totalStyles}
                 icon={BarChart3}
-                color="blue"
+                color="navy"
                 subtitle={`本品牌在开发中款式`}
                 href="/styles"
               />
@@ -251,7 +212,7 @@ export default function DashboardPage() {
                 title="待办事项"
                 value={summary.pendingTodos}
                 icon={ListTodo}
-                color="amber"
+                color="terracotta"
                 subtitle={summary.overdueCount > 0 ? `其中 ${summary.overdueCount} 项已逾期` : "暂无逾期"}
                 highlight={summary.overdueCount > 0}
                 href="/todos"
@@ -274,19 +235,19 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* 2. 风险预警区（紧急/高） */}
+            {/* Risk Alert */}
             {workspace?.risks && workspace.risks.length > 0 && (
-              <Card className="mb-6 border-0 shadow-sm">
+              <Card className="card-premium border-terracotta-100">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ShieldAlert className="h-4 w-4 text-red-500" />
+                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                      <ShieldAlert className="h-4 w-4 text-terracotta-500" />
                       风险预警
-                      <Badge variant="destructive" className="ml-1">
+                      <Badge className="ml-1 bg-terracotta-100 text-terracotta-600 hover:bg-terracotta-100">
                         {workspace.risks.length}
                       </Badge>
                     </CardTitle>
-                    <span className="text-xs text-slate-500">实时检测</span>
+                    <span className="text-xs text-muted-foreground">实时检测</span>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -298,21 +259,21 @@ export default function DashboardPage() {
                         <Link
                           key={i}
                           href={risk.styleId ? `/styles/${risk.styleId}` : "#"}
-                          className={`flex items-center gap-3 p-3 rounded-lg border ${config.border} ${config.bg} hover:shadow-sm transition-all`}
+                          className={`flex items-center gap-3 p-3 rounded-xl border ${config.className} hover:shadow-md transition-all`}
                         >
-                          <div className={`p-1.5 rounded ${config.bg}`}>
-                            <Icon className={`h-4 w-4 ${config.text}`} />
+                          <div className={`p-1.5 rounded-lg bg-white/60`}>
+                            <Icon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className={`text-sm font-medium ${config.text}`}>{risk.title}</p>
-                              <Badge variant="outline" className={`text-[10px] h-4 ${config.text} ${config.border}`}>
+                              <p className="text-sm font-semibold">{risk.title}</p>
+                              <Badge variant="outline" className={`text-[10px] h-4 border-current/30`}>
                                 {config.label}
                               </Badge>
                             </div>
-                            <p className="text-xs text-slate-600 mt-0.5 truncate">{risk.message}</p>
+                            <p className="text-xs text-foreground/70 mt-0.5 truncate">{risk.message}</p>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                          <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
                         </Link>
                       );
                     })}
@@ -328,24 +289,23 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* 3. 今日待办 */}
-              <Card className="lg:col-span-2 border-0 shadow-sm">
+            {/* Main Bento Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Todos */}
+              <Card className="lg:col-span-2 card-premium">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <ListTodo className="h-4 w-4 text-amber-500" />
+                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                        <ListTodo className="h-4 w-4 text-terracotta-500" />
                         今日待办
                         {summary.overdueCount > 0 && (
-                          <Badge variant="destructive" className="ml-1">
+                          <Badge className="ml-1 bg-destructive/10 text-destructive hover:bg-destructive/10">
                             {summary.overdueCount} 逾期
                           </Badge>
                         )}
                       </CardTitle>
-                      <CardDescription className="text-xs mt-1">
-                        按优先级排序，点击完成快速处理
-                      </CardDescription>
+                      <CardDescription className="text-xs mt-1">按优先级排序，点击完成快速处理</CardDescription>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/todos">查看全部</Link>
@@ -354,10 +314,12 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   {!workspace?.todos || workspace.todos.length === 0 ? (
-                    <div className="py-12 text-center">
-                      <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500">今日没有待办</p>
-                      <p className="text-xs text-slate-400 mt-1">所有事情都处理完了，享受片刻宁静</p>
+                    <div className="py-14 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                        <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">今日没有待办</p>
+                      <p className="text-xs text-muted-foreground mt-1">所有事情都处理完了，享受片刻宁静</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -367,42 +329,38 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={todo.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                               isOverdue
-                                ? "border-red-200 bg-red-50/50"
-                                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                ? "border-destructive/20 bg-destructive/5"
+                                : "border-border hover:border-terracotta-100 hover:bg-sand-50"
                             }`}
                           >
                             <button
                               onClick={() => handleCompleteTodo(todo.id)}
                               disabled={completingTodoId === todo.id}
-                              className="flex-shrink-0 h-5 w-5 rounded border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 transition-colors flex items-center justify-center group disabled:opacity-50"
+                              className="flex-shrink-0 h-5 w-5 rounded-md border-2 border-border hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex items-center justify-center group disabled:opacity-50"
                               title="标记完成"
                             >
                               {completingTodoId === todo.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-green-600" />
+                                <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
                               ) : (
-                                <Check className="h-3 w-3 text-transparent group-hover:text-green-600" />
+                                <Check className="h-3 w-3 text-transparent group-hover:text-emerald-600" />
                               )}
                             </button>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium text-slate-800 truncate">{todo.title}</p>
-                                <Badge variant="outline" className={`text-[10px] h-4 ${priorityConfig.color}`}>
+                                <p className="text-sm font-medium text-foreground truncate">{todo.title}</p>
+                                <Badge variant="outline" className={`text-[10px] h-5 ${priorityConfig.className}`}>
                                   {priorityConfig.label}
                                 </Badge>
-                                {isOverdue && (
-                                  <Badge variant="destructive" className="text-[10px] h-4">
-                                    逾期
-                                  </Badge>
-                                )}
+                                {isOverdue && <Badge className="text-[10px] h-5 badge-destructive">逾期</Badge>}
                               </div>
                               {todo.description && (
-                                <p className="text-xs text-slate-500 mt-0.5 truncate">{todo.description}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{todo.description}</p>
                               )}
                               {todo.due_date && (
-                                <p className={`text-xs mt-1 ${isOverdue ? "text-red-600" : "text-slate-400"}`}>
-                                  <Clock className="h-3 w-3 inline mr-0.5" />
+                                <p className={`text-xs mt-1 flex items-center gap-0.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                                  <Clock className="h-3 w-3" />
                                   {new Date(todo.due_date).toLocaleString("zh-CN", {
                                     month: "numeric",
                                     day: "numeric",
@@ -420,43 +378,36 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* 4. 款式 7 阶段流水线 */}
-              <Card className="border-0 shadow-sm">
+              {/* Pipeline */}
+              <Card className="card-premium">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-indigo-500" />
+                  <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                    <TrendingUp className="h-4 w-4 text-navy-500" />
                     款式流水线
                   </CardTitle>
                   <CardDescription className="text-xs">7 大阶段款式分布</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {PIPELINE_STAGES.map((stage) => {
                       const count = stageCounts[stage.key] || 0;
                       const colors = STAGE_COLOR_MAP[stage.color];
                       const Icon = stage.icon;
                       const max = Math.max(...Object.values(stageCounts), 1);
                       return (
-                        <div
-                          key={stage.key}
-                          className="flex items-center gap-3 group cursor-pointer"
-                        >
-                          <div className={`p-1.5 rounded ${colors.bg}`}>
+                        <div key={stage.key} className="flex items-center gap-3 group cursor-pointer">
+                          <div className={`p-1.5 rounded-lg ${colors.bg}`}>
                             <Icon className={`h-3.5 w-3.5 ${colors.text}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-slate-600">{stage.label}</span>
-                              <span className={`text-xs font-semibold ${colors.text}`}>{count}</span>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-medium text-muted-foreground">{stage.label}</span>
+                              <span className={`text-xs font-bold ${colors.text}`}>{count}</span>
                             </div>
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-1.5 bg-sand-100 rounded-full overflow-hidden">
                               <div
-                                className={`h-full ${colors.bg} transition-all`}
-                                style={{
-                                  width: `${(count / max) * 100}%`,
-                                  backgroundColor: "currentColor",
-                                  opacity: 0.6,
-                                }}
+                                className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
+                                style={{ width: `${(count / max) * 100}%` }}
                               />
                             </div>
                           </div>
@@ -468,13 +419,13 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            {/* 5. 最近款式 */}
-            <Card className="border-0 shadow-sm mb-6">
+            {/* Recent Styles */}
+            <Card className="card-premium">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-blue-500" />
+                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                      <Sparkles className="h-4 w-4 text-navy-500" />
                       最近款式
                     </CardTitle>
                     <CardDescription className="text-xs mt-1">最近更新的 6 个款式</CardDescription>
@@ -486,9 +437,11 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {!workspace?.recentStyles || workspace.recentStyles.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <Box className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                    <p className="text-sm text-slate-500">还没有款式</p>
+                  <div className="py-14 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-sand-100 flex items-center justify-center mx-auto mb-3">
+                      <Box className="h-7 w-7 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">还没有款式</p>
                     <Button variant="outline" size="sm" className="mt-3" asChild>
                       <Link href="/styles">
                         <Plus className="h-3.5 w-3.5 mr-1" />
@@ -497,7 +450,7 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {workspace.recentStyles.map((style: any) => {
                       const stageInfo = PIPELINE_STAGES.find((s) => s.key === style.status);
                       const colors = stageInfo ? STAGE_COLOR_MAP[stageInfo.color] : STAGE_COLOR_MAP.slate;
@@ -505,18 +458,18 @@ export default function DashboardPage() {
                         <Link
                           key={style.id}
                           href={`/styles/${style.id}`}
-                          className="block p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all group"
+                          className="block p-4 rounded-xl border border-border bg-card hover:border-terracotta-200 hover:shadow-md transition-all group"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{style.name}</p>
-                            <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                            <p className="text-sm font-semibold text-foreground truncate">{style.name}</p>
+                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-terracotta-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                           </div>
-                          <p className="text-xs text-slate-500 mb-2">款号: {style.style_no}</p>
+                          <p className="text-xs text-muted-foreground mb-3">款号: {style.style_no}</p>
                           <div className="flex items-center justify-between">
                             <Badge className={`${colors.bg} ${colors.text} border-0`}>
                               {stageInfo?.label || style.status}
                             </Badge>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               {new Date(style.updated_at).toLocaleDateString("zh-CN", {
                                 month: "numeric",
                                 day: "numeric",
@@ -524,18 +477,12 @@ export default function DashboardPage() {
                             </p>
                           </div>
                           {style.target_cost && (
-                            <p className="text-xs text-slate-500 mt-2">
-                              目标: <span className="font-medium">¥{style.target_cost}</span>
+                            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                              目标: <span className="font-medium text-foreground">¥{style.target_cost}</span>
                               {style.actual_cost && (
                                 <>
                                   {" / 实际: "}
-                                  <span
-                                    className={`font-medium ${
-                                      style.actual_cost > style.target_cost
-                                        ? "text-red-600"
-                                        : "text-slate-700"
-                                    }`}
-                                  >
+                                  <span className={`font-medium ${style.actual_cost > style.target_cost ? "text-destructive" : "text-foreground"}`}>
                                     ¥{style.actual_cost}
                                   </span>
                                 </>
@@ -550,12 +497,12 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* 6. 快捷入口 */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <QuickLink href="/planning" icon={FileText} label="企划中心" desc="品牌季规划" color="blue" />
-              <QuickLink href="/styles" icon={Package} label="款式开发" desc="款式 BOM/打样" color="amber" />
+            {/* Quick Links */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <QuickLink href="/planning" icon={FileText} label="企划中心" desc="品牌季规划" color="navy" />
+              <QuickLink href="/styles" icon={Package} label="款式开发" desc="款式 BOM/打样" color="terracotta" />
               <QuickLink href="/suppliers" icon={Factory} label="供应链" desc="供应商/采购" color="green" />
-              <QuickLink href="/analytics" icon={BarChart3} label="经营反馈" desc="销售/复盘数据" color="purple" />
+              <QuickLink href="/analytics" icon={BarChart3} label="经营反馈" desc="销售/复盘数据" color="blue" />
             </div>
           </>
         )}
@@ -564,7 +511,6 @@ export default function DashboardPage() {
   );
 }
 
-// 摘要卡组件
 function SummaryCard({
   title,
   value,
@@ -577,34 +523,33 @@ function SummaryCard({
   title: string;
   value: number;
   icon: any;
-  color: "blue" | "amber" | "red" | "green";
+  color: "navy" | "terracotta" | "red" | "green" | "blue";
   subtitle: string;
   highlight?: boolean;
   href?: string;
 }) {
   const colorMap = {
-    blue: { bg: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-200" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", ring: "ring-amber-200" },
-    red: { bg: "bg-red-50", text: "text-red-600", ring: "ring-red-200" },
-    green: { bg: "bg-green-50", text: "text-green-600", ring: "ring-green-200" },
+    navy: { iconBg: "bg-navy-100", iconText: "text-navy-600", highlight: "ring-navy-200 bg-navy-50/40" },
+    terracotta: { iconBg: "bg-terracotta-100", iconText: "text-terracotta-600", highlight: "ring-terracotta-200 bg-terracotta-50/40" },
+    red: { iconBg: "bg-red-50", iconText: "text-red-600", highlight: "ring-red-200 bg-red-50/40" },
+    green: { iconBg: "bg-emerald-50", iconText: "text-emerald-600", highlight: "ring-emerald-200 bg-emerald-50/40" },
+    blue: { iconBg: "bg-blue-50", iconText: "text-blue-600", highlight: "ring-blue-200 bg-blue-50/40" },
   };
   const c = colorMap[color];
 
   const content = (
     <Card
-      className={`border-0 shadow-sm transition-all ${
-        highlight ? `ring-2 ${c.ring} ${c.bg}/30` : ""
-      } ${href ? "hover:shadow-md cursor-pointer" : ""}`}
+      className={`card-premium transition-all ${highlight ? `ring-2 ${c.highlight}` : ""} ${href ? "hover:shadow-lg cursor-pointer" : ""}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className={`p-2 rounded-lg ${c.bg}`}>
-            <Icon className={`h-4 w-4 ${c.text}`} />
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className={`p-2.5 rounded-xl ${c.iconBg}`}>
+            <Icon className={`h-5 w-5 ${c.iconText}`} />
           </div>
         </div>
-        <p className="text-2xl font-bold text-slate-900">{value}</p>
-        <p className="text-xs text-slate-500 mt-1">{title}</p>
-        <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
+        <p className="data-value">{value}</p>
+        <p className="text-xs font-medium text-muted-foreground mt-1">{title}</p>
+        <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{subtitle}</p>
       </CardContent>
     </Card>
   );
@@ -615,7 +560,6 @@ function SummaryCard({
   return content;
 }
 
-// 快捷入口
 function QuickLink({
   href,
   icon: Icon,
@@ -627,28 +571,28 @@ function QuickLink({
   icon: any;
   label: string;
   desc: string;
-  color: "blue" | "amber" | "green" | "purple";
+  color: "navy" | "terracotta" | "green" | "blue";
 }) {
   const colorMap = {
+    navy: "bg-navy-100 text-navy-600 group-hover:bg-navy-200",
+    terracotta: "bg-terracotta-100 text-terracotta-600 group-hover:bg-terracotta-200",
+    green: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100",
     blue: "bg-blue-50 text-blue-600 group-hover:bg-blue-100",
-    amber: "bg-amber-50 text-amber-600 group-hover:bg-amber-100",
-    green: "bg-green-50 text-green-600 group-hover:bg-green-100",
-    purple: "bg-purple-50 text-purple-600 group-hover:bg-purple-100",
   };
 
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all group"
+      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-terracotta-200 hover:shadow-md transition-all group"
     >
-      <div className={`p-2 rounded-lg ${colorMap[color]} transition-colors`}>
-        <Icon className="h-4 w-4" />
+      <div className={`p-2.5 rounded-xl ${colorMap[color]} transition-colors`}>
+        <Icon className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        <p className="text-xs text-slate-500">{desc}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-terracotta-500 group-hover:translate-x-0.5 transition-all" />
     </Link>
   );
 }

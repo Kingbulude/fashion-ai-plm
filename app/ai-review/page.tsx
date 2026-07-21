@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,28 +18,31 @@ import {
   FileText,
   Scissors,
   RefreshCw,
-  Sparkles,
-  ArrowRight,
   Lightbulb,
   AlertCircle,
   ChevronRight,
-  Clock,
-  Layers,
-  Wand2,
 } from "lucide-react";
 
-const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
-  design: { label: "设计稿", icon: Palette, color: "text-blue-600", bg: "bg-blue-50" },
-  bom: { label: "BOM 清单", icon: Package, color: "text-amber-600", bg: "bg-amber-50" },
-  techpack: { label: "工艺包", icon: FileText, color: "text-purple-600", bg: "bg-purple-50" },
-  sampling: { label: "打样", icon: Scissors, color: "text-pink-600", bg: "bg-pink-50" },
+const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string; border: string }> = {
+  design: { label: "设计稿", icon: Palette, color: "text-navy-700", bg: "bg-navy-100", border: "border-navy-200" },
+  bom: { label: "BOM 清单", icon: Package, color: "text-terracotta-600", bg: "bg-terracotta-100", border: "border-terracotta-200" },
+  techpack: { label: "工艺包", icon: FileText, color: "text-purple-700", bg: "bg-purple-100", border: "border-purple-200" },
+  sampling: { label: "打样", icon: Scissors, color: "text-amber-700", bg: "bg-amber-100", border: "border-amber-200" },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  urgent: { label: "紧急", color: "text-red-700", bg: "bg-red-50", border: "border-red-300" },
-  high: { label: "高", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-300" },
-  medium: { label: "中", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300" },
-  low: { label: "低", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-300" },
+  urgent: { label: "紧急", color: "text-destructive", bg: "bg-red-50", border: "border-red-200" },
+  high: { label: "高", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
+  medium: { label: "中", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+  low: { label: "低", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" },
+};
+
+const STAT_COLORS: Record<string, { bg: string; text: string; gradient: string }> = {
+  navy: { bg: "bg-navy-100", text: "text-navy-700", gradient: "from-navy-700 to-navy-900" },
+  blue: { bg: "bg-navy-100", text: "text-navy-700", gradient: "from-navy-600 to-navy-800" },
+  terracotta: { bg: "bg-terracotta-100", text: "text-terracotta-600", gradient: "from-terracotta-400 to-terracotta-600" },
+  amber: { bg: "bg-amber-100", text: "text-amber-700", gradient: "from-amber-400 to-amber-600" },
+  orange: { bg: "bg-orange-100", text: "text-orange-700", gradient: "from-orange-400 to-orange-600" },
 };
 
 export default function AIReviewPage() {
@@ -83,15 +86,17 @@ export default function AIReviewPage() {
     <SidebarLayout>
       <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
         {/* 顶部 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
-              <Brain className="h-6 w-6 text-indigo-500" />
-              AI 审核中心
-            </h1>
-            <p className="text-sm text-slate-500">自动检测设计稿、BOM、工艺包、打样中的潜在问题</p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
+                <Brain className="h-4 w-4 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">AI 审核中心</h1>
+            </div>
+            <p className="text-sm text-muted-foreground ml-10">自动检测设计稿、BOM、工艺包、打样中的潜在问题</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => fetchReviews(true)} disabled={refreshing}>
+          <Button variant="outline" size="sm" onClick={() => fetchReviews(true)} disabled={refreshing} className="border-border hover:border-navy-200 hover:bg-navy-50">
             <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
             重新扫描
           </Button>
@@ -104,7 +109,7 @@ export default function AIReviewPage() {
             value={(data?.reviewItems || []).length}
             sub={`${stats.urgent || 0} 项紧急`}
             icon={Brain}
-            color="indigo"
+            color="navy"
           />
           <StatCard
             title="设计稿"
@@ -118,7 +123,7 @@ export default function AIReviewPage() {
             value={stats.bom || 0}
             sub="成本/缺漏检测"
             icon={Package}
-            color="amber"
+            color="terracotta"
           />
           <StatCard
             title="高优先级"
@@ -131,13 +136,13 @@ export default function AIReviewPage() {
 
         {/* 筛选条 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-xs text-slate-500">类型：</span>
+          <span className="text-xs text-muted-foreground">类型：</span>
           <button
             onClick={() => setTypeFilter(null)}
-            className={`px-3 h-7 rounded-full text-xs font-medium border ${
+            className={`px-3 h-7 rounded-full text-xs font-medium border transition-all ${
               !typeFilter
-                ? "bg-indigo-500 text-white border-indigo-500"
-                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                ? "bg-navy-700 text-white border-navy-700"
+                : "bg-card text-muted-foreground border-border hover:border-navy-200"
             }`}
           >
             全部
@@ -150,22 +155,22 @@ export default function AIReviewPage() {
               <button
                 key={k}
                 onClick={() => setTypeFilter(isActive ? null : k)}
-                className={`px-3 h-7 rounded-full text-xs font-medium border flex items-center gap-1 ${
+                className={`px-3 h-7 rounded-full text-xs font-medium border flex items-center gap-1 transition-all ${
                   isActive
-                    ? `${v.bg} ${v.color} border-current`
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    ? `${v.bg} ${v.color} ${v.border}`
+                    : "bg-card text-muted-foreground border-border hover:border-navy-200"
                 }`}
               >
                 <v.icon className="h-3 w-3" />
                 {v.label}
-                <Badge variant="secondary" className="text-[10px] h-4">
+                <Badge variant="secondary" className="text-[10px] h-4 bg-white/80">
                   {count}
                 </Badge>
               </button>
             );
           })}
 
-          <span className="text-xs text-slate-500 ml-4">优先级：</span>
+          <span className="text-xs text-muted-foreground ml-4">优先级：</span>
           {["urgent", "high", "medium"].map((p) => {
             const config = PRIORITY_CONFIG[p];
             const isActive = priorityFilter === p;
@@ -173,10 +178,10 @@ export default function AIReviewPage() {
               <button
                 key={p}
                 onClick={() => setPriorityFilter(isActive ? null : p)}
-                className={`px-3 h-7 rounded-full text-xs font-medium border ${
+                className={`px-3 h-7 rounded-full text-xs font-medium border transition-all ${
                   isActive
                     ? `${config.bg} ${config.color} ${config.border}`
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    : "bg-card text-muted-foreground border-border hover:border-navy-200"
                 }`}
               >
                 {config.label}
@@ -187,27 +192,27 @@ export default function AIReviewPage() {
 
         {/* 审核项列表 */}
         {loading ? (
-          <div className="py-20 text-center text-slate-500 flex items-center justify-center gap-2">
+          <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2 card-premium">
             <Loader2 className="h-5 w-5 animate-spin" />
             AI 扫描中...
           </div>
         ) : error ? (
-          <Card className="border-red-200 bg-red-50">
+          <Card className="card-premium border-destructive/30 bg-red-50">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-                <p className="text-red-700">{error}</p>
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <p className="text-destructive">{error}</p>
               </div>
             </CardContent>
           </Card>
         ) : items.length === 0 ? (
-          <Card className="border-dashed border-slate-200">
+          <Card className="card-premium border-dashed border-border">
             <CardContent className="py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-success" />
               </div>
-              <p className="text-slate-700 font-medium mb-1">所有项目已通过审核</p>
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="text-foreground font-medium mb-1">所有项目已通过审核</p>
+              <p className="text-sm text-muted-foreground mb-4">
                 {typeFilter || priorityFilter
                   ? "尝试调整筛选条件查看其他审核项"
                   : "当前没有发现需要处理的问题"}
@@ -231,24 +236,19 @@ export default function AIReviewPage() {
 
 // 统计卡
 function StatCard({ title, value, sub, icon: Icon, color }: { title: string; value: number; sub: string; icon: any; color: string }) {
-  const colorMap: Record<string, { bg: string; text: string }> = {
-    indigo: { bg: "bg-indigo-50", text: "text-indigo-600" },
-    blue: { bg: "bg-blue-50", text: "text-blue-600" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600" },
-    orange: { bg: "bg-orange-50", text: "text-orange-600" },
-  };
-  const c = colorMap[color];
+  const c = STAT_COLORS[color] || STAT_COLORS.navy;
   return (
-    <Card className="border-0 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className={`p-2 rounded-lg ${c.bg}`}>
+    <Card className="metric-card">
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className={`p-2 rounded-xl ${c.bg}`}>
             <Icon className={`h-4 w-4 ${c.text}`} />
           </div>
+          <div className={`w-6 h-1 rounded-full bg-gradient-to-r ${c.gradient} opacity-60`} />
         </div>
-        <p className="text-2xl font-bold text-slate-900">{value}</p>
-        <p className="text-xs text-slate-500 mt-0.5">{title}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+        <p className="data-value">{value}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{title}</p>
+        <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>
       </CardContent>
     </Card>
   );
@@ -261,33 +261,33 @@ function ReviewCard({ item }: { item: any }) {
   const TypeIcon = typeConfig.icon;
 
   return (
-    <Card className="border-0 shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <Card className="card-premium hover:shadow-lg transition-all overflow-hidden">
       <div className="flex">
         {/* 左侧类型条 */}
-        <div className={`w-1 ${typeConfig.bg.replace("bg-", "bg-")} bg-gradient-to-b`} />
+        <div className={`w-1 ${typeConfig.bg} bg-gradient-to-b`} />
         <div className="flex-1 p-4">
           <div className="flex items-start gap-4">
-            <div className={`p-2 rounded-lg ${typeConfig.bg} flex-shrink-0`}>
+            <div className={`p-2.5 rounded-xl ${typeConfig.bg} flex-shrink-0 border ${typeConfig.border}`}>
               <TypeIcon className={`h-5 w-5 ${typeConfig.color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge variant="outline" className={`${typeConfig.bg} ${typeConfig.color} border-0`}>
                   {typeConfig.label}
                 </Badge>
                 <Badge variant="outline" className={`${priorityConfig.bg} ${priorityConfig.color} ${priorityConfig.border}`}>
                   {priorityConfig.label}
                 </Badge>
-                <h3 className="font-semibold text-slate-800 truncate">{item.title}</h3>
+                <h3 className="font-semibold text-foreground truncate">{item.title}</h3>
               </div>
 
               {/* 问题列表 */}
               {item.issues?.length > 0 && (
                 <div className="mb-3 space-y-1">
                   {item.issues.map((issue: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                    <div key={i} className="flex items-start gap-2 text-sm text-foreground">
                       <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 flex-shrink-0 ${
-                        item.priority === "urgent" ? "text-red-500" :
+                        item.priority === "urgent" ? "text-destructive" :
                         item.priority === "high" ? "text-orange-500" : "text-amber-500"
                       }`} />
                       <span>{issue}</span>
@@ -300,8 +300,8 @@ function ReviewCard({ item }: { item: any }) {
               {item.suggestions?.length > 0 && (
                 <div className="mb-3 space-y-1">
                   {item.suggestions.map((suggestion: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-slate-500">
-                      <Lightbulb className="h-3 w-3 mt-0.5 text-indigo-500 flex-shrink-0" />
+                    <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Lightbulb className="h-3 w-3 mt-0.5 text-navy-700 flex-shrink-0" />
                       <span>{suggestion}</span>
                     </div>
                   ))}
@@ -309,16 +309,16 @@ function ReviewCard({ item }: { item: any }) {
               )}
 
               {/* 底部操作 */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-3 text-xs text-slate-400">
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {item.totalCost && item.targetCost && (
-                    <span className="text-amber-600 font-medium">
+                    <span className="text-terracotta-600 font-medium">
                       成本：¥{item.totalCost.toLocaleString("zh-CN")} / 目标 ¥{item.targetCost.toLocaleString("zh-CN")}
                     </span>
                   )}
                 </div>
                 <Link href={`/styles/${item.styleId}`}>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs">
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-navy-700 hover:text-navy-800 hover:bg-navy-50">
                     查看款式
                     <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>

@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { DraggableDialog } from "@/components/ui/draggable-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
   CheckCircle,
   AlertCircle,
   Plus,
   Trash2,
+  GitBranch,
+  Clock,
 } from "lucide-react";
 import { supabase } from "@/lib/auth/supabase";
 
@@ -20,14 +23,14 @@ const NODE_SIZE = 96;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", color: "bg-blue-500", route: "/planning", x: 110, y: 130, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", color: "bg-purple-500", route: "/styles", x: 410, y: 130, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", color: "bg-amber-500", route: "/styles", x: 710, y: 130, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", color: "bg-pink-500", route: "/ai", x: 1010, y: 130, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", color: "bg-orange-500", route: "/styles", x: 860, y: 470, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", color: "bg-indigo-500", route: "/styles", x: 1310, y: 470, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", color: "bg-emerald-500", route: "/sales", x: 1310, y: 130, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", color: "bg-slate-500", route: "/aftersales", x: 1610, y: 130, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", route: "/planning", x: 110, y: 130, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", route: "/styles", x: 410, y: 130, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", route: "/styles", x: 710, y: 130, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", route: "/ai", x: 1010, y: 130, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", route: "/styles", x: 860, y: 470, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", route: "/styles", x: 1310, y: 470, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", route: "/sales", x: 1310, y: 130, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", route: "/aftersales", x: 1610, y: 130, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -100,7 +103,6 @@ export default function HomePage() {
       const res = await fetch("/api/process-links");
       const data = await res.json();
       const fetched = Array.isArray(data) ? data : [];
-      // Ensure all defined links have a record (even if empty)
       const existingKeys = new Set(fetched.map((l: ProcessLink) => `${l.from_node}-${l.to_node}`));
       const defaults = LINKS_DEF
         .filter(def => !existingKeys.has(`${def.from}-${def.to}`))
@@ -175,7 +177,6 @@ export default function HomePage() {
     if (!editingLink) return;
     setSaving(true);
     try {
-      // 获取 access_token
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -251,9 +252,8 @@ export default function HomePage() {
 
     const isCritical = type === "critical";
     const isFeedback = type === "feedback";
-    const isParallel = type === "parallel";
 
-    const strokeColor = isCritical ? "#ef4444" : isFeedback ? "#f59e0b" : "#94a3b8";
+    const strokeColor = isCritical ? "#1e3a5f" : isFeedback ? "#e07a5f" : "#85a0c6";
     const strokeWidth = isCritical ? 2.5 : 1.5;
     const dashArray = isCritical ? "0" : "6 4";
 
@@ -263,14 +263,12 @@ export default function HomePage() {
       ? new Date(deadline).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })
       : "";
     const durationLabel = hours > 0 ? `${hours}天` : "";
-    // Always keep a minimum width and a placeholder text so labels are visible (and clickable)
     const labelTextForWidth = (deadlineLabel || durationLabel) || "未设置";
     const labelWidth = Math.max(64, labelTextForWidth.length * 11 + 20);
     const labelHeight = 26;
 
     const markerId = `arrowhead-${linkId}`;
 
-    // Global arrow marker (slightly larger head, same line width)
     const ArrowMarker = (
       <defs key={`defs-${linkId}`}>
         <marker
@@ -287,12 +285,6 @@ export default function HomePage() {
       </defs>
     );
 
-    // Helper: draw dual labels
-    // - default mode (horizontal arrow): duration above line, deadline below line
-    // - vertical arrow mode: duration on left, deadline on right (both tight to the line)
-    // - diagonal mode: rotate entire group so labels align with arrow direction
-    // - if no data, show a placeholder label "未设置" so the user can click to edit
-    // All texts use dominantBaseline="central" so labels are vertically centered in the rect
     const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 18, combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false, splitAlongLine: boolean = false) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
@@ -302,17 +294,12 @@ export default function HomePage() {
       if (!hasDeadline && !hasDuration && !showPlaceholder) return null;
 
       const halfW = labelWidth / 2;
-      const gap = 3; // small gap between label and line
+      const gap = 3;
 
-      // Vertical line: two labels stacked on the right side of the line, tight to the line
       if (isVerticalLine) {
-        // Both labels go to the right side of the vertical line, separated vertically
-        // (duration above, deadline below) - never crossing the line
         const sideX = cx + gap;
-        // Duration rect: top side above the line, rect middle at cy - halfH
         const durRectY = cy - labelHeight - gap;
         const durCenterY = durRectY + labelHeight / 2;
-        // Deadline rect: top side just below the line, rect middle at cy + halfH
         const dlRectY = cy + gap;
         const dlCenterY = dlRectY + labelHeight / 2;
         return (
@@ -321,7 +308,6 @@ export default function HomePage() {
             onClick={clickable ? () => handleArrowClick(fromId, toId) : undefined}
             style={{ cursor: clickable ? "pointer" : "default" }}
           >
-            {/* Duration label - same side, above */}
             <g>
               <rect
                 x={sideX}
@@ -329,7 +315,7 @@ export default function HomePage() {
                 width={labelWidth}
                 height={labelHeight}
                 rx={labelHeight / 2}
-                fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                fill={isCritical ? "#eef3f8" : "#f8fafc"}
                 stroke={strokeColor}
                 strokeWidth={1.5}
                 style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
@@ -348,7 +334,6 @@ export default function HomePage() {
                 {displayDuration}
               </text>
             </g>
-            {/* Deadline label - same side, below */}
             <g>
               <rect
                 x={sideX}
@@ -380,26 +365,16 @@ export default function HomePage() {
         );
       }
 
-      // Default mode (horizontal/diagonal): rotate entire group so labels align with arrow direction
-      // Normalize rotation to keep labels readable (not upside down)
       let normalizedRotation = rotation;
       while (normalizedRotation > 90) normalizedRotation -= 180;
       while (normalizedRotation < -90) normalizedRotation += 180;
 
-      // "Split along line" mode: two labels on opposite sides of the line,
-      // both aligned parallel to the line, at the same point along the line.
-      // Used for diagonal lines (sampling->procurement, testing->procurement).
-      // Reference: two labels straddling the line tightly, parallel to it.
       if (splitAlongLine) {
-        // In the rotated coordinate system, the line goes left-to-right (horizontal).
-        // duration goes ABOVE the line, deadline goes BELOW the line.
-        // Both at the same x position (no along-line offset).
-        // perpOffset = labelHeight/2 + small gap, so labels are tight to the line on each side.
-        const perpOffset = labelHeight / 2 + 4;   // 13+4=17: half height + small gap
+        const perpOffset = labelHeight / 2 + 4;
         const durCx = cx;
         const dlCx = cx;
-        const durCy = cy - perpOffset;   // duration ABOVE the line (in rotated coords)
-        const dlCy = cy + perpOffset;    // deadline BELOW the line (in rotated coords)
+        const durCy = cy - perpOffset;
+        const dlCy = cy + perpOffset;
         return (
           <g
             key={`label-${linkId}`}
@@ -407,7 +382,6 @@ export default function HomePage() {
             style={{ cursor: clickable ? "pointer" : "default" }}
           >
             <g transform={`rotate(${normalizedRotation}, ${cx}, ${cy})`}>
-              {/* Duration label - above the line, slightly toward "from" */}
               <g>
                 <rect
                   x={durCx - halfW}
@@ -415,7 +389,7 @@ export default function HomePage() {
                   width={labelWidth}
                   height={labelHeight}
                   rx={labelHeight / 2}
-                  fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                  fill={isCritical ? "#eef3f8" : "#f8fafc"}
                   stroke={strokeColor}
                   strokeWidth={1.5}
                   style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
@@ -434,7 +408,6 @@ export default function HomePage() {
                   {displayDuration}
                 </text>
               </g>
-              {/* Deadline label - below the line, slightly toward "to" */}
               <g>
                 <rect
                   x={dlCx - halfW}
@@ -467,11 +440,8 @@ export default function HomePage() {
         );
       }
 
-      // Default mode (horizontal/diagonal): rotate entire group so labels align with arrow direction
-      // Duration rect: top side above the line, rect middle at cy - labelHeight/2 - gap
       const durRectY = cy - labelHeight - gap;
       const durCenterY = durRectY + labelHeight / 2;
-      // Deadline rect: top side just below the line, rect middle at cy + labelHeight/2 + gap
       const dlRectY = cy + gap;
       const dlCenterY = dlRectY + labelHeight / 2;
 
@@ -482,7 +452,6 @@ export default function HomePage() {
           style={{ cursor: clickable ? "pointer" : "default" }}
         >
           <g transform={`rotate(${normalizedRotation}, ${cx}, ${cy})`}>
-            {/* Duration label - above the line */}
             <g>
               <rect
                 x={cx - halfW}
@@ -490,7 +459,7 @@ export default function HomePage() {
                 width={labelWidth}
                 height={labelHeight}
                 rx={labelHeight / 2}
-                fill={isCritical ? "#fef2f2" : "#f8fafc"}
+                fill={isCritical ? "#eef3f8" : "#f8fafc"}
                 stroke={strokeColor}
                 strokeWidth={1.5}
                 style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
@@ -509,7 +478,6 @@ export default function HomePage() {
                 {displayDuration}
               </text>
             </g>
-            {/* Deadline label - below the line */}
             <g>
               <rect
                 x={cx - halfW}
@@ -542,11 +510,10 @@ export default function HomePage() {
       );
     };
 
-    // Critical path: straight line (horizontal or diagonal) with label above
     if (isCritical) {
       const dx = to.x - from.x;
       const dy = to.y - from.y;
-      
+
       let sx = from.x;
       let sy = from.y;
       let ex = to.x;
@@ -563,14 +530,8 @@ export default function HomePage() {
       const midX = (sx + ex) / 2;
       const midY = (sy + ey) / 2;
       const isPureVertical = dx === 0;
-      // A line is diagonal if both dx and dy are non-zero.
-      // Don't require the difference to be large - even a mostly-horizontal line
-      // with a small vertical component is a diagonal.
       const isDiagonal = Math.abs(dx) > 0 && Math.abs(dy) > 0;
-      // Only use left/right side layout for purely vertical lines (e.g. stocking->sales)
       const useVerticalLayout = isPureVertical;
-      // For diagonal lines (sampling->procurement), use "split along line" mode:
-      // two labels distributed along the line direction, parallel to the line.
       let labelCx = midX;
       let labelCy = midY;
       let labelRotation = 0;
@@ -579,7 +540,6 @@ export default function HomePage() {
         const lineDx = ex - sx;
         const lineDy = ey - sy;
         const angleRad = Math.atan2(lineDy, lineDx);
-        // Rotate the entire label group to align with the actual line direction
         labelRotation = angleRad * 180 / Math.PI;
         useSplitAlongLine = true;
       }
@@ -603,7 +563,6 @@ export default function HomePage() {
       );
     }
 
-    // Feedback loop: right-angle turns over the top
     if (isFeedback) {
       const startX = from.x;
       const startY = from.y - NODE_RADIUS;
@@ -633,12 +592,9 @@ export default function HomePage() {
       );
     }
 
-    // Parallel connections (vertical/horizontal combinations)
-    // Connect from node edge to node edge, mostly orthogonal or straight diagonal
     const dx = to.x - from.x;
     const dy = to.y - from.y;
 
-    // Determine start/end points on node edges
     let sx = from.x;
     let sy = from.y;
     let ex = to.x;
@@ -657,7 +613,6 @@ export default function HomePage() {
       ex = dx > 0 ? to.x - NODE_RADIUS : to.x + NODE_RADIUS;
     }
 
-    // For diagonal connector between testing and procurement
     if (fromId === "testing" && toId === "procurement") {
       const startX = from.x;
       const startY = from.y + NODE_RADIUS;
@@ -665,7 +620,6 @@ export default function HomePage() {
       const endY = to.y - NODE_RADIUS - 4;
       const midX = (startX + endX) / 2;
       const midY = (startY + endY) / 2;
-      // Rotate labels to align with the arrow direction (parallel to the line)
       const tdx = endX - startX;
       const tdy = endY - startY;
       const angleRad = Math.atan2(tdy, tdx);
@@ -691,7 +645,6 @@ export default function HomePage() {
       );
     }
 
-    // Standard diagonal/horizontal parallel line
     const pmidX = (sx + ex) / 2;
     const pmidY = (sy + ey) / 2;
     const labelOffsetY = -18;
@@ -726,40 +679,53 @@ export default function HomePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold mb-1">{brandName} 全链路工序图</h1>
-            <p className="text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
+                <GitBranch className="h-4 w-4 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">{brandName} 全链路工序图</h1>
+            </div>
+            <p className="text-sm text-muted-foreground ml-10">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="h-7 px-3 text-xs font-medium border-navy-200 text-navy-700 bg-navy-50/50">
+              <Clock className="h-3 w-3 mr-1" />
+              实时同步
+            </Badge>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 mb-4 text-sm flex-wrap">
+        {/* Legend */}
+        <div className="flex items-center gap-4 mb-5 text-sm flex-wrap p-3 rounded-xl bg-card border shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-red-500 border-t-2 border-red-500"></div>
-            <span className="text-muted-foreground">关键路径</span>
+            <div className="w-4 h-0.5 bg-navy-700 rounded-full" />
+            <span className="text-muted-foreground text-xs">关键路径</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0 border-t-2 border-dashed border-slate-400"></div>
-            <span className="text-muted-foreground">并行工序</span>
+            <div className="w-4 h-0 border-t-2 border-dashed border-navy-300 rounded-full" />
+            <span className="text-muted-foreground text-xs">并行工序</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0 border-t-2 border-dashed border-amber-500"></div>
-            <span className="text-muted-foreground">反馈回路</span>
+            <div className="w-4 h-0 border-t-2 border-dashed border-terracotta-400 rounded-full" />
+            <span className="text-muted-foreground text-xs">反馈回路</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="px-2 py-0.5 rounded-full bg-white border-2 border-slate-400 text-[11px] text-slate-600 font-semibold leading-none shadow-sm">07/16</div>
-            <span className="text-muted-foreground">截止时间（点击编辑）</span>
+            <div className="px-2 py-0.5 rounded-full bg-white border border-navy-200 text-[11px] text-navy-700 font-semibold leading-none shadow-sm">07/16</div>
+            <span className="text-muted-foreground text-xs">截止时间（点击编辑）</span>
           </div>
         </div>
 
         {loading ? (
-          <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            加载中...
+          <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2 card-premium">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            加载工序数据...
           </div>
         ) : (
-          <div className="border-2 border-slate-200 shadow-xl rounded-2xl overflow-hidden bg-white p-8">
+          <div className="card-premium p-6 lg:p-8 overflow-hidden">
             <div
               ref={containerRef}
               className="w-full overflow-hidden"
@@ -796,11 +762,9 @@ export default function HomePage() {
                         pointerEvents: "auto",
                       }}
                     >
-                      <div
-                        className={`w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg ${node.color} text-white`}
-                      >
+                      <div className="w-full h-full rounded-2xl flex flex-col items-center justify-center shadow-premium gradient-navy text-white border border-white/10">
                         <span className="text-2xl mb-0.5">{node.icon}</span>
-                        <span className="font-bold text-base">{node.number}.{node.name}</span>
+                        <span className="font-bold text-sm">{node.number}.{node.name}</span>
                       </div>
                     </div>
                   ))}
@@ -818,7 +782,7 @@ export default function HomePage() {
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-slate-700">截止时间</Label>
+                <Label className="text-sm font-medium text-foreground">截止时间</Label>
                 <Input
                   type="date"
                   value={editForm.deadline}
@@ -827,7 +791,7 @@ export default function HomePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-slate-700">执行天数</Label>
+                <Label className="text-sm font-medium text-foreground">执行天数</Label>
                 <Input
                   type="number"
                   value={editForm.duration_hours}
@@ -839,11 +803,11 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700">工作内容</Label>
+              <Label className="text-sm font-medium text-foreground">工作内容</Label>
               <div className="space-y-2">
                 {editForm.work_content.map((item, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center flex-shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 text-xs flex items-center justify-center flex-shrink-0 font-semibold">
                       {index + 1}
                     </span>
                     <Input
@@ -856,7 +820,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => removeWorkContent(index)}
-                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                        className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -867,7 +831,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={addWorkContent}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 text-sm text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 添加工作内容
@@ -875,11 +839,11 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700">交付清单</Label>
+              <Label className="text-sm font-medium text-foreground">交付清单</Label>
               <div className="space-y-2">
                 {editForm.deliverables.map((item, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs flex items-center justify-center flex-shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-terracotta-100 text-terracotta-600 text-xs flex items-center justify-center flex-shrink-0 font-semibold">
                       {index + 1}
                     </span>
                     <Input
@@ -892,7 +856,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => removeDeliverable(index)}
-                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                        className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -903,14 +867,14 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={addDeliverable}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 text-sm text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 添加交付内容
               </button>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
               <Button
                 variant="outline"
                 onClick={() => setEditDialogOpen(false)}
@@ -921,7 +885,7 @@ export default function HomePage() {
               <Button
                 onClick={handleSaveEdit}
                 disabled={saving}
-                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white"
+                className="h-10 px-6 bg-navy-700 hover:bg-navy-800 text-white"
               >
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 保存
@@ -932,8 +896,8 @@ export default function HomePage() {
 
         {toast && (
           <div className="fixed top-6 right-6 z-50 max-w-sm">
-            <div className={`px-4 py-3 rounded-lg shadow-lg border flex items-start gap-3 bg-white ${toast.type === "success" ? "border-green-200" : "border-red-200"}`}>
-              {toast.type === "success" ? <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" /> : <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />}
+            <div className={`px-4 py-3 rounded-xl shadow-lg border flex items-start gap-3 bg-card ${toast.type === "success" ? "border-green-200" : "border-red-200"}`}>
+              {toast.type === "success" ? <CheckCircle className="h-4 w-4 text-success mt-0.5" /> : <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />}
               <div className="flex-1">
                 <p className="text-sm font-medium">{toast.type === "success" ? "操作成功" : "操作失败"}</p>
                 <p className="text-xs text-muted-foreground">{toast.message}</p>
