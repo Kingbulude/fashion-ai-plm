@@ -41,18 +41,11 @@ export async function PUT(request: Request) {
     const userId = session?.user?.id || "anonymous";
 
     const body = await request.json();
-    const { id, duration_hours, deadline, work_content, deliverables } = body;
+    const { id, duration_hours, deadline, work_content, deliverables, from_node, to_node, link_type } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "缺少ID参数" }, { status: 400 });
+    if (!id && !(from_node && to_node)) {
+      return NextResponse.json({ error: "缺少ID或from_node/to_node参数" }, { status: 400 });
     }
-
-    // 获取修改前的数据（用于操作日志）
-    const { data: beforeData } = await supabase
-      .from("process_links")
-      .select("*")
-      .eq("id", id)
-      .single();
 
     const updateData: any = {};
     if (duration_hours !== undefined) updateData.duration_hours = duration_hours;
@@ -60,41 +53,104 @@ export async function PUT(request: Request) {
     if (work_content !== undefined) updateData.work_content = work_content;
     if (deliverables !== undefined) updateData.deliverables = deliverables;
 
-    const { data, error } = await supabase
-      .from("process_links")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
+    let recordId = id;
+    let beforeData: any = null;
+    let resultData: any = null;
 
-    if (error) throw error;
+    // 1. 优先按 id 查找并更新（排除前端生成的 default- 占位 id）
+    const isPlaceholderId = typeof id === "string" && id.startsWith("default-");
+    if (id && !isPlaceholderId) {
+      const { data: existing } = await supabase
+        .from("process_links")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (existing) {
+        beforeData = existing;
+        const { data, error } = await supabase
+          .from("process_links")
+          .update(updateData)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+      }
+    }
+
+    // 2. 按 from_node + to_node 查找并更新/插入
+    if (!resultData && from_node && to_node) {
+      const { data: existing } = await supabase
+        .from("process_links")
+        .select("*")
+        .eq("from_node", from_node)
+        .eq("to_node", to_node)
+        .maybeSingle();
+
+      if (existing) {
+        beforeData = existing;
+        recordId = existing.id;
+        const { data, error } = await supabase
+          .from("process_links")
+          .update(updateData)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+      } else {
+        // 新建记录
+        const insertPayload: any = {
+          from_node,
+          to_node,
+          link_type: link_type || "critical",
+          duration_hours: duration_hours ?? 0,
+          deadline: deadline ?? null,
+          work_content: work_content ?? "",
+          deliverables: deliverables ?? "",
+        };
+        const { data, error } = await supabase
+          .from("process_links")
+          .insert(insertPayload)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+        recordId = data?.id ?? id;
+      }
+    }
+
+    if (!resultData) {
+      return NextResponse.json({ error: "未找到可更新的工序链接" }, { status: 404 });
+    }
 
     // 记录操作日志和数据版本（失败不影响主流程）
     try {
       await Promise.all([
         logOperation({
           userId,
-          action: "update",
+          action: beforeData ? "update" : "create",
           targetTable: "process_links",
-          targetId: id,
+          targetId: recordId,
           beforeData,
-          afterData: data,
+          afterData: resultData,
           request,
         }),
         recordVersion({
           tableName: "process_links",
-          recordId: id,
-          data: data,
+          recordId: recordId,
+          data: resultData,
           changedBy: userId,
-          changeReason: "更新工序链接",
+          changeReason: beforeData ? "更新工序链接" : "新建工序链接",
         }),
       ]);
     } catch (logError) {
       console.error("Failed to log operation:", logError);
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(resultData);
   } catch (err) {
+    console.error("PUT /api/process-links error:", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "更新失败" }, { status: 500 });
   }
 }

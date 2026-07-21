@@ -188,6 +188,9 @@ export default function HomePage() {
         headers,
         body: JSON.stringify({
           id: editingLink.id,
+          from_node: editingLink.from_node,
+          to_node: editingLink.to_node,
+          link_type: editingLink.link_type,
           duration_hours: Number(editForm.duration_hours) || 0,
           deadline: editForm.deadline || null,
           work_content: editForm.work_content.filter(item => item.trim()).join("\n"),
