@@ -144,7 +144,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, data: resultData });
   } catch (error) {
     console.error("Failed to update profile:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : typeof error === "object" && error !== null ? JSON.stringify(error) : "Unknown error";
     return NextResponse.json(
       { error: "Failed to update profile", detail: errorMessage },
       { status: 500 }

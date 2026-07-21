@@ -151,6 +151,7 @@ export async function PUT(request: Request) {
     return NextResponse.json(resultData);
   } catch (err) {
     console.error("PUT /api/process-links error:", err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "更新失败" }, { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : typeof err === "object" && err !== null ? JSON.stringify(err) : "更新失败";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
