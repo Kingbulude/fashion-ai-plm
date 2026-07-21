@@ -18,6 +18,23 @@ const defaultLinks = [
   { id: "10", from_node: "aftersales", to_node: "planning", link_type: "feedback", duration_hours: 10, deadline: null, work_content: "售后复盘、客户反馈收集、数据沉淀", deliverables: "售后报告、客户反馈汇总、复盘分析报告", sort_order: 10 },
 ];
 
+function getDefaultLink(from_node?: string, to_node?: string) {
+  if (!from_node || !to_node) return null;
+  return defaultLinks.find(l => l.from_node === from_node && l.to_node === to_node) || null;
+}
+
+function mergeWithDefault(row: any): any {
+  if (!row) return row;
+  const def = getDefaultLink(row.from_node, row.to_node);
+  if (!def) return row;
+  return {
+    ...def,
+    ...row,
+    work_content: row.work_content && String(row.work_content).trim() ? row.work_content : def.work_content,
+    deliverables: row.deliverables && String(row.deliverables).trim() ? row.deliverables : def.deliverables,
+  };
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -27,7 +44,7 @@ export async function GET() {
 
     if (error) throw error;
     if (data && data.length > 0) {
-      return NextResponse.json(data);
+      return NextResponse.json(data.map(mergeWithDefault));
     }
     return NextResponse.json(defaultLinks);
   } catch (err) {
@@ -100,14 +117,15 @@ export async function PUT(request: Request) {
         if (error) throw error;
         resultData = data;
       } else {
+        const def = getDefaultLink(from_node, to_node);
         const insertPayload: any = {
           from_node,
           to_node,
           link_type: link_type || "critical",
           duration_hours: duration_hours ?? 0,
           deadline: deadline || null,
-          work_content: work_content ?? "",
-          deliverables: deliverables ?? "",
+          work_content: (work_content && String(work_content).trim()) ? work_content : (def?.work_content ?? ""),
+          deliverables: (deliverables && String(deliverables).trim()) ? deliverables : (def?.deliverables ?? ""),
         };
         const { data, error } = await supabase
           .from("process_links")
