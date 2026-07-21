@@ -149,7 +149,7 @@ export default function StylesPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
+      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
         {/* 顶部标题栏 */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
@@ -214,7 +214,7 @@ export default function StylesPage() {
         </div>
 
         {/* 阶段快速筛选条 */}
-        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="mb-5 flex items-center gap-2.5 overflow-x-auto pb-2">
           <button
             onClick={() => setStatusFilter(null)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
@@ -296,7 +296,7 @@ export default function StylesPage() {
             </Button>
           )}
 
-          <div className="ml-auto text-sm text-muted-foreground">
+          <div className="ml-auto text-sm text-muted-foreground bg-card px-3 py-1.5 rounded-lg border border-border">
             显示 <span className="font-semibold text-foreground">{filteredStyles.length}</span> / {allStyles.length}
           </div>
         </div>
@@ -354,7 +354,7 @@ function KanbanView({
 }) {
   return (
     <div className="overflow-x-auto pb-4">
-      <div className="flex gap-3 min-w-max">
+      <div className="flex gap-4 min-w-max">
         {KANBAN_STAGES.map((stage) => {
           const stageStyles = styles.filter((s) => s.status === stage.key);
           const colors = KANBAN_COLOR_MAP[stage.color];
@@ -362,23 +362,23 @@ function KanbanView({
           return (
             <div
               key={stage.key}
-              className={`w-72 flex-shrink-0 rounded-2xl border ${colors.border} bg-card ${
+              className={`w-80 flex-shrink-0 rounded-2xl border ${colors.border} bg-card ${
                 isActiveColumn ? "ring-2 ring-offset-1 ring-navy-200" : ""
               }`}
             >
               {/* 列头 */}
-              <div className={`px-3 py-2.5 border-b ${colors.header} rounded-t-2xl flex items-center justify-between`}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-4 rounded-full ${colors.accent}`} />
+              <div className={`px-4 py-3 border-b ${colors.header} rounded-t-2xl flex items-center justify-between`}>
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-1.5 h-5 rounded-full ${colors.accent}`} />
                   <span className="text-sm font-semibold text-foreground">{stage.label}</span>
-                  <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-card">
+                  <Badge variant="secondary" className="h-5 px-2 text-xs bg-card">
                     {stageStyles.length}
                   </Badge>
                 </div>
               </div>
 
               {/* 卡片列表 */}
-              <div className="p-2 space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto">
+              <div className="p-3 space-y-3 max-h-[calc(100vh-260px)] overflow-y-auto">
                 {stageStyles.length === 0 ? (
                   <div className="py-8 text-center text-xs text-muted-foreground">无款式</div>
                 ) : (
@@ -402,37 +402,45 @@ function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) 
   return (
     <div
       onClick={onClick}
-      className="bg-card rounded-xl border border-border hover:border-navy-200 hover:shadow-md transition-all cursor-pointer p-2.5 group"
+      className="bg-card rounded-xl border border-border hover:border-navy-200 hover:shadow-premium transition-all cursor-pointer p-3 group"
     >
-      <div className="flex items-start justify-between mb-1.5">
-        <p className="text-sm font-medium text-foreground truncate flex-1">{style.name}</p>
-        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-navy-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-sm font-semibold text-foreground truncate flex-1 leading-tight">{style.name}</p>
+        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-navy-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
       </div>
-      <p className="text-xs text-muted-foreground mb-2">{style.style_no}</p>
+      <p className="text-xs text-muted-foreground mb-2.5">{style.style_no}</p>
       {style.coverImage || style.cover_image ? (
-        <div className="aspect-video bg-sand-100 rounded-lg mb-2 overflow-hidden">
+        <div className="aspect-[4/3] bg-sand-100 rounded-lg mb-3 overflow-hidden">
           <img
             src={style.coverImage || style.cover_image}
             alt={style.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </div>
-      ) : null}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {style.category && (
-          <Badge variant="outline" className="text-[10px] h-4 px-1 border-border">
+      ) : (
+        <div className="aspect-[4/3] bg-sand-100 rounded-lg mb-3 flex items-center justify-center">
+          <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        {style.category ? (
+          <Badge variant="outline" className="text-[11px] h-5 px-1.5 border-border">
             {style.category}
           </Badge>
+        ) : (
+          <span />
         )}
-        {style.target_cost && (
-          <span className={`text-[10px] ${costOverrun ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+        {style.target_cost ? (
+          <span className={`text-xs font-medium ${costOverrun ? "text-destructive" : "text-foreground"}`}>
             ¥{style.target_cost}
             {style.actual_cost && (
-              <span className={costOverrun ? "text-destructive" : "text-muted-foreground/70"}>
-                {" "}/ ¥{style.actual_cost}
+              <span className={costOverrun ? "text-destructive/80" : "text-muted-foreground/70 font-normal ml-1"}>
+                / ¥{style.actual_cost}
               </span>
             )}
           </span>
+        ) : (
+          <span />
         )}
       </div>
     </div>
@@ -442,7 +450,7 @@ function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) 
 // ============== 网格视图 ==============
 function GridView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id: string) => void }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
       {styles.map((style) => (
         <StyleCardLarge key={style.id} style={style} onClick={() => onStyleClick(style.id)} />
       ))}
@@ -454,37 +462,46 @@ function StyleCardLarge({ style, onClick }: { style: any; onClick: () => void })
   const cfg = STATUS_CONFIG[style.status] || STATUS_CONFIG.planning;
   const costOverrun = style.target_cost && style.actual_cost && style.actual_cost > style.target_cost;
   return (
-    <Card className="card-premium cursor-pointer hover:shadow-lg transition-all overflow-hidden" onClick={onClick}>
-      <div className="aspect-[3/4] bg-gradient-to-br from-sand-100 to-sand-200 flex items-center justify-center relative">
+    <Card className="card-premium cursor-pointer hover:shadow-premium transition-all overflow-hidden group" onClick={onClick}>
+      <div className="aspect-[3/4] bg-gradient-to-br from-sand-100 to-sand-200 flex items-center justify-center relative overflow-hidden">
         {style.coverImage || style.cover_image ? (
           <img
             src={style.coverImage || style.cover_image}
             alt={style.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
         )}
-        <Badge className={`absolute top-2 left-2 ${cfg.bg} ${cfg.text} border-0`}>{cfg.label}</Badge>
+        <Badge className={`absolute top-3 left-3 ${cfg.bg} ${cfg.text} border-0 shadow-sm`}>{cfg.label}</Badge>
         {costOverrun && (
-          <div className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1" title="成本超支">
+          <div className="absolute top-3 right-3 bg-destructive text-white rounded-full p-1 shadow-sm" title="成本超支">
             <AlertCircle className="h-3 w-3" />
           </div>
         )}
       </div>
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <p className="font-semibold text-sm text-foreground truncate">{style.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-2">{style.style_no}</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-3">{style.style_no}</p>
         <div className="flex items-center justify-between">
-          {style.category && (
-            <Badge variant="outline" className="text-[10px] h-4 border-border">
+          {style.category ? (
+            <Badge variant="outline" className="text-[11px] h-5 px-1.5 border-border">
               {style.category}
             </Badge>
+          ) : (
+            <span />
           )}
-          {style.target_cost && (
-            <span className={`text-xs ${costOverrun ? "text-destructive font-semibold" : "text-foreground"}`}>
+          {style.target_cost ? (
+            <span className={`text-xs font-medium ${costOverrun ? "text-destructive" : "text-foreground"}`}>
               ¥{style.target_cost}
+              {style.actual_cost && (
+                <span className={costOverrun ? "text-destructive/80" : "text-muted-foreground/70 font-normal ml-1"}>
+                  / ¥{style.actual_cost}
+                </span>
+              )}
             </span>
+          ) : (
+            <span />
           )}
         </div>
       </CardContent>
@@ -500,14 +517,14 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
         <table className="w-full text-sm">
           <thead className="bg-sand-50 border-b border-border">
             <tr className="text-left text-xs text-muted-foreground">
-              <th className="px-4 py-3 font-medium">款号</th>
-              <th className="px-4 py-3 font-medium">名称</th>
-              <th className="px-4 py-3 font-medium">品类</th>
-              <th className="px-4 py-3 font-medium">状态</th>
-              <th className="px-4 py-3 font-medium text-right">目标成本</th>
-              <th className="px-4 py-3 font-medium text-right">实际成本</th>
-              <th className="px-4 py-3 font-medium">更新时间</th>
-              <th className="px-4 py-3"></th>
+              <th className="px-5 py-3.5 font-medium">款号</th>
+              <th className="px-5 py-3.5 font-medium">名称</th>
+              <th className="px-5 py-3.5 font-medium">品类</th>
+              <th className="px-5 py-3.5 font-medium">状态</th>
+              <th className="px-5 py-3.5 font-medium text-right">目标成本</th>
+              <th className="px-5 py-3.5 font-medium text-right">实际成本</th>
+              <th className="px-5 py-3.5 font-medium">更新时间</th>
+              <th className="px-5 py-3.5"></th>
             </tr>
           </thead>
           <tbody>
@@ -521,10 +538,10 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                   onClick={() => onStyleClick(style.id)}
                   className="border-b border-border hover:bg-sand-50/50 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-foreground">{style.style_no}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-sand-100 flex-shrink-0 overflow-hidden">
+                  <td className="px-5 py-3.5 font-mono text-xs text-foreground">{style.style_no}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-sand-100 flex-shrink-0 overflow-hidden">
                         {style.coverImage || style.cover_image ? (
                           <img
                             src={style.coverImage || style.cover_image}
@@ -532,20 +549,20 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <ImageIcon className="h-4 w-4 text-muted-foreground/40 m-1.5" />
+                          <ImageIcon className="h-5 w-5 text-muted-foreground/40 m-2" />
                         )}
                       </div>
                       <span className="font-medium text-foreground truncate">{style.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-foreground">{style.category || "-"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5 text-foreground">{style.category || "-"}</td>
+                  <td className="px-5 py-3.5">
                     <Badge className={`${cfg.bg} ${cfg.text} border-0`}>{cfg.label}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right text-foreground">
+                  <td className="px-5 py-3.5 text-right text-foreground">
                     {style.target_cost ? `¥${style.target_cost}` : "-"}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-5 py-3.5 text-right">
                     {style.actual_cost ? (
                       <span className={costOverrun ? "text-destructive font-semibold" : "text-foreground"}>
                         ¥{style.actual_cost}
@@ -554,7 +571,7 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">
                     {new Date(style.updated_at).toLocaleDateString("zh-CN", {
                       month: "numeric",
                       day: "numeric",
@@ -562,7 +579,7 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                       minute: "numeric",
                     })}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
                   </td>
                 </tr>
