@@ -164,12 +164,14 @@
   /* Premium Card */
   .card-premium {
     @apply bg-card rounded-2xl border;
+    --card-spacing: 1.25rem;
     box-shadow: var(--shadow-premium);
   }
 
   /* Metric Card */
   .metric-card {
-    @apply bg-card rounded-2xl border p-5;
+    @apply bg-card rounded-2xl border;
+    --card-spacing: 1.5rem;
     box-shadow: var(--shadow-premium);
   }
 

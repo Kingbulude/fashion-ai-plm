@@ -87,7 +87,7 @@ export default function HomePage() {
   const updateScale = useCallback(() => {
     if (!containerRef.current) return;
     const containerWidth = containerRef.current.clientWidth;
-    const newScale = Math.min(1, containerWidth / CANVAS_WIDTH);
+    const newScale = Math.min(1.08, Math.max(0.65, containerWidth / CANVAS_WIDTH));
     setScale(newScale);
   }, []);
 
@@ -728,7 +728,7 @@ export default function HomePage() {
           <div className="card-premium p-6 lg:p-8 overflow-hidden">
             <div
               ref={containerRef}
-              className="w-full overflow-hidden"
+              className="w-full overflow-hidden flex items-start justify-center"
               style={{ height: CANVAS_HEIGHT * scale }}
             >
               <div
@@ -737,7 +737,7 @@ export default function HomePage() {
                   width: CANVAS_WIDTH,
                   height: CANVAS_HEIGHT,
                   transform: `scale(${scale})`,
-                  transformOrigin: "top left",
+                  transformOrigin: "top center",
                 }}
               >
                 <svg

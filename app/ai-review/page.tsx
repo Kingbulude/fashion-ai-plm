@@ -84,7 +84,7 @@ export default function AIReviewPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
         {/* 顶部 */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
@@ -103,7 +103,7 @@ export default function AIReviewPage() {
         </div>
 
         {/* 4 大统计卡 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
           <StatCard
             title="待审核项"
             value={(data?.reviewItems || []).length}

@@ -143,7 +143,7 @@ export default function DashboardPage() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[1600px] mx-auto space-y-6 animate-fadeIn">
+      <div className="max-w-[1800px] mx-auto space-y-8 animate-fadeIn">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* KPI Metrics - Bento Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
               <SummaryCard
                 title="款式总数"
                 value={summary.totalStyles}
@@ -290,9 +290,9 @@ export default function DashboardPage() {
             )}
 
             {/* Main Bento Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Todos */}
-              <Card className="lg:col-span-2 card-premium">
+              <Card className="card-premium">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -388,29 +388,32 @@ export default function DashboardPage() {
                   <CardDescription className="text-xs">7 大阶段款式分布</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
                     {PIPELINE_STAGES.map((stage) => {
                       const count = stageCounts[stage.key] || 0;
                       const colors = STAGE_COLOR_MAP[stage.color];
                       const Icon = stage.icon;
                       const max = Math.max(...Object.values(stageCounts), 1);
+                      const pct = max > 0 ? (count / max) * 100 : 0;
                       return (
-                        <div key={stage.key} className="flex items-center gap-3 group cursor-pointer">
-                          <div className={`p-1.5 rounded-lg ${colors.bg}`}>
-                            <Icon className={`h-3.5 w-3.5 ${colors.text}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs font-medium text-muted-foreground">{stage.label}</span>
-                              <span className={`text-xs font-bold ${colors.text}`}>{count}</span>
+                        <div
+                          key={stage.key}
+                          className="p-4 rounded-xl border border-border bg-sand-50/50 hover:bg-sand-50 hover:shadow-sm transition-all group cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className={`p-2 rounded-xl ${colors.bg}`}>
+                              <Icon className={`h-4 w-4 ${colors.text}`} />
                             </div>
-                            <div className="h-1.5 bg-sand-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
-                                style={{ width: `${(count / max) * 100}%` }}
-                              />
-                            </div>
+                            <span className={`text-lg font-bold ${colors.text}`}>{count}</span>
                           </div>
+                          <p className="text-sm font-medium text-foreground mb-3">{stage.label}</p>
+                          <div className="h-2 bg-sand-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">{pct.toFixed(0)}% 占比</p>
                         </div>
                       );
                     })}
@@ -450,7 +453,7 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {workspace.recentStyles.map((style: any) => {
                       const stageInfo = PIPELINE_STAGES.find((s) => s.key === style.status);
                       const colors = stageInfo ? STAGE_COLOR_MAP[stageInfo.color] : STAGE_COLOR_MAP.slate;

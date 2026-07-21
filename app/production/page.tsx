@@ -156,7 +156,7 @@ export default function ProductionPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1500px] mx-auto">
+      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
         {/* 顶部 */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
@@ -197,7 +197,7 @@ export default function ProductionPage() {
         </div>
 
         {/* 4 大 KPI */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
           <KpiCard
             title="生产订单"
             value={summary.total || 0}
