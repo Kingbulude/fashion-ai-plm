@@ -18,6 +18,15 @@ const defaultLinks = [
   { id: "10", from_node: "aftersales", to_node: "planning", link_type: "feedback", duration_hours: 10, deadline: null, work_content: "售后复盘、客户反馈收集、数据沉淀", deliverables: "售后报告、客户反馈汇总、复盘分析报告", sort_order: 10 },
 ];
 
+function mapRow(row: any): any {
+  if (!row) return row;
+  return {
+    ...row,
+    from_node: row.from_node ?? row.source_node_id ?? null,
+    to_node: row.to_node ?? row.target_node_id ?? null,
+  };
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -27,7 +36,7 @@ export async function GET() {
 
     if (error) throw error;
     if (data && data.length > 0) {
-      return NextResponse.json(data);
+      return NextResponse.json(data.map(mapRow));
     }
     return NextResponse.json(defaultLinks);
   } catch (err) {
@@ -49,15 +58,17 @@ export async function PUT(request: Request) {
 
     const updateData: any = {};
     if (duration_hours !== undefined) updateData.duration_hours = duration_hours;
-    if (deadline !== undefined) updateData.deadline = deadline;
+    if (deadline !== undefined) updateData.deadline = deadline || null;
     if (work_content !== undefined) updateData.work_content = work_content;
     if (deliverables !== undefined) updateData.deliverables = deliverables;
+    if (from_node !== undefined) updateData.source_node_id = from_node;
+    if (to_node !== undefined) updateData.target_node_id = to_node;
+    if (link_type !== undefined) updateData.link_type = link_type;
 
     let recordId = id;
     let beforeData: any = null;
     let resultData: any = null;
 
-    // 1. 优先按 id 查找并更新（排除前端生成的 default- 占位 id）
     const isPlaceholderId = typeof id === "string" && id.startsWith("default-");
     if (id && !isPlaceholderId) {
       const { data: existing } = await supabase
@@ -74,17 +85,15 @@ export async function PUT(request: Request) {
           .select()
           .single();
         if (error) throw error;
-        resultData = data;
+        resultData = mapRow(data);
       }
     }
 
-    // 2. 按 from_node + to_node 查找并更新/插入
     if (!resultData && from_node && to_node) {
       const { data: existing } = await supabase
         .from("process_links")
         .select("*")
-        .eq("from_node", from_node)
-        .eq("to_node", to_node)
+        .or(`and(source_node_id.eq.${from_node},target_node_id.eq.${to_node}),and(from_node.eq.${from_node},to_node.eq.${to_node})`)
         .maybeSingle();
 
       if (existing) {
@@ -97,15 +106,14 @@ export async function PUT(request: Request) {
           .select()
           .single();
         if (error) throw error;
-        resultData = data;
+        resultData = mapRow(data);
       } else {
-        // 新建记录
         const insertPayload: any = {
-          from_node,
-          to_node,
+          source_node_id: from_node,
+          target_node_id: to_node,
           link_type: link_type || "critical",
           duration_hours: duration_hours ?? 0,
-          deadline: deadline ?? null,
+          deadline: deadline || null,
           work_content: work_content ?? "",
           deliverables: deliverables ?? "",
         };
@@ -115,7 +123,7 @@ export async function PUT(request: Request) {
           .select()
           .single();
         if (error) throw error;
-        resultData = data;
+        resultData = mapRow(data);
         recordId = data?.id ?? id;
       }
     }
@@ -124,7 +132,6 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "未找到可更新的工序链接" }, { status: 404 });
     }
 
-    // 记录操作日志和数据版本（失败不影响主流程）
     try {
       await Promise.all([
         logOperation({
