@@ -19,18 +19,18 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/auth/supabase";
 
-const NODE_SIZE = 96;
+const NODE_SIZE = 100;
 const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
-  { id: "planning", name: "企划", icon: "📋", route: "/planning", x: 110, y: 130, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", route: "/styles", x: 410, y: 130, number: 2 },
-  { id: "sampling", name: "打样", icon: "✂️", route: "/styles", x: 710, y: 130, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", route: "/ai", x: 1010, y: 130, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", route: "/styles", x: 860, y: 470, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", route: "/styles", x: 1310, y: 470, number: 6 },
-  { id: "sales", name: "销售", icon: "💰", route: "/sales", x: 1310, y: 130, number: 7 },
-  { id: "aftersales", name: "售后", icon: "🔄", route: "/aftersales", x: 1610, y: 130, number: 8 },
+  { id: "planning", name: "企划", icon: "📋", route: "/planning", x: 150, y: 140, number: 1 },
+  { id: "design", name: "设计", icon: "🎨", route: "/styles", x: 470, y: 140, number: 2 },
+  { id: "sampling", name: "打样", icon: "✂️", route: "/styles", x: 790, y: 140, number: 3 },
+  { id: "testing", name: "测款", icon: "🎯", route: "/ai", x: 1110, y: 140, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", route: "/styles", x: 940, y: 520, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", route: "/styles", x: 1410, y: 520, number: 6 },
+  { id: "sales", name: "销售", icon: "💰", route: "/sales", x: 1550, y: 140, number: 7 },
+  { id: "aftersales", name: "售后", icon: "🔄", route: "/aftersales", x: 1930, y: 140, number: 8 },
 ];
 
 const LINKS_DEF = [
@@ -116,8 +116,8 @@ function getDefaultContent(from: string, to: string) {
   return DEFAULT_LINK_CONTENTS[`${from}-${to}`] || null;
 }
 
-const CANVAS_WIDTH = 1720;
-const CANVAS_HEIGHT = 600;
+const CANVAS_WIDTH = 2100;
+const CANVAS_HEIGHT = 660;
 
 interface ProcessLink {
   id: string;
@@ -157,7 +157,7 @@ export default function HomePage() {
   const updateScale = useCallback(() => {
     if (!containerRef.current) return;
     const containerWidth = containerRef.current.clientWidth;
-    const newScale = Math.min(1.08, Math.max(0.65, containerWidth / CANVAS_WIDTH));
+    const newScale = Math.min(1.0, Math.max(0.52, containerWidth / CANVAS_WIDTH));
     setScale(newScale);
   }, []);
 
@@ -651,7 +651,7 @@ export default function HomePage() {
       const startY = from.y - NODE_RADIUS;
       const endX = to.x;
       const endY = to.y - NODE_RADIUS;
-      const topY = 35;
+      const topY = 55;
       const midX = (startX + endX) / 2;
 
       return (
@@ -762,7 +762,7 @@ export default function HomePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
+      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
@@ -808,10 +808,10 @@ export default function HomePage() {
             加载工序数据...
           </div>
         ) : (
-          <div className="card-premium p-6 lg:p-8 overflow-hidden">
+          <div className="card-premium p-5 lg:p-6 overflow-x-auto">
             <div
               ref={containerRef}
-              className="w-full overflow-hidden flex items-start justify-center"
+              className="w-full min-w-[900px] flex items-start justify-center"
               style={{ height: CANVAS_HEIGHT * scale }}
             >
               <div
@@ -861,114 +861,117 @@ export default function HomePage() {
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
           title={`编辑工序：${editingLink && `${getNodeName(editingLink.from_node)} → ${getNodeName(editingLink.to_node)}`}`}
+          className="max-w-4xl"
         >
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-foreground">截止时间</Label>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">截止时间</Label>
                 <Input
                   type="date"
                   value={editForm.deadline}
                   onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                  className="h-10"
+                  className="h-11"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-foreground">执行天数</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">执行天数</Label>
                 <Input
                   type="number"
                   value={editForm.duration_hours}
                   onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
                   placeholder="例如：7"
-                  className="h-10 w-32"
+                  className="h-11 w-36"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">工作内容</Label>
-              <div className="space-y-2">
-                {editForm.work_content.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 text-xs flex items-center justify-center flex-shrink-0 font-semibold">
-                      {index + 1}
-                    </span>
-                    <Input
-                      value={item}
-                      onChange={e => updateWorkContent(index, e.target.value)}
-                      placeholder="输入工作内容..."
-                      className="flex-1 h-10"
-                    />
-                    {editForm.work_content.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeWorkContent(index)}
-                        className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-foreground">工作内容</Label>
+                <div className="space-y-2.5">
+                  {editForm.work_content.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-full bg-navy-100 text-navy-700 text-xs flex items-center justify-center flex-shrink-0 font-bold">
+                        {index + 1}
+                      </span>
+                      <Input
+                        value={item}
+                        onChange={e => updateWorkContent(index, e.target.value)}
+                        placeholder="输入工作内容..."
+                        className="flex-1 h-11"
+                      />
+                      {editForm.work_content.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeWorkContent(index)}
+                          className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addWorkContent}
+                  className="flex items-center gap-2 text-sm font-medium text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  添加工作内容
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={addWorkContent}
-                className="flex items-center gap-2 text-sm text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                添加工作内容
-              </button>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-foreground">交付清单</Label>
+                <div className="space-y-2.5">
+                  {editForm.deliverables.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-full bg-terracotta-100 text-terracotta-600 text-xs flex items-center justify-center flex-shrink-0 font-bold">
+                        {index + 1}
+                      </span>
+                      <Input
+                        value={item}
+                        onChange={e => updateDeliverable(index, e.target.value)}
+                        placeholder="输入交付内容..."
+                        className="flex-1 h-11"
+                      />
+                      {editForm.deliverables.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeDeliverable(index)}
+                          className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addDeliverable}
+                  className="flex items-center gap-2 text-sm font-medium text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  添加交付内容
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">交付清单</Label>
-              <div className="space-y-2">
-                {editForm.deliverables.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-terracotta-100 text-terracotta-600 text-xs flex items-center justify-center flex-shrink-0 font-semibold">
-                      {index + 1}
-                    </span>
-                    <Input
-                      value={item}
-                      onChange={e => updateDeliverable(index, e.target.value)}
-                      placeholder="输入交付内容..."
-                      className="flex-1 h-10"
-                    />
-                    {editForm.deliverables.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeDeliverable(index)}
-                        className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={addDeliverable}
-                className="flex items-center gap-2 text-sm text-navy-700 hover:text-navy-800 hover:bg-navy-50 px-3 py-2 rounded-lg transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                添加交付内容
-              </button>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <div className="flex justify-end gap-3 pt-3 border-t border-border">
               <Button
                 variant="outline"
                 onClick={() => setEditDialogOpen(false)}
-                className="h-10 px-6"
+                className="h-11 px-6"
               >
                 取消
               </Button>
               <Button
                 onClick={handleSaveEdit}
                 disabled={saving}
-                className="h-10 px-6 bg-navy-700 hover:bg-navy-800 text-white"
+                className="h-11 px-6 bg-navy-700 hover:bg-navy-800 text-white"
               >
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 保存

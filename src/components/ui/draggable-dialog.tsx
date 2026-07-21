@@ -8,9 +8,10 @@ interface DraggableDialogProps {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   children: ReactNode;
+  className?: string;
 }
 
-export function DraggableDialog({ open, onOpenChange, title, children }: DraggableDialogProps) {
+export function DraggableDialog({ open, onOpenChange, title, children, className }: DraggableDialogProps) {
   const [position, setPosition] = useState({ x: 200, y: 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -62,7 +63,7 @@ export function DraggableDialog({ open, onOpenChange, title, children }: Draggab
       />
       <div
         ref={dialogRef}
-        className="relative w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col"
+        className={`relative w-full bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col ${className || "max-w-md"}`}
         style={{
           position: "absolute",
           left: position.x,
