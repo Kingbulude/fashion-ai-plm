@@ -85,7 +85,7 @@ export default function BrandsPage() {
     try {
       const res = await fetch(`/api/seasons?brand_id=${brandId}`);
       const data = await res.json();
-      setSeasons(data || []);
+      setSeasons(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch seasons:", error);
     }

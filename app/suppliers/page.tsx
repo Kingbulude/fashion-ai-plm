@@ -68,7 +68,7 @@ export default function SuppliersPage() {
       const res = await fetch("/api/suppliers");
       if (res.ok) {
         const data = await res.json();
-        setSuppliers(data);
+        setSuppliers(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error("获取供应商失败:", err);

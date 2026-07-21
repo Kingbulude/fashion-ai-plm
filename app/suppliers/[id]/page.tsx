@@ -67,7 +67,7 @@ export default function SupplierDetailPage() {
       const res = await fetch(`/api/suppliers/${id}/history`);
       if (res.ok) {
         const data = await res.json();
-        setHistory(data);
+        setHistory(Array.isArray(data) ? data : []);
       }
     } catch {}
   };

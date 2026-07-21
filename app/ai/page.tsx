@@ -91,7 +91,8 @@ export default function AiPage() {
     try {
       const res = await fetch("/api/ai/images");
       if (res.ok) {
-        setAiImages((await res.json()) || []);
+        const data = await res.json();
+        setAiImages(Array.isArray(data) ? data : []);
       }
     } catch {
       setAiImages([]);
@@ -102,7 +103,8 @@ export default function AiPage() {
     try {
       const res = await fetch("/api/ai/test-results");
       if (res.ok) {
-        setTestResults((await res.json()) || []);
+        const data = await res.json();
+        setTestResults(Array.isArray(data) ? data : []);
       }
     } catch {
       setTestResults([]);

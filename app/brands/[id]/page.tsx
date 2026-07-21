@@ -99,7 +99,8 @@ export default function BrandDetailPage() {
   }
 
   const { brand, dna, seasons, stats } = data;
-  const stageEntries: [string, number][] = Object.entries(stats.stageStats as Record<string, number>).sort((a, b) => b[1] - a[1]);
+  const stageStats = stats?.stageStats || {};
+  const stageEntries: [string, number][] = Object.entries(stageStats as Record<string, number>).sort((a, b) => b[1] - a[1]);
 
   return (
     <SidebarLayout>

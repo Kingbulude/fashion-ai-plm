@@ -9,6 +9,30 @@ function getSupabaseConfig() {
 
 // 安全的 Mock 客户端 - 不发任何网络请求
 function createMockClient(): SupabaseClient {
+  const chain: any = {
+    select: () => chain,
+    insert: () => chain,
+    update: () => chain,
+    upsert: () => chain,
+    delete: () => chain,
+    eq: () => chain,
+    neq: () => chain,
+    in: () => chain,
+    not: () => chain,
+    is: () => chain,
+    lt: () => chain,
+    gt: () => chain,
+    lte: () => chain,
+    gte: () => chain,
+    or: () => chain,
+    order: () => chain,
+    limit: () => chain,
+    range: () => chain,
+    single: () => Promise.resolve({ data: null, error: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    then: (resolve: any) => resolve({ data: [], error: null }),
+  };
+
   const mockAuth: any = {
     getUser: () => Promise.resolve({ data: { user: null }, error: null }),
     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
@@ -19,7 +43,18 @@ function createMockClient(): SupabaseClient {
       data: { subscription: { unsubscribe: () => {} } },
     }),
   };
-  return { auth: mockAuth } as unknown as SupabaseClient;
+
+  return {
+    auth: mockAuth,
+    from: () => chain,
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ data: null, error: null }),
+        download: () => Promise.resolve({ data: null, error: null }),
+        getPublicUrl: () => ({ data: { publicUrl: "" } }),
+      }),
+    },
+  } as unknown as SupabaseClient;
 }
 
 function createSupabaseClient(): SupabaseClient {
