@@ -53,10 +53,11 @@ export default function SalesPage() {
         fetch("/api/sales"),
         fetch("/api/styles"),
       ]);
-      const salesData = await salesRes.json();
-      const stylesData = await stylesRes.json();
+      const salesData = salesRes.ok ? await salesRes.json() : { sales: [] };
+      const stylesData = stylesRes.ok ? await stylesRes.json() : [];
       setSales(salesData.sales || []);
-      setStyles(stylesData || []);
+      // 防御：确保 styles 始终是数组
+      setStyles(Array.isArray(stylesData) ? stylesData : stylesData.data || []);
     } catch {
       showToast("error", "获取数据失败");
     } finally {

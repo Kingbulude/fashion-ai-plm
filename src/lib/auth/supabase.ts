@@ -7,13 +7,27 @@ function getSupabaseConfig() {
   return { url, key, valid: !!(url && key && !url.includes("placeholder")) };
 }
 
+// 安全的 Mock 客户端 - 不发任何网络请求
+function createMockClient(): SupabaseClient {
+  const mockAuth: any = {
+    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    signInWithPassword: () =>
+      Promise.resolve({ data: { user: null, session: null }, error: { message: "Supabase 未配置" } }),
+    signOut: () => Promise.resolve({ error: null }),
+    onAuthStateChange: () => ({
+      data: { subscription: { unsubscribe: () => {} } },
+    }),
+  };
+  return { auth: mockAuth } as unknown as SupabaseClient;
+}
+
 function createSupabaseClient(): SupabaseClient {
   const { url, key, valid } = getSupabaseConfig();
 
   if (!valid) {
-    return createClient("https://placeholder.supabase.co", "placeholder-key", {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    // 未配置 → 返回 Mock 客户端（避免白屏/CPU 死锁）
+    return createMockClient();
   }
 
   return createClient(url, key, {

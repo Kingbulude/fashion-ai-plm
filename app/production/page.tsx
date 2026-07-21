@@ -75,9 +75,12 @@ export default function ProductionPage() {
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        setData({ orders: [], summary: {}, factoryStats: [] });
       }
     } catch (err) {
       console.error(err);
+      setData({ orders: [], summary: {}, factoryStats: [] });
     } finally {
       setLoading(false);
     }
@@ -86,8 +89,15 @@ export default function ProductionPage() {
   const fetchStyles = async () => {
     try {
       const res = await fetch("/api/styles");
-      if (res.ok) setStyles(await res.json());
-    } catch {}
+      if (res.ok) {
+        const data = await res.json();
+        // 防御：确保 styles 始终是数组
+        setStyles(Array.isArray(data) ? data : data.data || []);
+      }
+    } catch (err) {
+      console.error("获取款式失败:", err);
+      setStyles([]);
+    }
   };
 
   const handleCreate = async () => {

@@ -54,10 +54,11 @@ export default function AftersalesPage() {
         fetch("/api/aftersales"),
         fetch("/api/styles"),
       ]);
-      const recordsData = await recordsRes.json();
-      const stylesData = await stylesRes.json();
+      const recordsData = recordsRes.ok ? await recordsRes.json() : { records: [] };
+      const stylesData = stylesRes.ok ? await stylesRes.json() : [];
       setRecords(recordsData.records || []);
-      setStyles(stylesData || []);
+      // 防御：确保 styles 始终是数组
+      setStyles(Array.isArray(stylesData) ? stylesData : stylesData.data || []);
     } catch {
       showToast("error", "获取数据失败");
     } finally {

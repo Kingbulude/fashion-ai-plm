@@ -21,10 +21,16 @@ export default function DesignPage() {
       setLoading(true);
       try {
         const res = await fetch("/api/styles");
-        const data = await res.json();
-        setStyles(data || []);
+        if (res.ok) {
+          const data = await res.json();
+          // 防御：确保 styles 始终是数组
+          setStyles(Array.isArray(data) ? data : data.data || []);
+        } else {
+          setStyles([]);
+        }
       } catch {
         console.error("获取数据失败");
+        setStyles([]);
       } finally {
         setLoading(false);
       }
