@@ -32,9 +32,13 @@ import {
   Sparkles,
   Loader2,
   LayoutDashboard,
+  ShoppingCart,
+  ShieldAlert,
 } from "lucide-react";
 import { StyleOverview } from "@/components/styles/style-overview";
 import { StyleStateFlow } from "@/components/styles/style-state-flow";
+import { StyleSalesTab } from "@/components/styles/sales-tab";
+import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 
 export const runtime = "edge";
 
@@ -310,6 +314,14 @@ export default function StyleDetailPage() {
             <TabsTrigger value="procurement" className="h-8 px-4">采购</TabsTrigger>
             <TabsTrigger value="production" className="h-8 px-4">生产</TabsTrigger>
             <TabsTrigger value="inventory" className="h-8 px-4">库存</TabsTrigger>
+            <TabsTrigger value="sales" className="h-8 px-4">
+              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+              销售
+            </TabsTrigger>
+            <TabsTrigger value="aftersales" className="h-8 px-4">
+              <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
+              售后
+            </TabsTrigger>
           </TabsList>
 
           {/* 作战室概览 Tab */}
@@ -579,6 +591,14 @@ export default function StyleDetailPage() {
 
           <TabsContent value="inventory" className="mt-0">
             <InventoryForm styleId={id} />
+          </TabsContent>
+
+          <TabsContent value="sales" className="mt-0">
+            <StyleSalesTab styleId={id} styleName={style.name} />
+          </TabsContent>
+
+          <TabsContent value="aftersales" className="mt-0">
+            <StyleAfterSalesTab styleId={id} styleName={style.name} />
           </TabsContent>
         </Tabs>
       </div>
