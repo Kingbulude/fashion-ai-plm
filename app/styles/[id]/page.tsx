@@ -260,28 +260,30 @@ export default function StyleDetailPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold">{style.name}</h1>
-              <Badge variant="secondary" className={`${status.bg} ${status.color} border-0`}>
-                {status.label}
-              </Badge>
+      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <div className="flex items-center gap-3 flex-1">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="flex-shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-3 mb-1 flex-wrap">
+                <h1 className="text-xl lg:text-2xl font-bold truncate">{style.name}</h1>
+                <Badge variant="secondary" className={`${status.bg} ${status.color} border-0`}>
+                  {status.label}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {style.styleNo} · {style.category || "未分类"} · {style.season || "-"}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {style.styleNo} · {style.category || "未分类"} · {style.season || "-"}
-            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:pl-4">
             <Button variant="outline" size="sm" onClick={() => {}}>
               <Edit className="h-4 w-4 mr-2" />
               编辑
             </Button>
-            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-600" onClick={handleDelete}>
+            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-600 hover:bg-red-50" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
               删除
             </Button>
@@ -300,29 +302,31 @@ export default function StyleDetailPage() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-6 h-10 p-1 flex-wrap">
-            <TabsTrigger value="overview" className="h-8 px-4">
-              <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
-              作战室
-            </TabsTrigger>
-            <TabsTrigger value="info" className="h-8 px-4">基本信息</TabsTrigger>
-            <TabsTrigger value="assets" className="h-8 px-4">设计资产</TabsTrigger>
-            <TabsTrigger value="techpack" className="h-8 px-4">工艺包</TabsTrigger>
-            <TabsTrigger value="bom" className="h-8 px-4">BOM清单</TabsTrigger>
-            <TabsTrigger value="sampling" className="h-8 px-4">打样</TabsTrigger>
-            <TabsTrigger value="qc" className="h-8 px-4">质检</TabsTrigger>
-            <TabsTrigger value="procurement" className="h-8 px-4">采购</TabsTrigger>
-            <TabsTrigger value="production" className="h-8 px-4">生产</TabsTrigger>
-            <TabsTrigger value="inventory" className="h-8 px-4">库存</TabsTrigger>
-            <TabsTrigger value="sales" className="h-8 px-4">
-              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
-              销售
-            </TabsTrigger>
-            <TabsTrigger value="aftersales" className="h-8 px-4">
-              <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
-              售后
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 mb-4 -mx-1 px-1">
+            <TabsList className="h-11 p-1 w-max min-w-full">
+              <TabsTrigger value="overview" className="h-9 px-4">
+                <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
+                作战室
+              </TabsTrigger>
+              <TabsTrigger value="info" className="h-9 px-4">基本信息</TabsTrigger>
+              <TabsTrigger value="assets" className="h-9 px-4">设计资产</TabsTrigger>
+              <TabsTrigger value="techpack" className="h-9 px-4">工艺包</TabsTrigger>
+              <TabsTrigger value="bom" className="h-9 px-4">BOM清单</TabsTrigger>
+              <TabsTrigger value="sampling" className="h-9 px-4">打样</TabsTrigger>
+              <TabsTrigger value="qc" className="h-9 px-4">质检</TabsTrigger>
+              <TabsTrigger value="procurement" className="h-9 px-4">采购</TabsTrigger>
+              <TabsTrigger value="production" className="h-9 px-4">生产</TabsTrigger>
+              <TabsTrigger value="inventory" className="h-9 px-4">库存</TabsTrigger>
+              <TabsTrigger value="sales" className="h-9 px-4">
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                销售
+              </TabsTrigger>
+              <TabsTrigger value="aftersales" className="h-9 px-4">
+                <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
+                售后
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* 作战室概览 Tab */}
           <TabsContent value="overview" className="mt-0">
@@ -340,28 +344,31 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="info" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <Card className="border-0 shadow-sm">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2 space-y-6">
+                <Card className="card-premium">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">款式档案</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-navy-700" />
+                      款式档案
+                    </CardTitle>
                     <CardDescription>款式的基本信息和描述</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-5">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                       {infoItems.map((item, i) => (
-                        <div key={i} className="space-y-1">
+                        <div key={i} className="space-y-1.5 p-3 rounded-lg bg-sand-50/50 border border-sand-100">
                           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <item.icon className="h-3 w-3" />
+                            <item.icon className="h-3.5 w-3.5 text-navy-600" />
                             {item.label}
                           </p>
-                          <p className="font-medium text-sm">{item.value}</p>
+                          <p className="font-semibold text-sm text-foreground">{item.value}</p>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-5 pt-5 border-t">
+                    <div className="mt-6 pt-5 border-t">
                       <p className="text-xs text-muted-foreground mb-2">设计描述</p>
-                      <p className="text-sm leading-relaxed">
+                      <p className="text-sm leading-relaxed text-foreground">
                         {style.description || "暂无描述"}
                       </p>
                     </div>
@@ -369,18 +376,21 @@ export default function StyleDetailPage() {
                 </Card>
 
                 {(style.aiTags?.length > 0 || style.aiColorPalette?.length > 0) && (
-                  <Card className="border-0 shadow-sm">
+                  <Card className="card-premium">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">AI 分析结果</CardTitle>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-navy-700" />
+                        AI 分析结果
+                      </CardTitle>
                       <CardDescription>由 AI 自动提取的标签和色彩</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-5">
                       {style.aiTags?.length > 0 && (
                         <div>
-                          <p className="text-xs text-muted-foreground mb-2">AI标签</p>
+                          <p className="text-xs text-muted-foreground mb-2.5">AI标签</p>
                           <div className="flex flex-wrap gap-2">
                             {style.aiTags.map((tag: string) => (
-                              <Badge key={tag} variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                              <Badge key={tag} variant="secondary" className="bg-navy-50 text-navy-700 hover:bg-navy-100 px-2.5 py-0.5">
                                 {tag}
                               </Badge>
                             ))}
@@ -389,10 +399,10 @@ export default function StyleDetailPage() {
                       )}
                       {style.aiColorPalette?.length > 0 && (
                         <div>
-                          <p className="text-xs text-muted-foreground mb-2">AI提取色彩</p>
+                          <p className="text-xs text-muted-foreground mb-2.5">AI提取色彩</p>
                           <div className="flex flex-wrap gap-2">
                             {style.aiColorPalette.map((color: string) => (
-                              <Badge key={color} variant="outline" className="gap-2">
+                              <Badge key={color} variant="outline" className="gap-2 px-2.5 py-0.5">
                                 <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: color }} />
                                 {color}
                               </Badge>
@@ -406,40 +416,47 @@ export default function StyleDetailPage() {
               </div>
 
               <div className="space-y-6">
-                <Card className="border-0 shadow-sm">
+                <Card className="card-premium">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">状态进度</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {Object.entries(statusConfig).slice(0, 6).map(([key, val], i) => (
-                        <div key={key} className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${style.status === key ? "bg-blue-500" : key.indexOf(style.status) > -1 || i < Object.keys(statusConfig).indexOf(style.status) ? "bg-green-500" : "bg-slate-200"}`} />
-                          <span className={`text-sm ${style.status === key ? "font-medium" : "text-muted-foreground"}`}>
-                            {val.label}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {Object.entries(statusConfig).slice(0, 6).map(([key, val]) => {
+                        const statusKeys = Object.keys(statusConfig).slice(0, 6);
+                        const currentIndex = statusKeys.indexOf(style.status);
+                        const keyIndex = statusKeys.indexOf(key);
+                        const isCurrent = style.status === key;
+                        const isCompleted = keyIndex < currentIndex && currentIndex !== -1;
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <div className={`w-2.5 h-2.5 rounded-full ${isCurrent ? "bg-navy-600 ring-4 ring-navy-100" : isCompleted ? "bg-emerald-500" : "bg-slate-200"}`} />
+                            <span className={`text-sm ${isCurrent ? "font-semibold text-foreground" : isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
+                              {val.label}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
+                <Card className="card-premium bg-gradient-to-br from-navy-50 to-indigo-50 border-navy-100">
                   <CardContent className="p-5">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
                         <Palette className="h-4 w-4 text-white" />
                       </div>
                       <h3 className="font-semibold text-sm">AI 设计分析</h3>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-4">
+                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
                       上传设计稿，AI 将自动提取色彩、风格、元素等标签
                     </p>
                     {style.aiTags?.length > 0 ? (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full bg-white/60 hover:bg-white/80"
+                        className="w-full bg-white/70 hover:bg-white border-navy-200 text-navy-700 hover:text-navy-800"
                         onClick={handleAnalyzeLatest}
                         disabled={globalAnalyzing}
                       >
@@ -454,7 +471,7 @@ export default function StyleDetailPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full bg-white/60 hover:bg-white/80"
+                        className="w-full bg-white/70 hover:bg-white border-navy-200 text-navy-700 hover:text-navy-800"
                         onClick={() => openUpload("design")}
                       >
                         <Upload className="h-4 w-4 mr-2" />
@@ -468,14 +485,17 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="assets" className="mt-0">
-            <Card className="border-0 shadow-sm">
+            <Card className="card-premium">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base">设计资产</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-navy-700" />
+                      设计资产
+                    </CardTitle>
                     <CardDescription>款式相关的设计稿、灵感图等资产</CardDescription>
                   </div>
-                  <Button size="sm" onClick={() => openUpload()}>
+                  <Button size="sm" onClick={() => openUpload()} className="bg-navy-700 hover:bg-navy-800 text-white w-full sm:w-auto">
                     <Upload className="h-4 w-4 mr-2" />
                     上传资产
                   </Button>
@@ -483,42 +503,42 @@ export default function StyleDetailPage() {
               </CardHeader>
               <CardContent>
                 {assets.length === 0 ? (
-                  <div className="text-center py-16 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <ImageIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <div className="text-center py-16 bg-sand-50 rounded-xl border border-dashed border-border">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
                     <p className="text-muted-foreground text-sm mb-4">暂无设计资产</p>
-                    <Button size="sm" onClick={() => openUpload()}>
+                    <Button size="sm" onClick={() => openUpload()} className="bg-navy-700 hover:bg-navy-800 text-white">
                       <Upload className="h-4 w-4 mr-2" />
                       上传第一个资产
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {assets.map((asset) => (
                       <div
                         key={asset.id}
-                        className="group border rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-white"
+                        className="group card-premium overflow-hidden hover:shadow-premium transition-all cursor-pointer bg-card"
                       >
-                        <div className="aspect-square bg-slate-100 flex items-center justify-center relative">
+                        <div className="aspect-[4/3] bg-sand-100 flex items-center justify-center relative overflow-hidden">
                           {asset.thumbnailUrl ? (
                             <img
                               src={asset.thumbnailUrl}
                               alt={asset.fileName}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
-                            <FileText className="h-10 w-10 text-slate-400" />
+                            <FileText className="h-10 w-10 text-muted-foreground/40" />
                           )}
                           {asset.isActive && (
-                            <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                            <div className="absolute top-2.5 right-2.5 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
                               <CheckCircle className="h-3 w-3" />
                               当前
                             </div>
                           )}
                         </div>
-                        <div className="p-3">
-                          <p className="font-medium text-sm truncate">{asset.fileName}</p>
-                          <div className="flex items-center justify-between mt-2 mb-2">
-                            <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-600">
+                        <div className="p-4">
+                          <p className="font-semibold text-sm text-foreground truncate">{asset.fileName}</p>
+                          <div className="flex items-center justify-between mt-2 mb-3">
+                            <Badge variant="secondary" className="text-xs bg-sand-100 text-slate-700">
                               {assetTypeLabels[asset.type] || asset.type}
                             </Badge>
                             <span className="text-xs text-muted-foreground">v{asset.version}</span>
@@ -526,8 +546,8 @@ export default function StyleDetailPage() {
                           {asset.type === "design" && (
                             <Button
                               variant="outline"
-                              size="xs"
-                              className="w-full h-7 mt-1 text-xs"
+                              size="sm"
+                              className="w-full h-8 text-xs border-navy-200 text-navy-700 hover:bg-navy-50 hover:text-navy-800"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleAnalyzeAsset(asset.id);
