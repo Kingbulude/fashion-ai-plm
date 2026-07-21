@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+export const runtime = "edge";
+
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   planning: { label: "企划中", color: "text-slate-700", bg: "bg-slate-100" },
   designing: { label: "设计中", color: "text-blue-700", bg: "bg-blue-100" },

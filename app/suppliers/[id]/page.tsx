@@ -25,6 +25,8 @@ import {
   Loader2,
 } from "lucide-react";
 
+export const runtime = "edge";
+
 const SUPPLIER_TYPES: Record<string, { label: string; color: string }> = {
   fabric: { label: "面料供应商", color: "bg-blue-50 text-blue-700" },
   accessory: { label: "辅料供应商", color: "bg-amber-50 text-amber-700" },
