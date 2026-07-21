@@ -46,6 +46,76 @@ const LINKS_DEF = [
   { from: "aftersales", to: "planning", type: "feedback" },
 ];
 
+const DEFAULT_LINK_CONTENTS: Record<
+  string,
+  { duration_hours: number; deadline: string | null; work_content: string[]; deliverables: string[] }
+> = {
+  "planning-design": {
+    duration_hours: 40,
+    deadline: "2026-08-01",
+    work_content: ["完成商品企划", "设计方向确认", "面料色彩企划"],
+    deliverables: ["企划方案文档", "主题板", "色彩方案", "面料方案"],
+  },
+  "design-sampling": {
+    duration_hours: 60,
+    deadline: "2026-08-15",
+    work_content: ["完成款式设计", "BOM表", "工艺单", "尺寸表"],
+    deliverables: ["款式设计图", "BOM清单", "工艺单", "尺寸规格表"],
+  },
+  "sampling-testing": {
+    duration_hours: 30,
+    deadline: "2026-08-25",
+    work_content: ["制作首样", "试穿修改", "确认版型"],
+    deliverables: ["确认样衣", "版型报告", "修改意见"],
+  },
+  "sampling-procurement": {
+    duration_hours: 20,
+    deadline: "2026-08-20",
+    work_content: ["确认面料供应商", "下达采购订单"],
+    deliverables: ["面料采购单", "供应商确认函", "交期确认"],
+  },
+  "testing-procurement": {
+    duration_hours: 10,
+    deadline: "2026-08-28",
+    work_content: ["根据测款结果调整采购计划", "确认面料风险"],
+    deliverables: ["测款反馈", "采购调整建议", "面料备选方案"],
+  },
+  "procurement-stocking": {
+    duration_hours: 80,
+    deadline: "2026-09-20",
+    work_content: ["物料采购到货", "大货生产", "制程质检", "成品入库"],
+    deliverables: ["采购到货单", "生产订单", "质检报告", "入库单"],
+  },
+  "testing-sales": {
+    duration_hours: 15,
+    deadline: "2026-09-05",
+    work_content: ["AI测款验证", "市场测试", "接受度评估", "下单决策"],
+    deliverables: ["测款报告", "接受度评估", "下单建议"],
+  },
+  "stocking-sales": {
+    duration_hours: 10,
+    deadline: "2026-09-25",
+    work_content: ["备货完成", "库存就位", "发货准备"],
+    deliverables: ["库存确认单", "发货清单", "物流安排"],
+  },
+  "sales-aftersales": {
+    duration_hours: 0,
+    deadline: null,
+    work_content: ["销售运营", "订单处理", "物流配送"],
+    deliverables: ["销售订单", "发货单", "物流信息"],
+  },
+  "aftersales-planning": {
+    duration_hours: 10,
+    deadline: null,
+    work_content: ["售后复盘", "客户反馈收集", "数据沉淀"],
+    deliverables: ["售后报告", "客户反馈汇总", "复盘分析报告"],
+  },
+};
+
+function getDefaultContent(from: string, to: string) {
+  return DEFAULT_LINK_CONTENTS[`${from}-${to}`] || null;
+}
+
 const CANVAS_WIDTH = 1720;
 const CANVAS_HEIGHT = 600;
 
@@ -106,16 +176,19 @@ export default function HomePage() {
       const existingKeys = new Set(fetched.map((l: ProcessLink) => `${l.from_node}-${l.to_node}`));
       const defaults = LINKS_DEF
         .filter(def => !existingKeys.has(`${def.from}-${def.to}`))
-        .map(def => ({
-          id: `default-${def.from}-${def.to}`,
-          from_node: def.from,
-          to_node: def.to,
-          link_type: def.type,
-          duration_hours: 0,
-          deadline: null,
-          work_content: "",
-          deliverables: "",
-        }));
+        .map(def => {
+          const content = getDefaultContent(def.from, def.to);
+          return {
+            id: `default-${def.from}-${def.to}`,
+            from_node: def.from,
+            to_node: def.to,
+            link_type: def.type,
+            duration_hours: content?.duration_hours ?? 0,
+            deadline: content?.deadline ?? null,
+            work_content: content?.work_content.join("\n") ?? "",
+            deliverables: content?.deliverables.join("\n") ?? "",
+          };
+        });
       setLinks([...fetched, ...defaults]);
     } catch (err) {
       console.error("Failed to fetch links", err);
@@ -162,12 +235,19 @@ export default function HomePage() {
   const handleArrowClick = (from: string, to: string) => {
     const link = getLink(from, to);
     if (link) {
+      const content = getDefaultContent(from, to);
+      const effectiveWorkContent = link.work_content?.trim()
+        ? link.work_content
+        : content?.work_content.join("\n") ?? "";
+      const effectiveDeliverables = link.deliverables?.trim()
+        ? link.deliverables
+        : content?.deliverables.join("\n") ?? "";
       setEditingLink(link);
       setEditForm({
-        duration_hours: link.duration_hours || 0,
-        deadline: link.deadline || "",
-        work_content: parseLines(link.work_content || ""),
-        deliverables: parseLines(link.deliverables || ""),
+        duration_hours: link.duration_hours || content?.duration_hours || 0,
+        deadline: link.deadline || content?.deadline || "",
+        work_content: parseLines(effectiveWorkContent),
+        deliverables: parseLines(effectiveDeliverables),
       });
       setEditDialogOpen(true);
     }
