@@ -28,17 +28,21 @@ function ResetPasswordForm() {
   useEffect(() => {
     const checkRecoveryState = async () => {
       const type = searchParams?.get("type");
+      const { data } = await supabase.auth.getSession();
+      
+      if (data.session?.user) {
+        setIsRecovery(true);
+        setEmail(data.session.user.email || "");
+        setChecking(false);
+        return;
+      }
+
       if (type === "recovery") {
         setIsRecovery(true);
         setChecking(false);
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        setIsRecovery(true);
-        setEmail(data.session.user.email || "");
-      }
       setChecking(false);
     };
     checkRecoveryState();
@@ -195,6 +199,19 @@ function ResetPasswordForm() {
             </div>
           ) : (
             <div className="space-y-5">
+              {/* 当前账号信息 */}
+              {email && (
+                <div className="flex items-center gap-3 p-3 bg-sand-50 rounded-xl border border-sand-100">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <Mail className="h-4 w-4 text-emerald-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">正在重置密码的账号</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{email}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">新密码</Label>
                 <div className="relative">
