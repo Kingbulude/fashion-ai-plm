@@ -108,17 +108,17 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     router.push("/login");
   };
 
-  const { isAdmin, canAccessRoute } = useTenant();
+  const { isAdmin, processRoles, accessibleRoutes } = useTenant();
 
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: BarChart3, label: "智能调度", href: "/" },
-    { icon: Sparkles, label: "企划中心", href: "/planning" },
+    { icon: Sparkles, label: "企划中心", href: "/planning", node: "planning" },
     { icon: Wand2, label: "AI智能分析", href: "/ai" },
-    { icon: Brain, label: "AI审核中心", href: "/ai-review" },
-    { icon: Shirt, label: "款式管理", href: "/styles" },
-    { icon: Palette, label: "设计资产", href: "/design" },
-    { icon: Factory, label: "生产管理", href: "/production" },
+    { icon: Brain, label: "AI审核中心", href: "/ai-review", node: "testing" },
+    { icon: Shirt, label: "款式管理", href: "/styles", node: "sampling" },
+    { icon: Palette, label: "设计资产", href: "/design", node: "design" },
+    { icon: Factory, label: "生产管理", href: "/production", node: "stocking" },
     { icon: BarChart3, label: "经营反馈", href: "/analytics" },
     { icon: Building2, label: "品牌管理", href: "/brands", admin: true },
     { icon: Store, label: "供应商", href: "/suppliers", admin: true },
@@ -127,7 +127,18 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const navItems = allNavItems.filter((item) => {
     if (item.admin && !isAdmin) return false;
-    return canAccessRoute(item.href);
+
+    // BOSS/ADMIN 或通配权限，显示全部
+    if (isAdmin || accessibleRoutes.includes("*")) return true;
+
+    // 未配置 node 的通用页面默认显示
+    if (!item.node) return true;
+
+    // 根据横向工序角色的 route_permissions 或 process_node 判断
+    const routeAllowed = accessibleRoutes.some((route) => item.href === route || item.href.startsWith(`${route}/`));
+    const nodeAllowed = processRoles.some((r) => r.process_node === item.node);
+
+    return routeAllowed || nodeAllowed;
   });
 
   const isActive = (href: string) => {

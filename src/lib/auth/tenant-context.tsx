@@ -20,6 +20,16 @@ export interface Brand {
   company_id: string;
 }
 
+export interface ProcessRole {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  process_node: string;
+  route_permissions: Record<string, string[]>;
+  is_active: boolean;
+}
+
 export interface Season {
   id: string;
   name: string;
@@ -55,6 +65,10 @@ export interface TenantContextValue {
   isBoss: boolean;
   canAccessRoute: (route: string) => boolean;
   canPerform: (action: Permission) => boolean;
+
+  // 横向工序角色
+  processRoles: ProcessRole[];
+  accessibleRoutes: string[];
 
   // 工具
   refresh: () => Promise<void>;
@@ -92,6 +106,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBoss, setIsBoss] = useState(false);
   const [allowedBrandIds, setAllowedBrandIds] = useState<string[]>([]);
+  const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
+  const [accessibleRoutes, setAccessibleRoutes] = useState<string[]>([]);
 
   // 1. 加载可用的公司/品牌/季节
   const loadTenants = useCallback(async () => {
@@ -112,6 +128,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const loadedSeasons: Season[] = seasonsRes.data || [];
       const loadedRoleLevel: string | null = meRes.roleLevel || null;
       const allowedBrandIds: string[] = meRes.allowedBrandIds || [];
+      const loadedProcessRoles: ProcessRole[] = (meRes.processRoles || []).filter(
+        (r: any) => r && r.is_active !== false
+      );
+      const loadedAccessibleRoutes: string[] = meRes.accessibleRoutes || [];
 
       setCompanies(loadedCompanies);
       setBrands(loadedBrands);
@@ -123,6 +143,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(loadedRoleLevel === RoleLevel.BOSS || loadedRoleLevel === RoleLevel.ADMIN);
       setIsBoss(loadedRoleLevel === RoleLevel.BOSS);
       setAllowedBrandIds(allowedBrandIds);
+      setProcessRoles(loadedProcessRoles);
+      setAccessibleRoutes(loadedAccessibleRoutes);
 
       // 2. 确定当前选中的 ID（优先级：URL > localStorage > 默认）
       const urlCompanyId = searchParams.get("companyId");
@@ -283,6 +305,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     isBoss,
     canAccessRoute: (route: string) => canAccessRoute(userRole, route),
     canPerform: (action: Permission) => canPerformAction(userRole || "", action),
+    processRoles,
+    accessibleRoutes,
     refresh: loadTenants,
   };
 

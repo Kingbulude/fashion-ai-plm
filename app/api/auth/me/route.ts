@@ -43,10 +43,34 @@ export async function GET(request: Request) {
       allowedBrandIds = (ub || []).map((x: any) => x.brand_id);
     }
 
+    // 加载横向工序角色
+    const { data: userProcessRoles } = await supabase
+      .from("user_process_roles")
+      .select("process_role_id, process_roles(*)")
+      .eq("user_id", session.user.id);
+
+    const processRoles = ((userProcessRoles || [])
+      .map((ur: any) => ur.process_roles)
+      .filter(Boolean) as any[])
+      .filter((r: any) => r.is_active !== false);
+
+    // 计算可访问路由
+    const routeSet = new Set<string>();
+    if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
+      // BOSS/ADMIN 可访问全部路由
+      routeSet.add("*");
+    } else {
+      processRoles.forEach((role: any) => {
+        Object.keys(role.route_permissions || {}).forEach((route) => routeSet.add(route));
+      });
+    }
+
     return NextResponse.json({
       profile,
       roleLevel,
       allowedBrandIds,
+      processRoles,
+      accessibleRoutes: Array.from(routeSet),
     });
   } catch (error) {
     console.error("Failed to fetch auth me:", error);
