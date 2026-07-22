@@ -18,6 +18,7 @@ import {
   Loader2,
   ChevronUp,
 } from "lucide-react";
+import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
 interface Message {
   id: string;
@@ -262,9 +263,10 @@ export default function PlanningPage() {
 
   return (
     <SidebarLayout>
-      <div className="h-[calc(100vh-72px)] flex flex-col p-4 gap-4">
-        <div className="flex-1 min-h-0">
-          <Card className="h-full flex flex-col overflow-hidden bg-gradient-to-br bg-white">
+      <div className="h-[calc(100vh-72px)] flex p-4 gap-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-4">
+          <div className="flex-1 min-h-0">
+            <Card className="h-full flex flex-col overflow-hidden bg-gradient-to-br bg-white">
             <div className={`border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-gradient-to-r ${activeSkill.bgGradient}`}>
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-white shadow-md`}>
@@ -373,6 +375,12 @@ export default function PlanningPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        </div>
+
+        <div className="w-80 flex-shrink-0 hidden xl:flex">
+          <AIAssistantPanel processNode="planning" title="企划 AI 助手" />
         </div>
       </div>
     </SidebarLayout>

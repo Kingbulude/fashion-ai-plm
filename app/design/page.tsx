@@ -10,6 +10,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
 export default function DesignPage() {
   const [styles, setStyles] = useState<any[]>([]);
@@ -59,6 +60,8 @@ export default function DesignPage() {
           </div>
         </div>
 
+        <div className="flex gap-6">
+          <div className="flex-1 min-w-0">
         {loading ? (
           <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -92,6 +95,12 @@ export default function DesignPage() {
             ))}
           </div>
         )}
+          </div>
+
+          <div className="w-80 flex-shrink-0 hidden xl:block">
+            <AIAssistantPanel processNode="design" title="设计 AI 助手" />
+          </div>
+        </div>
       </div>
     </SidebarLayout>
   );

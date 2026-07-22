@@ -30,6 +30,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { useTenant } from "@/lib/auth/tenant-context";
+import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending: { label: "待排产", color: "text-slate-600", bg: "bg-slate-100", icon: Clock },
@@ -196,6 +197,9 @@ export default function ProductionPage() {
           </div>
         </div>
 
+        <div className="flex gap-6">
+          <div className="flex-1 min-w-0">
+
         {/* 4 大 KPI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <KpiCard
@@ -354,6 +358,12 @@ export default function ProductionPage() {
         ) : (
           <ProductionKanban orders={filtered} />
         )}
+          </div>
+
+          <div className="w-80 flex-shrink-0 hidden xl:block">
+            <AIAssistantPanel processNode="stocking" title="生产 AI 助手" />
+          </div>
+        </div>
       </div>
 
       {/* 创建订单弹窗 */}

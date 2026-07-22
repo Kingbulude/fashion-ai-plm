@@ -54,7 +54,37 @@ export async function GET(request: Request) {
       .eq("is_active", true)
       .order("name");
 
-    return NextResponse.json(data || []);
+    const skills = data || [];
+    if (skills.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    const skillIds = skills.map((s: any) => s.id);
+
+    const [{ data: roleRelations }, { data: scopeRelations }] = await Promise.all([
+      supabase.from("process_role_ai_skills").select("ai_skill_id, process_role_id").in("ai_skill_id", skillIds),
+      supabase.from("process_owner_scope_ai_skills").select("ai_skill_id, scope_id").in("ai_skill_id", skillIds),
+    ]);
+
+    const roleMap: Record<string, string[]> = {};
+    (roleRelations || []).forEach((r: any) => {
+      if (!roleMap[r.ai_skill_id]) roleMap[r.ai_skill_id] = [];
+      roleMap[r.ai_skill_id].push(r.process_role_id);
+    });
+
+    const scopeMap: Record<string, string[]> = {};
+    (scopeRelations || []).forEach((r: any) => {
+      if (!scopeMap[r.ai_skill_id]) scopeMap[r.ai_skill_id] = [];
+      scopeMap[r.ai_skill_id].push(r.scope_id);
+    });
+
+    return NextResponse.json(
+      skills.map((s: any) => ({
+        ...s,
+        processRoleIds: roleMap[s.id] || [],
+        scopeIds: scopeMap[s.id] || [],
+      }))
+    );
   } catch (error) {
     console.error("Failed to fetch ai skills:", error);
     return NextResponse.json({ error: "Failed to fetch ai skills" }, { status: 500 });
@@ -69,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { id, key, name, description, skill_type, process_node, config_schema, entry_route } = body;
+    const { id, key, name, description, skill_type, process_node, config_schema, entry_route, processRoleIds, scopeIds } = body;
 
     if (!key || !name || !skillTypeOptions.includes(skill_type)) {
       return NextResponse.json({ error: "缺少必填字段或 skill_type 不合法" }, { status: 400 });
@@ -90,6 +120,9 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    let skillId: string;
+    let skillData: any;
+
     if (id) {
       const { data, error } = await supabase
         .from("ai_skills")
@@ -98,7 +131,8 @@ export async function POST(request: Request) {
         .select()
         .single();
       if (error) throw error;
-      return NextResponse.json(data);
+      skillId = data.id;
+      skillData = data;
     } else {
       const { data, error } = await supabase
         .from("ai_skills")
@@ -106,8 +140,39 @@ export async function POST(request: Request) {
         .select()
         .single();
       if (error) throw error;
-      return NextResponse.json(data);
+      skillId = data.id;
+      skillData = data;
     }
+
+    // 更新与工序角色的关联
+    const validProcessRoleIds = (processRoleIds || []).filter((pid: string) => typeof pid === "string" && pid.length > 0);
+    await supabase.from("process_role_ai_skills").delete().eq("ai_skill_id", skillId);
+    if (validProcessRoleIds.length > 0) {
+      const roleInsert = validProcessRoleIds.map((processRoleId: string) => ({
+        ai_skill_id: skillId,
+        process_role_id: processRoleId,
+      }));
+      const { error: roleError } = await supabase.from("process_role_ai_skills").insert(roleInsert);
+      if (roleError) throw roleError;
+    }
+
+    // 更新与主管类型的关联
+    const validScopeIds = (scopeIds || []).filter((sid: string) => typeof sid === "string" && sid.length > 0);
+    await supabase.from("process_owner_scope_ai_skills").delete().eq("ai_skill_id", skillId);
+    if (validScopeIds.length > 0) {
+      const scopeInsert = validScopeIds.map((scopeId: string) => ({
+        ai_skill_id: skillId,
+        scope_id: scopeId,
+      }));
+      const { error: scopeError } = await supabase.from("process_owner_scope_ai_skills").insert(scopeInsert);
+      if (scopeError) throw scopeError;
+    }
+
+    return NextResponse.json({
+      ...skillData,
+      processRoleIds: validProcessRoleIds,
+      scopeIds: validScopeIds,
+    });
   } catch (error) {
     console.error("Failed to save ai skill:", error);
     return NextResponse.json({ error: "Failed to save ai skill" }, { status: 500 });

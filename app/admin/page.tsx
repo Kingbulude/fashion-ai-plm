@@ -46,7 +46,7 @@ const adminModules: AdminModule[] = [
     description: "配置设计主管、产品主管、运营主管、售后主管等工序段",
     href: "/admin/process-owners",
     icon: Workflow,
-    active: false,
+    active: true,
   },
   {
     id: "process-roles",
@@ -54,7 +54,7 @@ const adminModules: AdminModule[] = [
     description: "管理企划师、设计师、采购员等横向执行角色",
     href: "/admin/process-roles",
     icon: Cpu,
-    active: false,
+    active: true,
   },
   {
     id: "ai-skills",
@@ -62,7 +62,7 @@ const adminModules: AdminModule[] = [
     description: "按工序和环节配置 AI 智能体与执行 skill",
     href: "/admin/ai-skills",
     icon: Sparkles,
-    active: false,
+    active: true,
   },
 ];
 
