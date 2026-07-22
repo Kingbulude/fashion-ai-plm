@@ -69,6 +69,19 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       }
     };
     getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/reset-password");
+      }
+      if (event === "SIGNED_OUT") {
+        router.push("/login");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   useEffect(() => {

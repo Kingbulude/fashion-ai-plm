@@ -20,30 +20,42 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const checkSession = async () => {
+    const checkRecoveryState = async () => {
+      const type = searchParams?.get("type");
+      if (type === "recovery") {
+        setIsRecovery(true);
+        setChecking(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       if (data.session?.user) {
         setIsRecovery(true);
         setEmail(data.session.user.email || "");
       }
+      setChecking(false);
     };
-    checkSession();
+    checkRecoveryState();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
+        if (session?.user?.email) {
+          setEmail(session.user.email);
+        }
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [searchParams]);
 
   const handleSendResetEmail = async () => {
     if (!email) {
@@ -149,7 +161,11 @@ function ResetPasswordForm() {
             </Alert>
           )}
 
-          {!isRecovery ? (
+          {checking ? (
+            <div className="py-8 text-center text-muted-foreground">
+              <div className="animate-pulse">验证链接中...</div>
+            </div>
+          ) : !isRecovery ? (
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">邮箱</Label>
