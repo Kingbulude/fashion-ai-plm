@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Pencil, Shield, Loader2, Building2 } from "lucide-react";
+import { Users, Pencil, Shield, Loader2, Building2, Cpu } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -42,11 +42,24 @@ interface UserBrand {
   role_level: string;
 }
 
+interface UserProcessRole {
+  user_id: string;
+  process_role_id: string;
+}
+
+interface ProcessRole {
+  id: string;
+  key: string;
+  name: string;
+  process_node: string;
+}
+
 interface OrganizationData {
   company: { id: string; name: string } | null;
   brands: Brand[];
   profiles: Profile[];
   userBrands: UserBrand[];
+  userProcessRoles: UserProcessRole[];
   roleLabels: Record<string, string>;
 }
 
@@ -60,16 +73,19 @@ const roleLevelOptions = [
 
 export default function AdminPeoplePage() {
   const [data, setData] = useState<OrganizationData | null>(null);
+  const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editName, setEditName] = useState("");
   const [editRoleLevel, setEditRoleLevel] = useState<string>(RoleLevel.EXECUTOR);
   const [editBrandIds, setEditBrandIds] = useState<string[]>([]);
+  const [editProcessRoleIds, setEditProcessRoleIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchOrganization();
+    fetchProcessRoles();
   }, []);
 
   const fetchOrganization = async () => {
@@ -82,6 +98,7 @@ export default function AdminPeoplePage() {
         brands: json.brands || [],
         profiles: json.profiles || [],
         userBrands: json.userBrands || [],
+        userProcessRoles: json.userProcessRoles || [],
         roleLabels: json.roleLabels || RoleLevelLabels,
       });
     } catch (error) {
@@ -91,9 +108,26 @@ export default function AdminPeoplePage() {
     }
   };
 
+  const fetchProcessRoles = async () => {
+    try {
+      const res = await fetch("/api/process-roles");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setProcessRoles(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch process roles:", error);
+    }
+  };
+
   const getUserBrands = (userId: string) => {
     if (!data) return [];
     return data.userBrands.filter((ub) => ub.user_id === userId);
+  };
+
+  const getUserProcessRoles = (userId: string) => {
+    if (!data) return [];
+    return data.userProcessRoles.filter((upr) => upr.user_id === userId);
   };
 
   const handleEdit = (profile: Profile) => {
@@ -101,7 +135,14 @@ export default function AdminPeoplePage() {
     setEditName(profile.name || "");
     setEditRoleLevel(profile.role_level || RoleLevel.EXECUTOR);
     setEditBrandIds(getUserBrands(profile.user_id).map((ub) => ub.brand_id));
+    setEditProcessRoleIds(getUserProcessRoles(profile.user_id).map((upr) => upr.process_role_id));
     setDialogOpen(true);
+  };
+
+  const toggleProcessRole = (roleId: string) => {
+    setEditProcessRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
   };
 
   const toggleBrand = (brandId: string) => {
@@ -122,6 +163,7 @@ export default function AdminPeoplePage() {
           name: editName.trim(),
           roleLevel: editRoleLevel,
           brandIds: editBrandIds,
+          processRoleIds: editProcessRoleIds,
         }),
       });
       if (res.ok) {
@@ -181,6 +223,7 @@ export default function AdminPeoplePage() {
                     <tr className="border-b border-border text-left text-muted-foreground">
                       <th className="py-3 px-4 font-medium">成员</th>
                       <th className="py-3 px-4 font-medium">角色层级</th>
+                      <th className="py-3 px-4 font-medium">横向工序角色</th>
                       <th className="py-3 px-4 font-medium">可访问品牌</th>
                       <th className="py-3 px-4 font-medium text-right">操作</th>
                     </tr>
@@ -198,6 +241,10 @@ export default function AdminPeoplePage() {
                         const brandNames = userBrands
                           .map((ub) => data?.brands.find((b) => b.id === ub.brand_id)?.name)
                           .filter(Boolean);
+                        const userProcessRoleIds = getUserProcessRoles(profile.user_id).map((upr) => upr.process_role_id);
+                        const userProcessRoleNames = processRoles
+                          .filter((r) => userProcessRoleIds.includes(r.id))
+                          .map((r) => r.name);
 
                         return (
                           <tr
@@ -233,6 +280,19 @@ export default function AdminPeoplePage() {
                               >
                                 {data?.roleLabels[profile.role_level] || profile.role_level}
                               </Badge>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex flex-wrap gap-1.5">
+                                {userProcessRoleNames.length === 0 ? (
+                                  <span className="text-xs text-muted-foreground">未分配</span>
+                                ) : (
+                                  userProcessRoleNames.map((name, idx) => (
+                                    <Badge key={idx} variant="outline" className="text-xs font-normal">
+                                      {name}
+                                    </Badge>
+                                  ))
+                                )}
+                              </div>
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex flex-wrap gap-1.5">
@@ -312,6 +372,36 @@ export default function AdminPeoplePage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-muted-foreground" />
+                  横向工序角色
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {processRoles.map((role) => {
+                    const selected = editProcessRoleIds.includes(role.id);
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => toggleProcessRole(role.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                          selected
+                            ? "bg-navy-700 text-white border-navy-700"
+                            : "bg-card border-border text-muted-foreground hover:bg-sand-50"
+                        }`}
+                      >
+                        {selected ? "✓ " : ""}
+                        {role.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  分配后，用户侧边栏会根据角色配置的页面权限动态显示入口
+                </p>
               </div>
 
               <div className="space-y-2">

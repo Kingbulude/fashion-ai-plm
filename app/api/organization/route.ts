@@ -50,11 +50,17 @@ export async function GET(request: Request) {
       .from("user_brands")
       .select("user_id, brand_id, role_level");
 
+    // 获取用户-工序角色关联
+    const { data: userProcessRoles } = await supabase
+      .from("user_process_roles")
+      .select("user_id, process_role_id");
+
     return NextResponse.json({
       company,
       brands: brands || [],
       profiles: profiles || [],
       userBrands: userBrands || [],
+      userProcessRoles: userProcessRoles || [],
       roleLabels: RoleLevelLabels,
     });
   } catch (error) {
@@ -87,23 +93,40 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { userId, roleLevel: newRoleLevel, brandIds, name } = body;
+    const { userId, roleLevel: newRoleLevel, brandIds, name, processRoleIds } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "缺少用户ID" }, { status: 400 });
     }
 
-    // 更新用户角色
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        role_level: newRoleLevel || RoleLevel.EXECUTOR,
-        name: name,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
+    // 校验不能修改 BOSS 账号（除 BOSS 自己外）
+    if (userId !== session.user.id) {
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("role_level")
+        .eq("user_id", userId)
+        .single();
 
-    if (profileError) throw profileError;
+      if (targetProfile?.role_level === RoleLevel.BOSS && roleLevel !== RoleLevel.BOSS) {
+        return NextResponse.json({ error: "无权修改老板账号" }, { status: 403 });
+      }
+    }
+
+    // 更新用户角色和姓名
+    if (newRoleLevel !== undefined || name !== undefined) {
+      const updatePayload: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (newRoleLevel !== undefined) updatePayload.role_level = newRoleLevel;
+      if (name !== undefined) updatePayload.name = name;
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update(updatePayload)
+        .eq("user_id", userId);
+
+      if (profileError) throw profileError;
+    }
 
     // 更新用户-品牌关联（先删除旧的，再插入新的）
     if (brandIds && Array.isArray(brandIds)) {
@@ -121,6 +144,28 @@ export async function POST(request: Request) {
 
         const { error: insertError } = await supabase
           .from("user_brands")
+          .insert(insertData);
+
+        if (insertError) throw insertError;
+      }
+    }
+
+    // 更新用户-工序角色关联
+    if (processRoleIds && Array.isArray(processRoleIds)) {
+      await supabase
+        .from("user_process_roles")
+        .delete()
+        .eq("user_id", userId);
+
+      if (processRoleIds.length > 0) {
+        const insertData = processRoleIds.map((processRoleId: string) => ({
+          user_id: userId,
+          process_role_id: processRoleId,
+          assigned_by: session.user.id,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("user_process_roles")
           .insert(insertData);
 
         if (insertError) throw insertError;
