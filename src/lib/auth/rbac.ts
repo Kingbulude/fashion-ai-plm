@@ -94,3 +94,64 @@ export function getAIRoleLevel(roleLevel: string): string {
       return "ai_assistant";
   }
 }
+
+// 页面路由到工序节点的映射
+export const RouteProcessNodeMap: Record<string, ProcessNode> = {
+  "/planning": ProcessNode.PLANNING,
+  "/design": ProcessNode.DESIGN,
+  "/styles": ProcessNode.SAMPLING,
+  "/ai-review": ProcessNode.TESTING,
+  "/suppliers": ProcessNode.PROCUREMENT,
+  "/production": ProcessNode.STOCKING,
+  "/sales": ProcessNode.SALES,
+  "/aftersales": ProcessNode.AFTERSALES,
+};
+
+// 路由-角色映射：key 为路由前缀，value 为允许的角色数组
+export const RouteRoleMap: Record<string, RoleLevel[]> = {
+  "/admin": [RoleLevel.BOSS, RoleLevel.ADMIN],
+  "/brands": [RoleLevel.BOSS, RoleLevel.ADMIN],
+  "/suppliers": [RoleLevel.BOSS, RoleLevel.ADMIN, RoleLevel.BRAND_MANAGER],
+};
+
+export function canAccessRoute(
+  roleLevel: string | null | undefined,
+  route: string
+): boolean {
+  if (!roleLevel) return false;
+  if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) return true;
+
+  const matchedRoute = Object.keys(RouteRoleMap)
+    .sort((a, b) => b.length - a.length)
+    .find((prefix) => route === prefix || route.startsWith(`${prefix}/`));
+  if (matchedRoute) {
+    return RouteRoleMap[matchedRoute].includes(roleLevel as RoleLevel);
+  }
+
+  return true; // 未配置的路由默认允许登录用户访问
+}
+
+export interface BrandScope {
+  scope: "company" | "brands";
+  brandIds?: string[];
+}
+
+export function getAllowedBrandIds(
+  roleLevel: string | null | undefined,
+  companyId: string | null | undefined,
+  userBrandIds: string[]
+): BrandScope {
+  if (!roleLevel || !companyId) return { scope: "brands", brandIds: [] };
+  if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
+    return { scope: "company" };
+  }
+  return { scope: "brands", brandIds: userBrandIds };
+}
+
+export function canPerformAction(
+  roleLevel: string,
+  permission: Permission
+): boolean {
+  const permissions = RolePermissions[roleLevel] || [];
+  return permissions.includes(permission);
+}
