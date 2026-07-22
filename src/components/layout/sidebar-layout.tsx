@@ -201,29 +201,33 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           })}
         </nav>
 
-        {/* User */}
-        <div className="p-3 border-t border-[var(--sidebar-border)]">
-          {!collapsed ? (
+      </aside>
+
+      <main className="flex-1 overflow-auto">
+        {/* Glass header */}
+        <div className="h-14 header-glass flex items-center justify-between px-6">
+          <TenantSwitcher />
+          <div className="flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--sidebar-accent)] cursor-pointer transition-colors">
+                <button className="flex items-center gap-2 pl-2 pr-3 h-9 rounded-lg hover:bg-[var(--sidebar-accent)] transition-colors">
                   <div className="relative flex-shrink-0">
-                    <Avatar className="h-9 w-9 rounded-full ring-2 ring-white shadow-sm">
+                    <Avatar className="h-7 w-7 rounded-full ring-2 ring-white shadow-sm">
                       {profile.avatarUrl ? (
                         <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
                       ) : (
-                        <AvatarFallback className="gradient-terracotta text-white text-sm font-medium rounded-full w-full h-full">
+                        <AvatarFallback className="gradient-terracotta text-white text-xs font-medium rounded-full w-full h-full">
                           {profile.name.charAt(0)}
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                    <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold text-foreground truncate">{profile.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{profile.role}</p>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-foreground leading-tight">{profile.name}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{profile.role}</p>
                   </div>
-                </div>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 py-1">
                 <div className="px-3 py-2 border-b border-border">
@@ -245,43 +249,6 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="relative p-1 cursor-pointer flex justify-center">
-                  <Avatar className="h-9 w-9 rounded-full ring-2 ring-white shadow-sm">
-                    {profile.avatarUrl ? (
-                      <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full" />
-                    ) : (
-                      <AvatarFallback className="gradient-terracotta text-white text-sm font-medium rounded-full">
-                        {profile.name.charAt(0)}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <span className="absolute bottom-0 right-2 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  设置
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  退出
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-auto">
-        {/* Glass header */}
-        <div className="h-14 header-glass flex items-center justify-between px-6">
-          <TenantSwitcher />
-          <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground">
               <Search className="h-[18px] w-[18px]" />
             </Button>
