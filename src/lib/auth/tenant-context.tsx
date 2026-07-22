@@ -30,6 +30,15 @@ export interface ProcessRole {
   is_active: boolean;
 }
 
+export interface ProcessOwnerScope {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  process_nodes: string[];
+  is_active: boolean;
+}
+
 export interface Season {
   id: string;
   name: string;
@@ -70,6 +79,9 @@ export interface TenantContextValue {
   processRoles: ProcessRole[];
   accessibleRoutes: string[];
 
+  // 工序主管类型
+  processOwnerScope: ProcessOwnerScope | null;
+
   // 工具
   refresh: () => Promise<void>;
 }
@@ -108,6 +120,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [allowedBrandIds, setAllowedBrandIds] = useState<string[]>([]);
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [accessibleRoutes, setAccessibleRoutes] = useState<string[]>([]);
+  const [processOwnerScope, setProcessOwnerScope] = useState<ProcessOwnerScope | null>(null);
 
   // 1. 加载可用的公司/品牌/季节
   const loadTenants = useCallback(async () => {
@@ -132,6 +145,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         (r: any) => r && r.is_active !== false
       );
       const loadedAccessibleRoutes: string[] = meRes.accessibleRoutes || [];
+      const loadedProcessOwnerScope: ProcessOwnerScope | null =
+        meRes.processOwnerScope && meRes.processOwnerScope.is_active !== false
+          ? meRes.processOwnerScope
+          : null;
 
       setCompanies(loadedCompanies);
       setBrands(loadedBrands);
@@ -145,6 +162,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setAllowedBrandIds(allowedBrandIds);
       setProcessRoles(loadedProcessRoles);
       setAccessibleRoutes(loadedAccessibleRoutes);
+      setProcessOwnerScope(loadedProcessOwnerScope);
 
       // 2. 确定当前选中的 ID（优先级：URL > localStorage > 默认）
       const urlCompanyId = searchParams.get("companyId");
@@ -307,6 +325,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     canPerform: (action: Permission) => canPerformAction(userRole || "", action),
     processRoles,
     accessibleRoutes,
+    processOwnerScope,
     refresh: loadTenants,
   };
 

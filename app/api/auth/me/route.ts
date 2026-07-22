@@ -54,6 +54,17 @@ export async function GET(request: Request) {
       .filter(Boolean) as any[])
       .filter((r: any) => r.is_active !== false);
 
+    // 加载工序主管类型
+    const { data: userProcessOwnerScopes } = await supabase
+      .from("user_process_owner_scopes")
+      .select("process_owner_scopes(*)")
+      .eq("user_id", session.user.id);
+
+    const processOwnerScope = ((userProcessOwnerScopes || [])
+      .map((us: any) => us.process_owner_scopes)
+      .filter(Boolean) as any[])
+      .filter((s: any) => s.is_active !== false)[0] || null;
+
     // 计算可访问路由
     const routeSet = new Set<string>();
     if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
@@ -70,6 +81,7 @@ export async function GET(request: Request) {
       roleLevel,
       allowedBrandIds,
       processRoles,
+      processOwnerScope,
       accessibleRoutes: Array.from(routeSet),
     });
   } catch (error) {

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 import { useTenant } from "@/lib/auth/tenant-context";
+import { RoleLevel } from "@/lib/auth/rbac";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -108,13 +109,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     router.push("/login");
   };
 
-  const { isAdmin, processRoles, accessibleRoutes } = useTenant();
+  const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope } = useTenant();
 
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: BarChart3, label: "智能调度", href: "/" },
     { icon: Sparkles, label: "企划中心", href: "/planning", node: "planning" },
-    { icon: Wand2, label: "AI智能分析", href: "/ai" },
+    { icon: Wand2, label: "AI智能体中心", href: "/ai-workspace" },
     { icon: Brain, label: "AI审核中心", href: "/ai-review", node: "testing" },
     { icon: Shirt, label: "款式管理", href: "/styles", node: "sampling" },
     { icon: Palette, label: "设计资产", href: "/design", node: "design" },
@@ -133,6 +134,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
     // 未配置 node 的通用页面默认显示
     if (!item.node) return true;
+
+    // 工序负责人按主管类型的 process_nodes 过滤
+    if (userRole === RoleLevel.PROCESS_OWNER && processOwnerScope) {
+      return processOwnerScope.process_nodes.includes(item.node);
+    }
 
     // 根据横向工序角色的 route_permissions 或 process_node 判断
     const routeAllowed = accessibleRoutes.some((route) => item.href === route || item.href.startsWith(`${route}/`));
