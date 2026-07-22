@@ -32,6 +32,7 @@ import {
   Store,
 } from "lucide-react";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
+import { useTenant } from "@/lib/auth/tenant-context";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -107,7 +108,9 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     router.push("/login");
   };
 
-  const navItems = [
+  const { isAdmin, canAccessRoute } = useTenant();
+
+  const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: BarChart3, label: "智能调度", href: "/" },
     { icon: Sparkles, label: "企划中心", href: "/planning" },
@@ -116,10 +119,16 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Shirt, label: "款式管理", href: "/styles" },
     { icon: Palette, label: "设计资产", href: "/design" },
     { icon: Factory, label: "生产管理", href: "/production" },
-    { icon: Building2, label: "品牌管理", href: "/brands" },
-    { icon: Store, label: "供应商", href: "/suppliers" },
     { icon: BarChart3, label: "经营反馈", href: "/analytics" },
+    { icon: Building2, label: "品牌管理", href: "/brands", admin: true },
+    { icon: Store, label: "供应商", href: "/suppliers", admin: true },
+    { icon: Settings, label: "后台配置", href: "/admin", admin: true },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (item.admin && !isAdmin) return false;
+    return canAccessRoute(item.href);
+  });
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
