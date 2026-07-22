@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Permission, canAccessRoute, canPerformAction, RolePermissions, RoleLevel } from "@/lib/auth/rbac";
 
 export interface Company {
   id: string;
@@ -47,6 +48,14 @@ export interface TenantContextValue {
   isLoading: boolean;
   error: string | null;
 
+  // 权限
+  userRole: string | null;
+  userPermissions: Permission[];
+  isAdmin: boolean;
+  isBoss: boolean;
+  canAccessRoute: (route: string) => boolean;
+  canPerform: (action: Permission) => boolean;
+
   // 工具
   refresh: () => Promise<void>;
 }
@@ -77,26 +86,43 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 权限状态
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isBoss, setIsBoss] = useState(false);
+  const [allowedBrandIds, setAllowedBrandIds] = useState<string[]>([]);
+
   // 1. 加载可用的公司/品牌/季节
   const loadTenants = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // 并行获取公司、品牌、季节
-      const [companiesRes, brandsRes, seasonsRes] = await Promise.all([
+      // 并行获取公司、品牌、季节、当前用户权限
+      const [companiesRes, brandsRes, seasonsRes, meRes] = await Promise.all([
         fetch("/api/organization/companies").then((r) => r.json()).catch(() => ({ data: [] })),
         fetch("/api/organization/brands").then((r) => r.json()).catch(() => ({ data: [] })),
         fetch("/api/organization/seasons").then((r) => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/auth/me").then((r) => r.json()).catch(() => ({ roleLevel: null, allowedBrandIds: [] })),
       ]);
 
       const loadedCompanies: Company[] = companiesRes.data || [];
       const loadedBrands: Brand[] = brandsRes.data || [];
       const loadedSeasons: Season[] = seasonsRes.data || [];
+      const loadedRoleLevel: string | null = meRes.roleLevel || null;
+      const allowedBrandIds: string[] = meRes.allowedBrandIds || [];
 
       setCompanies(loadedCompanies);
       setBrands(loadedBrands);
       setSeasons(loadedSeasons);
+
+      // 设置权限状态
+      setUserRole(loadedRoleLevel);
+      setUserPermissions(RolePermissions[loadedRoleLevel || ""] || []);
+      setIsAdmin(loadedRoleLevel === RoleLevel.BOSS || loadedRoleLevel === RoleLevel.ADMIN);
+      setIsBoss(loadedRoleLevel === RoleLevel.BOSS);
+      setAllowedBrandIds(allowedBrandIds);
 
       // 2. 确定当前选中的 ID（优先级：URL > localStorage > 默认）
       const urlCompanyId = searchParams.get("companyId");
@@ -113,12 +139,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         storedCompanyId ||
         (loadedCompanies.length > 0 ? loadedCompanies[0].id : DEFAULT_COMPANY_ID);
 
-      // 品牌选择（必须属于所选公司）
-      const brandsInCompany = loadedBrands.filter((b) => b.company_id === finalCompanyId);
+      // 品牌选择（必须在可访问列表中）
+      const accessibleBrandIds = new Set(allowedBrandIds);
+      const accessibleBrands = isAdmin
+        ? loadedBrands.filter((b) => b.company_id === finalCompanyId)
+        : loadedBrands.filter((b) => accessibleBrandIds.has(b.id));
+
+      const preferredBrandId = urlBrandId || storedBrandId;
       const finalBrandId =
-        urlBrandId ||
-        storedBrandId ||
-        (brandsInCompany.length > 0 ? brandsInCompany[0].id : DEFAULT_BRAND_ID);
+        preferredBrandId && accessibleBrands.some((b) => b.id === preferredBrandId)
+          ? preferredBrandId
+          : accessibleBrands.length > 0
+          ? accessibleBrands[0].id
+          : DEFAULT_BRAND_ID;
 
       // 季节选择（必须属于所选品牌，且 active）
       const seasonsInBrand = loadedSeasons.filter(
@@ -219,10 +252,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     [seasons, currentSeasonId]
   );
 
-  const availableBrands = useMemo(
-    () => brands.filter((b) => !currentCompanyId || b.company_id === currentCompanyId),
-    [brands, currentCompanyId]
-  );
+  const availableBrands = useMemo(() => {
+    if (isAdmin) {
+      return brands.filter((b) => !currentCompanyId || b.company_id === currentCompanyId);
+    }
+    // 非管理员只能看到 allowedBrandIds 中的品牌
+    const allowedBrandIdSet = new Set(allowedBrandIds);
+    return brands.filter((b) => allowedBrandIdSet.has(b.id));
+  }, [brands, currentCompanyId, isAdmin, allowedBrandIds]);
 
   const availableSeasons = useMemo(
     () => seasons.filter((s) => s.brand_id === currentBrandId),
@@ -240,6 +277,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setSeason,
     isLoading,
     error,
+    userRole,
+    userPermissions,
+    isAdmin,
+    isBoss,
+    canAccessRoute: (route: string) => canAccessRoute(userRole, route),
+    canPerform: (action: Permission) => canPerformAction(userRole || "", action),
     refresh: loadTenants,
   };
 
