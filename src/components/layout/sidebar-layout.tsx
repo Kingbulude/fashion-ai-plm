@@ -126,6 +126,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope } = useTenant();
 
+  const isBossOrAdmin = isAdmin || userRole === RoleLevel.BOSS || userRole === RoleLevel.ADMIN;
+
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: BarChart3, label: "智能调度", href: "/" },
@@ -142,10 +144,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   ];
 
   const navItems = allNavItems.filter((item) => {
-    if (item.admin && !isAdmin) return false;
+    if (item.admin && !isBossOrAdmin) return false;
 
     // BOSS/ADMIN 或通配权限，显示全部
-    if (isAdmin || accessibleRoutes.includes("*")) return true;
+    if (isBossOrAdmin || accessibleRoutes.includes("*")) return true;
 
     // 未配置 node 的通用页面默认显示
     if (!item.node) return true;
