@@ -76,6 +76,52 @@ export async function GET(request: Request) {
       });
     }
 
+    // 计算可访问 AI Skills
+    let accessibleAISkills: any[] = [];
+    if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
+      const { data: allSkills } = await supabase
+        .from("ai_skills")
+        .select("*")
+        .eq("is_active", true);
+      accessibleAISkills = allSkills || [];
+    } else {
+      const aiSkillIdSet = new Set<string>();
+
+      // 通过横向工序角色关联的 AI Skills
+      if (processRoles.length > 0) {
+        const processRoleIds = processRoles.map((r: any) => r.id);
+        const { data: roleSkillAssignments } = await supabase
+          .from("process_role_ai_skills")
+          .select("ai_skill_id")
+          .in("process_role_id", processRoleIds);
+
+        (roleSkillAssignments || []).forEach((item: any) => {
+          if (item.ai_skill_id) aiSkillIdSet.add(item.ai_skill_id);
+        });
+      }
+
+      // 通过主管类型关联的 AI Skills
+      if (processOwnerScope?.id) {
+        const { data: scopeSkillAssignments } = await supabase
+          .from("process_owner_scope_ai_skills")
+          .select("ai_skill_id")
+          .eq("scope_id", processOwnerScope.id);
+
+        (scopeSkillAssignments || []).forEach((item: any) => {
+          if (item.ai_skill_id) aiSkillIdSet.add(item.ai_skill_id);
+        });
+      }
+
+      if (aiSkillIdSet.size > 0) {
+        const { data: skills } = await supabase
+          .from("ai_skills")
+          .select("*")
+          .in("id", Array.from(aiSkillIdSet))
+          .eq("is_active", true);
+        accessibleAISkills = skills || [];
+      }
+    }
+
     return NextResponse.json({
       profile,
       roleLevel,
@@ -83,6 +129,7 @@ export async function GET(request: Request) {
       processRoles,
       processOwnerScope,
       accessibleRoutes: Array.from(routeSet),
+      accessibleAISkills,
     });
   } catch (error) {
     console.error("Failed to fetch auth me:", error);

@@ -39,6 +39,18 @@ export interface ProcessOwnerScope {
   is_active: boolean;
 }
 
+export interface AISkill {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  skill_type: "personal_assistant" | "process_master" | "execution";
+  process_node?: string | null;
+  config_schema?: Record<string, any> | null;
+  entry_route?: string | null;
+  is_active: boolean;
+}
+
 export interface Season {
   id: string;
   name: string;
@@ -82,6 +94,9 @@ export interface TenantContextValue {
   // 工序主管类型
   processOwnerScope: ProcessOwnerScope | null;
 
+  // AI Skills
+  accessibleAISkills: AISkill[];
+
   // 工具
   refresh: () => Promise<void>;
 }
@@ -121,6 +136,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [accessibleRoutes, setAccessibleRoutes] = useState<string[]>([]);
   const [processOwnerScope, setProcessOwnerScope] = useState<ProcessOwnerScope | null>(null);
+  const [accessibleAISkills, setAccessibleAISkills] = useState<AISkill[]>([]);
 
   // 1. 加载可用的公司/品牌/季节
   const loadTenants = useCallback(async () => {
@@ -149,6 +165,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         meRes.processOwnerScope && meRes.processOwnerScope.is_active !== false
           ? meRes.processOwnerScope
           : null;
+      const loadedAccessibleAISkills: AISkill[] = (meRes.accessibleAISkills || []).filter(
+        (s: any) => s && s.is_active !== false
+      );
 
       setCompanies(loadedCompanies);
       setBrands(loadedBrands);
@@ -163,6 +182,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setProcessRoles(loadedProcessRoles);
       setAccessibleRoutes(loadedAccessibleRoutes);
       setProcessOwnerScope(loadedProcessOwnerScope);
+      setAccessibleAISkills(loadedAccessibleAISkills);
 
       // 2. 确定当前选中的 ID（优先级：URL > localStorage > 默认）
       const urlCompanyId = searchParams.get("companyId");
@@ -326,6 +346,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     processRoles,
     accessibleRoutes,
     processOwnerScope,
+    accessibleAISkills,
     refresh: loadTenants,
   };
 
