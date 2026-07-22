@@ -55,12 +55,25 @@ export async function GET(request: Request) {
       .from("user_process_roles")
       .select("user_id, process_role_id");
 
+    // 获取工序主管类型
+    const { data: processOwnerScopes } = await supabase
+      .from("process_owner_scopes")
+      .select("id, key, name, description, process_nodes")
+      .eq("is_active", true);
+
+    // 获取用户-主管类型关联
+    const { data: userProcessOwnerScopes } = await supabase
+      .from("user_process_owner_scopes")
+      .select("user_id, scope_id");
+
     return NextResponse.json({
       company,
       brands: brands || [],
       profiles: profiles || [],
       userBrands: userBrands || [],
       userProcessRoles: userProcessRoles || [],
+      processOwnerScopes: processOwnerScopes || [],
+      userProcessOwnerScopes: userProcessOwnerScopes || [],
       roleLabels: RoleLevelLabels,
     });
   } catch (error) {
@@ -93,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { userId, roleLevel: newRoleLevel, brandIds, name, processRoleIds } = body;
+    const { userId, roleLevel: newRoleLevel, brandIds, name, processRoleIds, processOwnerScopeId } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "缺少用户ID" }, { status: 400 });
@@ -169,6 +182,26 @@ export async function POST(request: Request) {
           .insert(insertData);
 
         if (insertError) throw insertError;
+      }
+    }
+
+    // 更新用户-主管类型关联
+    if (processOwnerScopeId !== undefined) {
+      await supabase
+        .from("user_process_owner_scopes")
+        .delete()
+        .eq("user_id", userId);
+
+      if (processOwnerScopeId) {
+        const { error: scopeError } = await supabase
+          .from("user_process_owner_scopes")
+          .insert({
+            user_id: userId,
+            scope_id: processOwnerScopeId,
+            assigned_by: session.user.id,
+          });
+
+        if (scopeError) throw scopeError;
       }
     }
 

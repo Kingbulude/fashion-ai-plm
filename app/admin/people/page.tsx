@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Pencil, Shield, Loader2, Building2, Cpu } from "lucide-react";
+import { Users, Pencil, Shield, Loader2, Building2, Cpu, Layers } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -54,12 +54,27 @@ interface ProcessRole {
   process_node: string;
 }
 
+interface UserProcessOwnerScope {
+  user_id: string;
+  scope_id: string;
+}
+
+interface ProcessOwnerScope {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  process_nodes: string[];
+}
+
 interface OrganizationData {
   company: { id: string; name: string } | null;
   brands: Brand[];
   profiles: Profile[];
   userBrands: UserBrand[];
   userProcessRoles: UserProcessRole[];
+  userProcessOwnerScopes: UserProcessOwnerScope[];
+  processOwnerScopes: ProcessOwnerScope[];
   roleLabels: Record<string, string>;
 }
 
@@ -74,6 +89,7 @@ const roleLevelOptions = [
 export default function AdminPeoplePage() {
   const [data, setData] = useState<OrganizationData | null>(null);
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
+  const [processOwnerScopes, setProcessOwnerScopes] = useState<ProcessOwnerScope[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
@@ -81,11 +97,13 @@ export default function AdminPeoplePage() {
   const [editRoleLevel, setEditRoleLevel] = useState<string>(RoleLevel.EXECUTOR);
   const [editBrandIds, setEditBrandIds] = useState<string[]>([]);
   const [editProcessRoleIds, setEditProcessRoleIds] = useState<string[]>([]);
+  const [editProcessOwnerScopeId, setEditProcessOwnerScopeId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchOrganization();
     fetchProcessRoles();
+    fetchProcessOwnerScopes();
   }, []);
 
   const fetchOrganization = async () => {
@@ -99,6 +117,8 @@ export default function AdminPeoplePage() {
         profiles: json.profiles || [],
         userBrands: json.userBrands || [],
         userProcessRoles: json.userProcessRoles || [],
+        userProcessOwnerScopes: json.userProcessOwnerScopes || [],
+        processOwnerScopes: json.processOwnerScopes || [],
         roleLabels: json.roleLabels || RoleLevelLabels,
       });
     } catch (error) {
@@ -120,6 +140,18 @@ export default function AdminPeoplePage() {
     }
   };
 
+  const fetchProcessOwnerScopes = async () => {
+    try {
+      const res = await fetch("/api/process-owner-scopes");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setProcessOwnerScopes(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch process owner scopes:", error);
+    }
+  };
+
   const getUserBrands = (userId: string) => {
     if (!data) return [];
     return data.userBrands.filter((ub) => ub.user_id === userId);
@@ -130,12 +162,18 @@ export default function AdminPeoplePage() {
     return data.userProcessRoles.filter((upr) => upr.user_id === userId);
   };
 
+  const getUserProcessOwnerScope = (userId: string) => {
+    if (!data) return null;
+    return data.userProcessOwnerScopes.find((ups) => ups.user_id === userId);
+  };
+
   const handleEdit = (profile: Profile) => {
     setEditingUser(profile);
     setEditName(profile.name || "");
     setEditRoleLevel(profile.role_level || RoleLevel.EXECUTOR);
     setEditBrandIds(getUserBrands(profile.user_id).map((ub) => ub.brand_id));
     setEditProcessRoleIds(getUserProcessRoles(profile.user_id).map((upr) => upr.process_role_id));
+    setEditProcessOwnerScopeId(getUserProcessOwnerScope(profile.user_id)?.scope_id || "");
     setDialogOpen(true);
   };
 
@@ -164,6 +202,7 @@ export default function AdminPeoplePage() {
           roleLevel: editRoleLevel,
           brandIds: editBrandIds,
           processRoleIds: editProcessRoleIds,
+          processOwnerScopeId: editProcessOwnerScopeId || null,
         }),
       });
       if (res.ok) {
@@ -224,6 +263,7 @@ export default function AdminPeoplePage() {
                       <th className="py-3 px-4 font-medium">成员</th>
                       <th className="py-3 px-4 font-medium">角色层级</th>
                       <th className="py-3 px-4 font-medium">横向工序角色</th>
+                      <th className="py-3 px-4 font-medium">主管类型</th>
                       <th className="py-3 px-4 font-medium">可访问品牌</th>
                       <th className="py-3 px-4 font-medium text-right">操作</th>
                     </tr>
@@ -231,7 +271,7 @@ export default function AdminPeoplePage() {
                   <tbody>
                     {(data?.profiles || []).length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-12 text-center text-muted-foreground">
+                        <td colSpan={6} className="py-12 text-center text-muted-foreground">
                           暂无成员
                         </td>
                       </tr>
@@ -245,6 +285,8 @@ export default function AdminPeoplePage() {
                         const userProcessRoleNames = processRoles
                           .filter((r) => userProcessRoleIds.includes(r.id))
                           .map((r) => r.name);
+                        const userScopeId = getUserProcessOwnerScope(profile.user_id)?.scope_id;
+                        const userScopeName = processOwnerScopes.find((s) => s.id === userScopeId)?.name;
 
                         return (
                           <tr
@@ -293,6 +335,15 @@ export default function AdminPeoplePage() {
                                   ))
                                 )}
                               </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              {userScopeName ? (
+                                <Badge variant="secondary" className="text-xs font-normal">
+                                  {userScopeName}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">未分配</span>
+                              )}
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex flex-wrap gap-1.5">
@@ -373,6 +424,30 @@ export default function AdminPeoplePage() {
                   ))}
                 </div>
               </div>
+
+              {editRoleLevel === RoleLevel.PROCESS_OWNER && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    工序主管类型
+                  </Label>
+                  <select
+                    value={editProcessOwnerScopeId}
+                    onChange={(e) => setEditProcessOwnerScopeId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-border bg-card"
+                  >
+                    <option value="">请选择主管类型</option>
+                    {processOwnerScopes.map((scope) => (
+                      <option key={scope.id} value={scope.id}>
+                        {scope.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    分配后，该用户将按主管类型对应的工序段范围显示侧边栏入口
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
