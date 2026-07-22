@@ -29,5 +29,4 @@ VALUES (
   now()
 )
 ON CONFLICT (user_id, brand_id) DO UPDATE SET
-  role_level = EXCLUDED.role_level,
-  updated_at = now();
+  role_level = EXCLUDED.role_level;

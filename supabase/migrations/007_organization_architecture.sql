@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_brands (
   brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
   role_level TEXT NOT NULL DEFAULT 'executor',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, brand_id)
 );
 
