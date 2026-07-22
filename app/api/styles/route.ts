@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
 import { getTenantFromHeaders, withTenant } from "@/lib/auth/tenant-helpers";
+import { getSession } from "@/lib/auth/supabase";
+import { getAllowedBrandIds, RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
@@ -13,6 +15,30 @@ const DEFAULT_BRAND = "00000000-0000-0000-0000-000000000001";
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id, role_level")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return NextResponse.json({ error: "未加入公司" }, { status: 400 });
+    }
+
+    // 仅 BOSS/ADMIN/品牌负责人可创建款式
+    if (
+      profile.role_level !== RoleLevel.BOSS &&
+      profile.role_level !== RoleLevel.ADMIN &&
+      profile.role_level !== RoleLevel.BRAND_MANAGER
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const { styleNo, name, season, category, description, targetCost, status, seasonId } = body;
@@ -23,7 +49,7 @@ export async function POST(request: Request) {
 
     // 多品牌：从请求头获取租户（TenantSwitcher 设置）
     const headerTenant = getTenantFromHeaders(request);
-    const tenant = headerTenant || { company_id: DEFAULT_COMPANY, brand_id: DEFAULT_BRAND, season_id: seasonId || null };
+    const tenant = headerTenant || { company_id: profile.company_id, brand_id: DEFAULT_BRAND, season_id: seasonId || null };
 
     // 款号唯一性检查（仅在当前品牌内）
     const { data: existing } = await supabase
@@ -67,9 +93,44 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id, role_level")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return NextResponse.json([]);
+    }
+
+    // 计算当前用户可访问品牌
+    let allowedBrandIds: string[] = [];
+    if (profile.role_level === RoleLevel.BOSS || profile.role_level === RoleLevel.ADMIN) {
+      const { data: brands } = await supabase
+        .from("brands")
+        .select("id")
+        .eq("company_id", profile.company_id);
+      allowedBrandIds = (brands || []).map((b: any) => b.id);
+    } else {
+      const { data: ub } = await supabase
+        .from("user_brands")
+        .select("brand_id")
+        .eq("user_id", session.user.id);
+      allowedBrandIds = (ub || []).map((x: any) => x.brand_id);
+    }
+
+    if (allowedBrandIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
     const url = new URL(request.url);
     const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
+    const requestedBrandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
     const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
     const statusFilter = url.searchParams.get("status");
     const categoryFilter = url.searchParams.get("category");
@@ -78,14 +139,21 @@ export async function GET(request: Request) {
     const order = url.searchParams.get("order") || "desc";
     const includeStats = url.searchParams.get("includeStats") === "true";
 
+    // 如果请求指定了品牌，校验是否有权限查看
+    let brandIds = allowedBrandIds;
+    if (requestedBrandId) {
+      if (!allowedBrandIds.includes(requestedBrandId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      brandIds = [requestedBrandId];
+    }
+
     let query = supabase
       .from("styles")
       .select("*")
+      .in("brand_id", brandIds)
       .order(sortBy, { ascending: order === "asc" });
 
-    if (brandId) {
-      query = query.eq("brand_id", brandId);
-    }
     if (seasonId) {
       query = query.eq("season_id", seasonId);
     }

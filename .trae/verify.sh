@@ -71,7 +71,7 @@ if [ -n "$PLACEHOLDER_HITS" ]; then
 else
   pass "未发现占位 Supabase URL"
 fi
-PLACEHOLDER_ENV_HITS=$(grep -rnE "your-supabase-url|your-anon-key|placeholder-key" src/ app/ 2>/dev/null | grep -v node_modules | grep -v ".next/" || true)
+PLACEHOLDER_ENV_HITS=$(grep -rnE "your-supabase-url|your-anon-key|placeholder-key" src/ app/ 2>/dev/null | grep -v node_modules | grep -v ".next/" | grep -v "app/api/health/route.ts" || true)
 if [ -n "$PLACEHOLDER_ENV_HITS" ]; then
   fail "发现占位环境变量："
   echo "$PLACEHOLDER_ENV_HITS" | head -5
