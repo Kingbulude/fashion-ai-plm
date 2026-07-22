@@ -87,7 +87,8 @@ export default function SettingsPage() {
       if (res.ok) {
         setSaveStatus("success");
         setSaveMessage("保存成功");
-        setProfile(prev => ({ ...prev, name: editName || "小芳" }));
+        // 保存成功后立即重新拉取，确保前端状态与数据库一致
+        await fetchProfile();
         // 通知侧边栏等其他组件刷新个人资料
         window.dispatchEvent(new Event("profile-updated"));
         setTimeout(() => {
@@ -130,11 +131,70 @@ export default function SettingsPage() {
     setUploading(true);
     try {
       const compressedImage = await compressImage(file, 200, 0.8);
+      // base64 头像通常几十 KB，若超过 500KB 提示过大
+      if (compressedImage.length > 500 * 1024) {
+        setSaveStatus("error");
+        setSaveMessage("头像过大，请尝试选择更小的图片");
+        setUploading(false);
+        return;
+      }
       setProfile(prev => ({ ...prev, avatarUrl: compressedImage }));
+      // 头像变更后立即触发保存，避免用户忘记点保存
+      await saveProfileWithAvatar(compressedImage);
     } catch (error) {
       console.error("Failed to upload avatar:", error);
+      setSaveStatus("error");
+      setSaveMessage("头像处理失败，请重试");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const saveProfileWithAvatar = async (avatarUrl: string) => {
+    setSaveMessage("");
+    setSaveStatus("");
+    try {
+      const token = await getAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          name: editName || "小芳",
+          avatarUrl,
+        }),
+      });
+      if (res.ok) {
+        setSaveStatus("success");
+        setSaveMessage("头像已保存");
+        await fetchProfile();
+        window.dispatchEvent(new Event("profile-updated"));
+        setTimeout(() => {
+          setSaveMessage("");
+          setSaveStatus("");
+        }, 3000);
+      } else {
+        let errorMsg = "头像保存失败";
+        try {
+          const errData = await res.json();
+          if (errData?.detail) errorMsg = `头像保存失败：${errData.detail}`;
+          else if (errData?.error) errorMsg = `头像保存失败：${errData.error}`;
+        } catch (e) {
+          // ignore
+        }
+        setSaveStatus("error");
+        setSaveMessage(errorMsg);
+        setTimeout(() => {
+          setSaveMessage("");
+          setSaveStatus("");
+        }, 5000);
+      }
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveMessage("头像保存失败，请检查网络");
     }
   };
 
@@ -181,136 +241,147 @@ export default function SettingsPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
+        {/* 顶部标题栏 */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
+            <User className="h-5 w-5 text-white" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold mb-1">个人设置</h1>
-            <p className="text-muted-foreground">管理您的个人资料和偏好设置</p>
+            <h1 className="text-2xl font-bold tracking-tight">个人设置</h1>
+            <p className="text-sm text-muted-foreground">管理您的个人资料和偏好设置</p>
           </div>
         </div>
 
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-xl">个人资料</CardTitle>
-            <p className="text-sm text-muted-foreground">更新您的个人信息</p>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* 头像区域 */}
-            <div className="flex flex-col items-center">
-              <div className="relative group">
-                <Avatar className="h-28 w-28 rounded-full border-4 border-white shadow-lg shadow-slate-200 overflow-hidden">
-                  {profile.avatarUrl ? (
-                    <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
-                  ) : (
-                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-3xl font-semibold rounded-full w-full h-full">
-                      {profile.name.charAt(0)}
-                    </AvatarFallback>
+        <div className="max-w-3xl">
+          <Card className="card-premium overflow-visible">
+            <CardHeader className="pb-6 pt-8 px-8">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <User className="h-4 w-4 text-navy-700" />
+                个人资料
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">更新您的个人信息</p>
+            </CardHeader>
+            <CardContent className="space-y-8 px-8 pb-8">
+              {/* 头像区域 */}
+              <div className="flex flex-col items-center">
+                <div className="relative group p-2 rounded-full bg-gradient-to-br from-navy-100 to-sand-100">
+                  <Avatar className="h-28 w-28 rounded-full border-4 border-white shadow-premium overflow-hidden">
+                    {profile.avatarUrl ? (
+                      <AvatarImage src={profile.avatarUrl} alt={profile.name} className="object-cover rounded-full w-full h-full" />
+                    ) : (
+                      <AvatarFallback className="gradient-navy text-white text-3xl font-semibold rounded-full w-full h-full">
+                        {profile.name.charAt(0)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <label className="absolute bottom-1 right-1 w-10 h-10 bg-navy-700 rounded-full flex items-center justify-center cursor-pointer hover:bg-navy-800 transition-all shadow-premium hover:scale-110 border-4 border-white">
+                    <Upload className="h-5 w-5 text-white" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center m-2">
+                      <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    </div>
                   )}
-                </Avatar>
-                <label className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-all shadow-md hover:scale-110 border-4 border-white">
-                  <Upload className="h-5 w-5 text-white" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
+                </div>
+                <p className="text-sm text-muted-foreground mt-3">点击图标更换头像</p>
+              </div>
+
+              {/* 表单区域 */}
+              <div className="space-y-6">
+                {/* 姓名 */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-navy-600" />
+                    <Label htmlFor="name" className="font-medium">姓名</Label>
+                  </div>
+                  <Input
+                    id="name"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="请输入您的姓名"
+                    className="h-11 px-4 bg-card"
                   />
-                </label>
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 职位权限 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-navy-600" />
+                      <Label className="font-medium">职位权限</Label>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-sand-50 rounded-xl border border-sand-100">
+                      <div className="w-10 h-10 rounded-lg bg-navy-100 flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="h-5 w-5 text-navy-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{profile.role}</p>
+                        <p className="text-xs text-muted-foreground">由管理员分配</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 所属品牌 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-navy-600" />
+                      <Label className="font-medium">所属品牌</Label>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-sand-50 rounded-xl border border-sand-100">
+                      <div className="w-10 h-10 rounded-lg bg-terracotta-100 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="h-5 w-5 text-terracotta-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{profile.brandName}</p>
+                        <p className="text-xs text-muted-foreground">由管理员配置</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-border bg-sand-50/30 -mx-8 -mb-8 px-8 pb-6 rounded-b-2xl">
+                {saveMessage && (
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                    saveStatus === "success"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-red-50 text-red-700 border border-red-200"
+                  } mr-auto shadow-sm`}>
+                    {saveStatus === "success" ? (
+                      <Check className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    {saveMessage}
                   </div>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={fetchProfile}
+                  className="h-11 px-6 rounded-lg font-medium border-border hover:bg-sand-50 transition-all"
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleSaveProfile}
+                  disabled={uploading}
+                  className="h-11 px-8 rounded-lg font-semibold bg-navy-700 hover:bg-navy-800 text-white shadow-premium transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  保存更改
+                </Button>
               </div>
-              <p className="text-sm text-muted-foreground mt-3">点击图标更换头像</p>
-            </div>
-
-            {/* 表单区域 */}
-            <div className="space-y-6">
-              {/* 姓名 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="name">姓名</Label>
-                </div>
-                <Input
-                  id="name"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  placeholder="请输入您的姓名"
-                  className="h-11 px-4"
-                />
-              </div>
-
-              {/* 职位权限 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <Label>职位权限</Label>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-800">{profile.role}</p>
-                    <p className="text-xs text-slate-400">由管理员分配，无法修改</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 所属品牌 */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <Label>所属品牌</Label>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-800">{profile.brandName}</p>
-                    <p className="text-xs text-slate-400">品牌信息由管理员配置</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 操作按钮 */}
-            <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 bg-gradient-to-b from-slate-50/50 to-transparent -mx-6 -mb-6 px-6 pb-6">
-              {saveMessage && (
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
-                  saveStatus === "success" 
-                    ? "bg-green-50 text-green-700 border border-green-200" 
-                    : "bg-red-50 text-red-700 border border-red-200"
-                } mr-auto shadow-sm`}>
-                  {saveStatus === "success" ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  {saveMessage}
-                </div>
-              )}
-              <Button 
-                variant="outline" 
-                onClick={fetchProfile} 
-                className="h-11 px-7 rounded-xl font-medium text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                取消
-              </Button>
-              <Button 
-                onClick={handleSaveProfile} 
-                disabled={uploading} 
-                className="h-11 px-8 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                保存更改
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </SidebarLayout>
   );
