@@ -197,7 +197,7 @@ export default function ProductionPage() {
         </div>
 
         {/* 4 大 KPI */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <KpiCard
             title="生产订单"
             value={summary.total || 0}
@@ -560,7 +560,7 @@ function ProductionList({ orders }: { orders: any[] }) {
 // 看板视图
 function ProductionKanban({ orders }: { orders: any[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {STATUS_ORDER.map((s) => {
         const config = STATUS_CONFIG[s];
         const stageOrders = orders.filter((o) => o.status === s);

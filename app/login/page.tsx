@@ -125,41 +125,44 @@ function LoginForm() {
   ];
 
   return (
-    <div className="min-h-screen w-full flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-blue-500/10 to-transparent" />
+    <div className="min-h-screen w-full flex bg-sand-50">
+      {/* 左侧品牌区 */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-terracotta-500/20 via-transparent to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-navy-500/10 to-transparent" />
+        <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-terracotta-400/10 blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-navy-400/10 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <div className="w-12 h-12 rounded-xl gradient-navy flex items-center justify-center shadow-premium border border-white/10">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">StyleForge</h1>
-              <p className="text-sm text-slate-400">服装AI全链路品牌管理系统</p>
+              <p className="text-sm text-sand-200/70">服装AI全链路品牌管理系统</p>
             </div>
           </div>
           
           <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
             从设计到上市
             <br />
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-terracotta-300 to-sand-200 bg-clip-text text-transparent">
               一站式款式管理
             </span>
           </h2>
-          <p className="text-slate-400 text-lg mb-12 max-w-md">
+          <p className="text-sand-200/80 text-lg mb-12 max-w-md">
             轻资产服装品牌的全链路解决方案，让每一款产品从创意到落地都清晰可控。
           </p>
           
-          <div className="space-y-6">
+          <div className="space-y-5">
             {features.map((feature, i) => (
-              <div key={i} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="h-5 w-5 text-blue-400" />
+              <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-terracotta-400 to-terracotta-600 flex items-center justify-center flex-shrink-0 shadow-premium">
+                  <feature.icon className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <h3 className="text-white font-medium">{feature.title}</h3>
-                  <p className="text-slate-400 text-sm">{feature.desc}</p>
+                  <p className="text-sand-200/70 text-sm">{feature.desc}</p>
                 </div>
               </div>
             ))}
@@ -167,11 +170,12 @@ function LoginForm() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <Card className="w-full max-w-md border-0 shadow-xl bg-white">
+      {/* 右侧登录表单 */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
+        <Card className="w-full max-w-md border border-border/60 shadow-premium bg-white/80 backdrop-blur-sm">
           <CardContent className="p-8">
             <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -181,7 +185,7 @@ function LoginForm() {
             </div>
 
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2">欢迎回来</h2>
+              <h2 className="text-2xl font-bold tracking-tight mb-2">欢迎回来</h2>
               <p className="text-muted-foreground">登录您的账号继续管理款式</p>
             </div>
 
@@ -194,7 +198,7 @@ function LoginForm() {
               </Alert>
             )}
             {success && (
-              <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+              <Alert className="mb-6 bg-emerald-50 border-emerald-200 text-emerald-800">
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
@@ -215,7 +219,7 @@ function LoginForm() {
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11"
+                    className="pl-10 h-11 bg-card"
                     disabled={loading}
                   />
                 </div>
@@ -231,7 +235,7 @@ function LoginForm() {
                     placeholder="请输入密码"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11"
+                    className="pl-10 pr-10 h-11 bg-card"
                     disabled={loading}
                   />
                   <button
@@ -251,7 +255,7 @@ function LoginForm() {
 
             <div className="space-y-3 mt-8">
               <Button 
-                className="w-full h-11 font-medium" 
+                className="w-full h-11 font-semibold bg-navy-700 hover:bg-navy-800 text-white shadow-premium transition-all"
                 onClick={handleLogin}
                 disabled={loading || !email || !password}
               >
@@ -259,7 +263,7 @@ function LoginForm() {
               </Button>
               <Button 
                 variant="outline" 
-                className="w-full h-11 font-medium" 
+                className="w-full h-11 font-semibold border-border hover:bg-sand-50 transition-all"
                 onClick={handleSignUp}
                 disabled={loading || !email || !password}
               >
@@ -288,7 +292,7 @@ function LoginForm() {
                     }
                   }}
                   disabled={loading}
-                  className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                  className="w-full py-2 text-sm text-navy-700 hover:text-navy-800 hover:underline transition-colors"
                 >
                   重新发送验证邮件
                 </button>

@@ -27,6 +27,7 @@ import {
   Shirt,
   Package,
   X,
+  User,
 } from "lucide-react";
 
 const SUPPLIER_TYPES: Record<string, { label: string; color: string }> = {
@@ -124,26 +125,66 @@ export default function SuppliersPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
-        {/* 顶部 */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
+        {/* 顶部标题栏 */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">供应商管理</h1>
-            <p className="text-sm text-slate-500">管理面料、辅料、加工厂等供应链资源</p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
+                <Factory className="h-4 w-4 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">供应商管理</h1>
+            </div>
+            <p className="text-sm text-muted-foreground ml-10">管理面料、辅料、加工厂等供应链资源</p>
           </div>
-          <Button onClick={() => setShowAdd(true)}>
+          <Button onClick={() => setShowAdd(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
             <Plus className="h-4 w-4 mr-1.5" />
             新增供应商
           </Button>
         </div>
 
+        {/* 类型统计条 */}
+        <div className="mb-5 flex items-center gap-2.5 overflow-x-auto pb-2">
+          <button
+            onClick={() => setTypeFilter(null)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              !typeFilter
+                ? "bg-navy-700 text-white border-navy-700"
+                : "bg-card text-muted-foreground border-border hover:border-navy-200"
+            }`}
+          >
+            全部 ({filtered.length})
+          </button>
+          {types.map((t) => {
+            const count = suppliers.filter((s) => s.type === t).length;
+            const isActive = typeFilter === t;
+            const cfg = SUPPLIER_TYPES[t];
+            return (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(isActive ? null : t)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                  isActive
+                    ? `${cfg.color} ring-2 ring-offset-1 ring-navy-200`
+                    : "bg-card text-muted-foreground border-border hover:border-navy-200"
+                }`}
+              >
+                {cfg.label}
+                <Badge variant="secondary" className="text-[10px] h-4 bg-white/60">
+                  {count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+
         {/* 搜索和筛选 */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="搜索供应商名称..."
-              className="pl-10"
+              className="pl-10 bg-card"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -152,7 +193,7 @@ export default function SuppliersPage() {
           <select
             value={typeFilter || ""}
             onChange={(e) => setTypeFilter(e.target.value || null)}
-            className="h-9 px-3 rounded-md border border-slate-200 text-sm bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            className="h-10 px-3 rounded-lg border border-border text-sm bg-card hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">全类型</option>
             {types.map((t) => (
@@ -164,66 +205,46 @@ export default function SuppliersPage() {
 
           {(search || typeFilter) && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => {
                 setSearch("");
                 setTypeFilter(null);
               }}
+              className="h-10"
             >
+              <X className="h-4 w-4 mr-1.5" />
               清除筛选
             </Button>
           )}
 
-          <div className="ml-auto text-sm text-slate-500">
-            共 <span className="font-semibold text-slate-700">{filtered.length}</span> 个供应商
+          <div className="ml-auto text-sm text-muted-foreground">
+            共 <span className="font-semibold text-foreground">{filtered.length}</span> 个供应商
           </div>
-        </div>
-
-        {/* 类型统计条 */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {types.map((t) => {
-            const count = suppliers.filter((s) => s.type === t).length;
-            const isActive = typeFilter === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(isActive ? null : t)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  isActive
-                    ? `${SUPPLIER_TYPES[t].color} ring-2 ring-offset-1 ring-slate-300`
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                {SUPPLIER_TYPES[t].label}
-                <Badge variant="secondary" className="text-[10px] h-4">
-                  {count}
-                </Badge>
-              </button>
-            );
-          })}
         </div>
 
         {/* 供应商列表 */}
         {loading ? (
-          <div className="py-20 text-center text-slate-500 flex items-center justify-center gap-2">
+          <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2 card-premium">
             <Loader2 className="h-5 w-5 animate-spin" />
             加载供应商...
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="border-dashed border-slate-200">
+          <Card className="card-premium border-dashed">
             <CardContent className="py-16 text-center">
-              <Factory className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-500 mb-2">暂无供应商</p>
-              <p className="text-sm text-slate-400 mb-4">点击上方按钮添加第一个供应商</p>
-              <Button onClick={() => setShowAdd(true)}>
+              <div className="w-16 h-16 rounded-full bg-sand-100 flex items-center justify-center mx-auto mb-4">
+                <Factory className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-foreground font-medium mb-2">暂无供应商</p>
+              <p className="text-sm text-muted-foreground mb-4">点击上方按钮添加第一个供应商</p>
+              <Button onClick={() => setShowAdd(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
                 <Plus className="h-4 w-4 mr-2" />
                 新增供应商
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
             {filtered.map((supplier) => (
               <SupplierCard key={supplier.id} supplier={supplier} onClick={() => router.push(`/suppliers/${supplier.id}`)} />
             ))}
@@ -372,74 +393,85 @@ export default function SuppliersPage() {
 function SupplierCard({ supplier, onClick }: { supplier: any; onClick: () => void }) {
   const type = SUPPLIER_TYPES[supplier.type] || SUPPLIER_TYPES.other;
   return (
-    <Card className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-all overflow-hidden" onClick={onClick}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
+    <Card className="card-premium cursor-pointer hover:shadow-premium transition-all overflow-hidden group" onClick={onClick}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-              <Factory className="h-5 w-5 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center shadow-premium">
+              <Factory className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <p className="font-semibold text-slate-800">{supplier.name}</p>
-              <Badge variant="outline" className={`text-[10px] h-4 ${type.color}`}>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground truncate">{supplier.name}</p>
+              <Badge variant="outline" className={`text-[10px] h-5 mt-1 ${type.color}`}>
                 {type.label}
               </Badge>
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-400" />
+          <div className="w-7 h-7 rounded-full bg-sand-50 flex items-center justify-center group-hover:bg-navy-700 transition-colors">
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-white transition-colors" />
+          </div>
         </div>
 
         {/* 联系方式 */}
-        <div className="space-y-1.5 text-xs text-slate-600">
+        <div className="space-y-2 text-sm text-muted-foreground">
           {supplier.contact && (
-            <div className="flex items-center gap-2">
-              <Shirt className="h-3.5 w-3.5 text-slate-400" />
-              <span>{supplier.contact}</span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-md bg-sand-50 flex items-center justify-center flex-shrink-0">
+                <User className="h-3.5 w-3.5 text-navy-600" />
+              </div>
+              <span className="truncate">{supplier.contact}</span>
             </div>
           )}
           {supplier.phone && (
-            <div className="flex items-center gap-2">
-              <Phone className="h-3.5 w-3.5 text-slate-400" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-md bg-sand-50 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-3.5 w-3.5 text-navy-600" />
+              </div>
               <span>{supplier.phone}</span>
             </div>
           )}
           {supplier.email && (
-            <div className="flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5 text-slate-400" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-md bg-sand-50 flex items-center justify-center flex-shrink-0">
+                <Mail className="h-3.5 w-3.5 text-navy-600" />
+              </div>
               <span className="truncate">{supplier.email}</span>
             </div>
           )}
         </div>
 
         {/* 评估指标 */}
-        {(supplier.qualityScore || supplier.deliveryScore) && (
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-            {supplier.qualityScore && (
-              <div className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 text-amber-500" />
-                <span className="text-xs font-medium text-slate-700">
-                  {supplier.qualityScore}分
-                </span>
-              </div>
-            )}
-            {supplier.deliveryScore && (
-              <div className="flex items-center gap-1">
-                <Truck className="h-3.5 w-3.5 text-blue-500" />
-                <span className="text-xs font-medium text-slate-700">
-                  {supplier.deliveryScore}分
-                </span>
-              </div>
-            )}
-            {supplier.priceLevel && (
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5 text-green-500" />
-                <span className="text-xs font-medium text-slate-700">
-                  {supplier.priceLevel === "low" ? "低价" : supplier.priceLevel === "medium" ? "中等" : "高价"}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+          {supplier.qualityScore ? (
+            <div className="flex-1 p-2.5 rounded-xl bg-sand-50 border border-sand-100">
+              <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                <Star className="h-3 w-3 text-amber-500" />
+                品质评分
+              </p>
+              <p className="text-sm font-semibold text-foreground">{supplier.qualityScore}分</p>
+            </div>
+          ) : null}
+          {supplier.deliveryScore ? (
+            <div className="flex-1 p-2.5 rounded-xl bg-sand-50 border border-sand-100">
+              <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                <Truck className="h-3 w-3 text-navy-600" />
+                交期评分
+              </p>
+              <p className="text-sm font-semibold text-foreground">{supplier.deliveryScore}分</p>
+            </div>
+          ) : null}
+          {supplier.priceLevel ? (
+            <div className="flex-1 p-2.5 rounded-xl bg-sand-50 border border-sand-100">
+              <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                <DollarSign className="h-3 w-3 text-emerald-600" />
+                价格等级
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {supplier.priceLevel === "low" ? "低价" : supplier.priceLevel === "medium" ? "中等" : "高价"}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
