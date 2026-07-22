@@ -226,7 +226,16 @@ function LoginForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">密码</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium">密码</Label>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/reset-password")}
+                    className="text-xs text-navy-600 hover:text-navy-700 hover:underline transition-colors"
+                  >
+                    忘记密码？
+                  </button>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
