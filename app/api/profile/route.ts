@@ -26,8 +26,10 @@ export async function GET(request: Request) {
     const session = await getSession(request as any);
 
     let userId: string | null = null;
+    let userEmail: string | null = null;
     if (session?.user) {
       userId = session.user.id;
+      userEmail = session.user.email || null;
     }
 
     if (!userId) {
@@ -65,6 +67,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       name: data?.name || "用户",
+      email: userEmail || "",
       avatarUrl: data?.avatar_url || null,
       role: (data?.role_level && RoleLevelLabels[data.role_level]) || data?.role || "未设置",
       roleLevel: data?.role_level || null,
