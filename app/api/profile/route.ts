@@ -3,6 +3,7 @@ import { supabase } from "@/lib/db/client";
 import { getSession } from "@/lib/auth/supabase";
 import { logOperation } from "@/lib/auth/audit";
 import { isSupabaseConfigured } from "@/lib/db/client";
+import { RoleLevelLabels } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
@@ -11,10 +12,11 @@ export async function GET(request: Request) {
     if (!isSupabaseConfigured) {
       return NextResponse.json(
         {
-          name: "小芳",
+          name: "未登录",
           avatarUrl: null,
-          role: "设计师",
-          brandName: "TEPNIX步戌",
+          role: "未登录",
+          roleLevel: null,
+          brandName: "",
           error: "Supabase 未配置：请在环境变量中配置 NEXT_PUBLIC_SUPABASE_URL、NEXT_PUBLIC_SUPABASE_ANON_KEY 和 SUPABASE_SERVICE_ROLE_KEY",
         },
         { status: 200 }
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("name, avatar_url, role, brand_id")
+      .select("name, avatar_url, role, role_level, brand_id")
       .eq("user_id", userId)
       .single();
 
@@ -62,9 +64,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      name: data?.name || "小芳",
+      name: data?.name || "用户",
       avatarUrl: data?.avatar_url || null,
-      role: data?.role || "设计师",
+      role: (data?.role_level && RoleLevelLabels[data.role_level]) || data?.role || "未设置",
+      roleLevel: data?.role_level || null,
       brandName,
     });
   } catch (error) {
@@ -131,7 +134,8 @@ export async function PUT(request: Request) {
           user_id: userId,
           name: userName,
           avatar_url: userAvatarUrl,
-          role: "设计师",
+          role: "executor",
+          role_level: "executor",
         })
         .select()
         .single();

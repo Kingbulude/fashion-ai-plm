@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 import { useTenant } from "@/lib/auth/tenant-context";
-import { RoleLevel } from "@/lib/auth/rbac";
+import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -50,10 +50,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile>({
-    name: "小芳",
+    name: "加载中",
     avatarUrl: null,
-    role: "设计师",
-    brandName: "TEPNIX步戌",
+    role: "",
+    brandName: "",
   });
   const router = useRouter();
   const pathname = usePathname();
@@ -92,11 +92,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       const res = await fetch("/api/profile", { headers });
       const data = await res.json();
       if (data) {
+        const roleLevel = data.roleLevel;
+        const displayName = roleLevel ? (RoleLevelLabels[roleLevel] || data.role || "") : (data.role || "");
         setProfile({
-          name: data.name || "小芳",
+          name: data.name || "用户",
           avatarUrl: data.avatarUrl || null,
-          role: data.role || "设计师",
-          brandName: data.brandName || "TEPNIX步戌",
+          role: displayName,
+          brandName: data.brandName || "",
         });
       }
     } catch (error) {
