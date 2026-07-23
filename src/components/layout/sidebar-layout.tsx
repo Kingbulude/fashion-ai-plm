@@ -190,8 +190,18 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         {/* Brand */}
         <div className="h-16 flex items-center px-4 border-b border-[var(--sidebar-border)]">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center flex-shrink-0 shadow-premium">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-premium overflow-hidden">
+              {currentBrand?.logo_url ? (
+                <img
+                  src={currentBrand.logo_url}
+                  alt={currentBrand.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-xl gradient-navy flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+              )}
             </div>
             {!collapsed && (
               <div className="min-w-0">

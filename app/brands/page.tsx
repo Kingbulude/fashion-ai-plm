@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2 } from "lucide-react";
+import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -66,6 +66,7 @@ export default function BrandsPage() {
   const [editName, setEditName] = useState("");
   const [editLogoUrl, setEditLogoUrl] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -128,6 +129,39 @@ export default function BrandsPage() {
     setEditName(brand.name || "");
     setEditLogoUrl(brand.logo_url || "");
     setEditDialogOpen(true);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingBrand) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("brandId", editingBrand.id);
+
+      const res = await fetch("/api/brands/logo/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEditLogoUrl(data.url);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "上传失败");
+      }
+    } catch (error) {
+      console.error("Failed to upload logo:", error);
+      alert("上传失败");
+    } finally {
+      setUploading(false);
+      if (e.target) {
+        e.target.value = "";
+      }
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -445,13 +479,64 @@ export default function BrandsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-brand-logo">Logo URL</Label>
-                <Input
-                  id="edit-brand-logo"
-                  value={editLogoUrl}
-                  onChange={(e) => setEditLogoUrl(e.target.value)}
-                  placeholder="https://..."
-                />
+                <Label>品牌 Logo</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {editLogoUrl ? (
+                        <img
+                          src={editLogoUrl}
+                          alt="Logo 预览"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "";
+                          }}
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <ImageIcon className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+                          <span className="text-[10px] text-muted-foreground">无 Logo</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById("logo-upload")?.click()}
+                        disabled={uploading}
+                        className="w-full"
+                      >
+                        {uploading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        {uploading ? "上传中..." : "上传图片"}
+                      </Button>
+                      {editLogoUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditLogoUrl("")}
+                          className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1.5" />
+                          删除 Logo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">支持 PNG、JPG、WebP 格式，大小不超过 2MB</p>
+                </div>
               </div>
             </div>
             <DialogFooter>
