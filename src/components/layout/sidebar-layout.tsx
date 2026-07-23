@@ -60,6 +60,9 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // 使用 TenantContext 的品牌名称，确保与顶部 TenantSwitcher 保持一致
+  const { currentBrand } = useTenant();
+
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -192,7 +195,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <h1 className="font-bold text-sm truncate text-foreground">{profile.brandName}</h1>
+                <h1 className="font-bold text-sm truncate text-foreground">{currentBrand?.name || profile.brandName || "未选择品牌"}</h1>
                 <p className="text-[10px] text-muted-foreground truncate tracking-wide uppercase font-medium">全链路管理</p>
               </div>
             )}
