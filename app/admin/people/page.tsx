@@ -93,6 +93,7 @@ export default function AdminPeoplePage() {
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [processOwnerScopes, setProcessOwnerScopes] = useState<ProcessOwnerScope[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editName, setEditName] = useState("");
@@ -119,9 +120,16 @@ export default function AdminPeoplePage() {
 
   const fetchOrganization = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch("/api/organization");
       const json = await res.json();
+      if (!res.ok) {
+        const message = json.detail || json.error || `请求失败 (${res.status})`;
+        setFetchError(message);
+        console.error("Failed to fetch organization:", res.status, json);
+        return;
+      }
       setData({
         company: json.company || null,
         brands: json.brands || [],
@@ -135,6 +143,7 @@ export default function AdminPeoplePage() {
       });
     } catch (error) {
       console.error("Failed to fetch organization:", error);
+      setFetchError(error instanceof Error ? error.message : "请求失败");
     } finally {
       setLoading(false);
     }
@@ -323,6 +332,13 @@ export default function AdminPeoplePage() {
             </Button>
           }
         />
+
+        {fetchError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+            <p className="font-medium">加载数据失败</p>
+            <p className="text-red-700 mt-1">{fetchError}</p>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2">

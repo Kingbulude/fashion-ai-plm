@@ -51,36 +51,59 @@ export async function GET(request: Request) {
       }
       const baseResult = await query;
 
-      if (!baseResult.error && baseResult.data && baseResult.data.length > 0) {
+      if (baseResult.error) {
+        console.error("selectProfiles base query error:", baseResult.error);
+        return { data: null, error: baseResult.error };
+      }
+
+      let data = baseResult.data || [];
+
+      if (data.length > 0) {
         try {
           const emailResult = await supabase
             .from("profiles")
             .select("user_id, email")
             .in(
               "user_id",
-              baseResult.data.map((p) => p.user_id)
+              data.map((p) => p.user_id)
             );
 
-          if (emailResult.data) {
+          if (emailResult.error) {
+            console.error("selectProfiles email query error:", emailResult.error);
+          } else if (emailResult.data) {
             const emailMap = new Map(emailResult.data.map((e) => [e.user_id, e.email]));
-            baseResult.data = baseResult.data.map((p: any) => ({
+            data = data.map((p: any) => ({
               ...p,
               email: emailMap.get(p.user_id) || null,
             }));
           }
-        } catch {
-          // email 列不存在时忽略
+        } catch (err) {
+          console.error("selectProfiles email fetch failed:", err);
         }
       }
 
-      return baseResult;
+      return { data, error: null };
     };
 
     // 获取公司所有用户资料
-    const { data: profiles } = await selectProfiles({ company_id: companyId });
+    const profilesResult = await selectProfiles({ company_id: companyId });
+    if (profilesResult.error) {
+      return NextResponse.json(
+        { error: "查询公司成员失败", detail: profilesResult.error.message, code: profilesResult.error.code },
+        { status: 500 }
+      );
+    }
+    const profiles = profilesResult.data || [];
 
     // 获取已注册但尚未分配到公司的待选用户
-    const { data: pendingProfiles } = await selectProfiles({ company_id_is_null: true });
+    const pendingResult = await selectProfiles({ company_id_is_null: true });
+    if (pendingResult.error) {
+      return NextResponse.json(
+        { error: "查询待分配用户失败", detail: pendingResult.error.message, code: pendingResult.error.code },
+        { status: 500 }
+      );
+    }
+    const pendingProfiles = pendingResult.data || [];
 
     // 兜底：如果当前用户不在查询结果中（常见于 seed 数据未同步时），把自己加入列表
     const profileList = profiles || [];
