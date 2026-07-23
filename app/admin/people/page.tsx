@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
+import { AdminPageContainer, AdminPageHeader, AdminSectionCard } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -223,21 +223,14 @@ export default function AdminPeoplePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
-        {/* 顶部标题栏 */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">人员与权限</h1>
-            </div>
-            <p className="text-sm text-muted-foreground ml-13">
-              管理公司成员、角色层级和品牌访问范围
-            </p>
-          </div>
-        </div>
+      <AdminPageContainer>
+        <AdminPageHeader
+          title="人员与权限"
+          description="管理公司成员、角色层级和品牌访问范围"
+          icon={Users}
+          backHref="/admin"
+          backLabel="返回后台配置"
+        />
 
         {loading ? (
           <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2">
@@ -245,18 +238,16 @@ export default function AdminPeoplePage() {
             加载中...
           </div>
         ) : (
-          <Card className="card-premium">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                <Shield className="h-4 w-4 text-navy-700" />
-                成员列表
-                <Badge variant="secondary" className="ml-2">
-                  {(data?.profiles || []).length} 人
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
+          <AdminSectionCard
+          title="成员列表"
+          titleIcon={Shield}
+          titleAction={
+            <Badge variant="secondary">
+              {(data?.profiles || []).length} 人
+            </Badge>
+          }
+        >
+          <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-muted-foreground">
@@ -375,8 +366,7 @@ export default function AdminPeoplePage() {
                   </tbody>
                 </table>
               </div>
-            </CardContent>
-          </Card>
+          </AdminSectionCard>
         )}
 
         {/* 编辑对话框 */}
@@ -521,7 +511,7 @@ export default function AdminPeoplePage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </AdminPageContainer>
     </SidebarLayout>
   );
 }

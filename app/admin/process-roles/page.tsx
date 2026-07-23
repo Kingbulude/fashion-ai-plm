@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminPageContainer, AdminPageHeader, AdminSectionCard } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -181,34 +181,23 @@ export default function AdminProcessRolesPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
-                <Cpu className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">工序角色管理</h1>
-            </div>
-            <p className="text-sm text-muted-foreground ml-13">
-              配置横向执行角色（企划师、设计师、采购师等）及其可访问页面
-            </p>
-          </div>
-          <Button onClick={handleAdd} className="bg-navy-700 hover:bg-navy-800 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            新增角色
-          </Button>
-        </div>
+      <AdminPageContainer>
+        <AdminPageHeader
+          title="工序角色管理"
+          description="配置横向执行角色（企划师、设计师、采购师等）及其可访问页面"
+          icon={Cpu}
+          backHref="/admin"
+          backLabel="返回后台配置"
+          action={
+            <Button onClick={handleAdd} className="bg-navy-700 hover:bg-navy-800 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              新增角色
+            </Button>
+          }
+        />
 
-        <Card className="card-premium">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-              <Shield className="h-4 w-4 text-navy-700" />
-              角色列表
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
+        <AdminSectionCard title="角色列表" titleIcon={Shield}>
+          {loading ? (
               <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 加载中...
@@ -291,8 +280,7 @@ export default function AdminProcessRolesPage() {
                 </table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </AdminSectionCard>
 
         {/* 新增/编辑对话框 */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -393,7 +381,7 @@ export default function AdminProcessRolesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </AdminPageContainer>
     </SidebarLayout>
   );
 }

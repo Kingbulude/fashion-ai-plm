@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminPageContainer, AdminPageHeader, AdminSectionCard } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,34 +159,23 @@ export default function AdminProcessOwnerScopesPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
-                <Layers className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">工序主管类型</h1>
-            </div>
-            <p className="text-sm text-muted-foreground ml-13">
-              配置工序段主管（设计主管、产品主管、运营主管、售后主管）及其负责的工序范围
-            </p>
-          </div>
-          <Button onClick={handleAdd} className="bg-navy-700 hover:bg-navy-800 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            新增主管类型
-          </Button>
-        </div>
+      <AdminPageContainer>
+        <AdminPageHeader
+          title="工序主管类型"
+          description="配置工序段主管（设计主管、产品主管、运营主管、售后主管）及其负责的工序范围"
+          icon={Layers}
+          backHref="/admin"
+          backLabel="返回后台配置"
+          action={
+            <Button onClick={handleAdd} className="bg-navy-700 hover:bg-navy-800 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              新增主管类型
+            </Button>
+          }
+        />
 
-        <Card className="card-premium">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-              <Shield className="h-4 w-4 text-navy-700" />
-              主管类型列表
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
+        <AdminSectionCard title="主管类型列表" titleIcon={Shield}>
+          {loading ? (
               <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 加载中...
@@ -263,8 +252,7 @@ export default function AdminProcessOwnerScopesPage() {
                 </table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </AdminSectionCard>
 
         {/* 新增/编辑对话框 */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -345,7 +333,7 @@ export default function AdminProcessOwnerScopesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </AdminPageContainer>
     </SidebarLayout>
   );
 }
