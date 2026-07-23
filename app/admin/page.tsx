@@ -89,10 +89,10 @@ const adminModules: AdminModule[] = [
     active: true,
   },
   {
-    id: "process-owners",
+    id: "process-owner-scopes",
     title: "工序主管类型",
     description: "配置设计主管、产品主管、运营主管、售后主管等工序段。",
-    href: "/admin/process-owners",
+    href: "/admin/process-owner-scopes",
     icon: Workflow,
     accent: "teal",
     active: true,
