@@ -16,7 +16,9 @@ import {
   Trash2,
   GitBranch,
   Clock,
+  UserCog,
 } from "lucide-react";
+import { RoleLevel } from "@/lib/auth/rbac";
 import { supabase } from "@/lib/auth/supabase";
 
 const NODE_SIZE = 100;
@@ -202,6 +204,9 @@ export default function HomePage() {
   }, []);
 
   const [brandName, setBrandName] = useState("TEPNIX步戌");
+  const [processOwnerScopes, setProcessOwnerScopes] = useState<any[]>([]);
+  const [userProcessOwnerScopes, setUserProcessOwnerScopes] = useState<any[]>([]);
+  const [organizationProfiles, setOrganizationProfiles] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchBrandName = async () => {
@@ -218,6 +223,27 @@ export default function HomePage() {
     fetchBrandName();
   }, []);
 
+  useEffect(() => {
+    const fetchOrganization = async () => {
+      try {
+        const res = await fetch("/api/organization");
+        const data = await res.json();
+        if (data.processOwnerScopes) {
+          setProcessOwnerScopes(data.processOwnerScopes);
+        }
+        if (data.userProcessOwnerScopes) {
+          setUserProcessOwnerScopes(data.userProcessOwnerScopes);
+        }
+        if (data.profiles) {
+          setOrganizationProfiles(data.profiles);
+        }
+      } catch (error) {
+        console.error("Failed to fetch organization", error);
+      }
+    };
+    fetchOrganization();
+  }, []);
+
   const getNodePos = (id: string) => {
     const node = NODES.find(n => n.id === id);
     return node ? { x: node.x, y: node.y } : { x: 0, y: 0 };
@@ -230,6 +256,27 @@ export default function HomePage() {
   const parseLines = (str: string): string[] => {
     if (!str) return [""];
     return str.split("\n").filter(line => line.trim()).map(line => line.trim());
+  };
+
+  // 计算某条工序连线的负责主管：优先匹配包含目标节点的主管类型，无则取品牌负责人
+  const getResponsibleOwner = (toNode: string): { name: string; role: string } => {
+    const scope = processOwnerScopes.find((s: any) =>
+      Array.isArray(s.process_nodes) && s.process_nodes.includes(toNode)
+    );
+    if (scope) {
+      const assignment = userProcessOwnerScopes.find((a: any) => a.scope_id === scope.id);
+      if (assignment) {
+        const owner = organizationProfiles.find((p: any) => p.user_id === assignment.user_id);
+        if (owner?.name) {
+          return { name: owner.name, role: scope.name || "主管" };
+        }
+      }
+    }
+    const brandManager = organizationProfiles.find((p: any) => p.role_level === RoleLevel.BRAND_MANAGER);
+    if (brandManager?.name) {
+      return { name: brandManager.name, role: "品牌负责人" };
+    }
+    return { name: "未分配", role: "" };
   };
 
   const handleArrowClick = (from: string, to: string) => {
@@ -864,7 +911,7 @@ export default function HomePage() {
           className="max-w-4xl"
         >
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-foreground">截止时间</Label>
                 <Input
@@ -881,8 +928,24 @@ export default function HomePage() {
                   value={editForm.duration_hours}
                   onChange={e => setEditForm({ ...editForm, duration_hours: Number(e.target.value) })}
                   placeholder="例如：7"
-                  className="h-11 w-36"
+                  className="h-11 w-full sm:w-36"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground">负责主管</Label>
+                <div className="h-11 flex items-center gap-2 px-3 rounded-md border border-border bg-muted/40 text-sm">
+                  <UserCog className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate">
+                    {editingLink
+                      ? (() => {
+                          const owner = getResponsibleOwner(editingLink.to_node);
+                          return owner.role
+                            ? `${owner.name}（${owner.role}）`
+                            : owner.name;
+                        })()
+                      : "—"}
+                  </span>
+                </div>
               </div>
             </div>
 
