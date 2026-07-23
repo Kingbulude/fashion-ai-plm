@@ -39,13 +39,46 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("profiles")
-      .select("name, avatar_url, role, role_level, brand_id")
+      .select("name, email, avatar_url, role, role_level, brand_id, company_id")
       .eq("user_id", userId)
       .single();
 
-    if (error) {
+    // 首次登录时自动创建 profile（company_id 为 null，便于后台分配）
+    if ((error?.code === "PGRST116" || !data) && session) {
+      const baseProfile = {
+        user_id: userId,
+        name: session.user.user_metadata?.name || userEmail?.split("@")[0] || "用户",
+        avatar_url: session.user.user_metadata?.avatar_url || null,
+        role: "executor",
+        role_level: "executor",
+      };
+
+      // 尝试写入 email（新 migration 已添加该字段；旧环境会自动失败并回退）
+      let insertError: any = null;
+      const insertWithEmail = await supabase
+        .from("profiles")
+        .insert({ ...baseProfile, email: userEmail })
+        .select()
+        .single();
+
+      if (insertWithEmail.error) {
+        const fallback = await supabase.from("profiles").insert(baseProfile).select().single();
+        data = fallback.data;
+        insertError = fallback.error;
+      } else {
+        data = insertWithEmail.data;
+      }
+
+      if (insertError) {
+        console.error("GET profile auto-create error:", insertError);
+        return NextResponse.json(
+          { error: "Fetch failed", detail: insertError.message, code: insertError.code },
+          { status: 500 }
+        );
+      }
+    } else if (error) {
       console.error("GET profile error:", error);
       return NextResponse.json(
         { error: "Fetch failed", detail: error.message, code: error.code },
