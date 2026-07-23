@@ -1,5 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { createBrowserClient, createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 function getSupabaseConfig() {
@@ -98,27 +98,21 @@ export const supabase = new Proxy({} as SupabaseClient, {
   },
 });
 
-export async function getSession(request: Request | NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+export async function getSession(request: Request | NextRequest): Promise<{ user: User } | null> {
+  const { url: supabaseUrl, key: supabaseKey, valid } = getSupabaseConfig();
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!valid) {
     return null;
   }
 
-  const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
-
-  // 1. 从 Authorization header 读取
+  // 1. 优先从 Authorization header 读取（API/脚本调用场景）
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
     try {
+      const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+        auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+      });
       const { data, error } = await supabaseClient.auth.getUser(token);
       if (!error && data?.user) {
         return { user: data.user };
@@ -128,51 +122,29 @@ export async function getSession(request: Request | NextRequest) {
     }
   }
 
-  // 2. 从 cookie 读取
-  const cookieHeader = request.headers.get("cookie") || "";
-  const cookies: Record<string, string> = {};
-  cookieHeader.split(";").forEach(cookie => {
-    const [name, ...valueParts] = cookie.trim().split("=");
-    if (name) {
-      cookies[name] = decodeURIComponent(valueParts.join("=") || "");
-    }
-  });
+  // 2. 使用 @supabase/ssr createServerClient 从 cookie 读取 session
+  // 这是配合 createBrowserClient 的彻底方案，能正确解析 base64url 编码的 cookie
+  try {
+    const nextRequest = request as NextRequest;
+    if (typeof nextRequest.cookies?.getAll === "function") {
+      const supabaseServer = createServerClient(supabaseUrl, supabaseKey, {
+        cookies: {
+          getAll() {
+            return nextRequest.cookies.getAll();
+          },
+          setAll() {
+            // API route 只读 session，不需要写回 cookie
+          },
+        },
+      });
 
-  // 2.1 尝试 sb-access-token
-  if (cookies["sb-access-token"]) {
-    try {
-      const { data, error } = await supabaseClient.auth.getUser(cookies["sb-access-token"]);
+      const { data, error } = await supabaseServer.auth.getUser();
       if (!error && data?.user) {
         return { user: data.user };
       }
-    } catch (e) {
-      console.error("Access token auth error:", e);
     }
-  }
-
-  // 2.2 尝试 sb-xxx-auth-token 格式（Supabase 默认）
-  // @supabase/ssr 会把 cookie 值 base64 编码，需要先解码
-  for (const [name, value] of Object.entries(cookies)) {
-    if (name.endsWith("-auth-token")) {
-      let authData: any = null;
-      try {
-        authData = JSON.parse(value);
-      } catch {
-        try {
-          authData = JSON.parse(atob(value));
-        } catch {
-          // 既非 JSON 也非 base64 JSON，跳过
-          continue;
-        }
-      }
-
-      if (authData?.access_token) {
-        const { data, error } = await supabaseClient.auth.getUser(authData.access_token);
-        if (!error && data?.user) {
-          return { user: data.user };
-        }
-      }
-    }
+  } catch (e) {
+    console.error("Server client auth error:", e);
   }
 
   return null;
