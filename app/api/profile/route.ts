@@ -39,11 +39,30 @@ export async function GET(request: Request) {
       );
     }
 
-    let { data, error } = await supabase
+    // 兼容 email 列未迁移的旧环境：先查询不含 email 的字段
+    let profileQuery = await supabase
       .from("profiles")
-      .select("name, email, avatar_url, role, role_level, brand_id, company_id")
+      .select("name, avatar_url, role, role_level, brand_id, company_id")
       .eq("user_id", userId)
       .single();
+
+    // 如果 email 列已存在，再补充查询
+    if (!profileQuery.error) {
+      try {
+        const emailQuery = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("user_id", userId)
+          .single();
+        if (emailQuery.data) {
+          profileQuery.data = { ...profileQuery.data, email: emailQuery.data.email } as any;
+        }
+      } catch {
+        // email 列不存在时忽略
+      }
+    }
+
+    let { data, error } = profileQuery;
 
     // 首次登录时自动创建 profile（company_id 为 null，便于后台分配）
     if ((error?.code === "PGRST116" || !data) && session) {

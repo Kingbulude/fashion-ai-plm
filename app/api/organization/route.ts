@@ -39,17 +39,48 @@ export async function GET(request: Request) {
       .select("*")
       .eq("company_id", companyId);
 
+    // 兼容 email 列未迁移的旧环境
+    const selectProfiles = async (filter: { company_id?: string; company_id_is_null?: boolean }) => {
+      const baseSelect =
+        "user_id, name, avatar_url, role, role_level, company_id, brand_id";
+      let query = supabase.from("profiles").select(baseSelect);
+      if (filter.company_id_is_null) {
+        query = query.is("company_id", null);
+      } else if (filter.company_id) {
+        query = query.eq("company_id", filter.company_id);
+      }
+      const baseResult = await query;
+
+      if (!baseResult.error && baseResult.data && baseResult.data.length > 0) {
+        try {
+          const emailResult = await supabase
+            .from("profiles")
+            .select("user_id, email")
+            .in(
+              "user_id",
+              baseResult.data.map((p) => p.user_id)
+            );
+
+          if (emailResult.data) {
+            const emailMap = new Map(emailResult.data.map((e) => [e.user_id, e.email]));
+            baseResult.data = baseResult.data.map((p: any) => ({
+              ...p,
+              email: emailMap.get(p.user_id) || null,
+            }));
+          }
+        } catch {
+          // email 列不存在时忽略
+        }
+      }
+
+      return baseResult;
+    };
+
     // 获取公司所有用户资料
-    let { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, name, email, avatar_url, role, role_level, company_id, brand_id")
-      .eq("company_id", companyId);
+    const { data: profiles } = await selectProfiles({ company_id: companyId });
 
     // 获取已注册但尚未分配到公司的待选用户
-    const { data: pendingProfiles } = await supabase
-      .from("profiles")
-      .select("user_id, name, email, avatar_url, role, role_level, company_id, brand_id")
-      .is("company_id", null);
+    const { data: pendingProfiles } = await selectProfiles({ company_id_is_null: true });
 
     // 兜底：如果当前用户不在查询结果中（常见于 seed 数据未同步时），把自己加入列表
     const profileList = profiles || [];
@@ -63,7 +94,7 @@ export async function GET(request: Request) {
         role_level: currentProfile.role_level || "",
         company_id: companyId,
         brand_id: null,
-      });
+      } as any);
     }
 
     // 获取用户-品牌关联
