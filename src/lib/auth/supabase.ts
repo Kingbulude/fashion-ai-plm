@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 function getSupabaseConfig() {
@@ -63,6 +64,12 @@ function createSupabaseClient(): SupabaseClient {
   if (!valid) {
     // 未配置 → 返回 Mock 客户端（避免白屏/CPU 死锁）
     return createMockClient();
+  }
+
+  // 浏览器端使用 @supabase/ssr 的 createBrowserClient，自动把 session 同步到 cookie
+  // 这样后端 API 才能从 request cookie 中读取登录态
+  if (typeof window !== "undefined") {
+    return createBrowserClient(url, key) as unknown as SupabaseClient;
   }
 
   return createClient(url, key, {
