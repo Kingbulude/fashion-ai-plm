@@ -151,18 +151,26 @@ export async function getSession(request: Request | NextRequest) {
   }
 
   // 2.2 尝试 sb-xxx-auth-token 格式（Supabase 默认）
+  // @supabase/ssr 会把 cookie 值 base64 编码，需要先解码
   for (const [name, value] of Object.entries(cookies)) {
     if (name.endsWith("-auth-token")) {
+      let authData: any = null;
       try {
-        const authData = JSON.parse(value);
-        if (authData.access_token) {
-          const { data, error } = await supabaseClient.auth.getUser(authData.access_token);
-          if (!error && data?.user) {
-            return { user: data.user };
-          }
+        authData = JSON.parse(value);
+      } catch {
+        try {
+          authData = JSON.parse(atob(value));
+        } catch {
+          // 既非 JSON 也非 base64 JSON，跳过
+          continue;
         }
-      } catch (e) {
-        // ignore parse errors
+      }
+
+      if (authData?.access_token) {
+        const { data, error } = await supabaseClient.auth.getUser(authData.access_token);
+        if (!error && data?.user) {
+          return { user: data.user };
+        }
       }
     }
   }
