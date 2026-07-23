@@ -79,6 +79,66 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 }
 
+// 更新品牌（仅老板/管理员）
+export async function PUT(request: Request, { params }: RouteContext) {
+  try {
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role_level, company_id")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { name, logo_url } = body;
+
+    // 校验该品牌是否属于当前公司
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("company_id")
+      .eq("id", id)
+      .single();
+
+    if (!brand) {
+      return NextResponse.json({ error: "品牌不存在" }, { status: 404 });
+    }
+
+    if (brand.company_id !== profile.company_id) {
+      return NextResponse.json({ error: "无权修改其他公司的品牌" }, { status: 403 });
+    }
+
+    const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (name !== undefined) updatePayload.name = name.trim();
+    if (logo_url !== undefined) updatePayload.logo_url = logo_url ? logo_url.trim() : null;
+
+    const { data, error } = await supabase
+      .from("brands")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ brand: toCamelCase(data) });
+  } catch (error) {
+    console.error("Failed to update brand:", error);
+    return NextResponse.json(
+      { error: "Failed to update brand", detail: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
 // 删除品牌（仅老板/管理员）
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {

@@ -7,7 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2 } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -52,6 +60,12 @@ export default function BrandsPage() {
   const [showNewBrand, setShowNewBrand] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLogoUrl, setEditLogoUrl] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -106,6 +120,43 @@ export default function BrandsPage() {
       }
     } catch (error) {
       console.error("Failed to create brand:", error);
+    }
+  };
+
+  const handleEditClick = (brand: Brand) => {
+    setEditingBrand(brand);
+    setEditName(brand.name || "");
+    setEditLogoUrl(brand.logo_url || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingBrand || !editName.trim()) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/brands/${editingBrand.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          logo_url: editLogoUrl.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        setEditDialogOpen(false);
+        setEditingBrand(null);
+        setEditName("");
+        setEditLogoUrl("");
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("Failed to update brand:", error);
+      alert("保存失败");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -249,17 +300,30 @@ export default function BrandsPage() {
                             {getUserBrandsCount(brand.id)} 人关联
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBrand(brand.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(brand);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 text-navy-700" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBrand(brand.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -362,6 +426,45 @@ export default function BrandsPage() {
             </Card>
           </div>
         )}
+
+        {/* 编辑品牌弹窗 */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>编辑品牌</DialogTitle>
+              <DialogDescription>修改品牌名称和 Logo 地址</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand-name">品牌名称</Label>
+                <Input
+                  id="edit-brand-name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="例如：TEPNIX步戌"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand-logo">Logo URL</Label>
+                <Input
+                  id="edit-brand-logo"
+                  value={editLogoUrl}
+                  onChange={(e) => setEditLogoUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={editSaving}>
+                取消
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={editSaving || !editName.trim()} className="bg-navy-700 hover:bg-navy-800 text-white">
+                {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                保存
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarLayout>
   );
