@@ -3,6 +3,8 @@
 
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
+import { getSession } from "@/lib/auth/supabase";
+import { RoleLevel } from "@/lib/auth/rbac";
 import { toCamelCase } from "@/lib/db/mappers";
 
 export const runtime = "edge";
@@ -74,5 +76,55 @@ export async function GET(_request: Request, { params }: RouteContext) {
     });
   } catch {
     return NextResponse.json({ error: "获取品牌详情失败" }, { status: 500 });
+  }
+}
+
+// 删除品牌（仅老板/管理员）
+export async function DELETE(request: Request, { params }: RouteContext) {
+  try {
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role_level, company_id")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    // 先校验该品牌是否属于当前公司
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("company_id")
+      .eq("id", id)
+      .single();
+
+    if (!brand) {
+      return NextResponse.json({ error: "品牌不存在" }, { status: 404 });
+    }
+
+    if (brand.company_id !== profile.company_id) {
+      return NextResponse.json({ error: "无权删除其他公司的品牌" }, { status: 403 });
+    }
+
+    // 删除品牌（关联表大多配置了 ON DELETE CASCADE）
+    const { error } = await supabase.from("brands").delete().eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete brand:", error);
+    return NextResponse.json(
+      { error: "Failed to delete brand", detail: (error as Error).message },
+      { status: 500 }
+    );
   }
 }

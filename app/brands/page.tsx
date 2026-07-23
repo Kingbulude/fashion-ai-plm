@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Building2, Users, Calendar, Lock, Unlock } from "lucide-react";
+import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2 } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -109,6 +109,28 @@ export default function BrandsPage() {
     }
   };
 
+  const handleDeleteBrand = async (brandId: string) => {
+    if (!window.confirm("确定要删除该品牌吗？删除后不可恢复，关联数据也会被清除。")) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/brands/${brandId}`, { method: "DELETE" });
+      if (res.ok) {
+        if (selectedBrand?.id === brandId) {
+          setSelectedBrand(null);
+          setSeasons([]);
+        }
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("Failed to delete brand:", error);
+      alert("删除失败");
+    }
+  };
+
   const handleAssignRole = async (userId: string, roleLevel: string, brandIds: string[]) => {
     try {
       await fetch("/api/organization", {
@@ -180,7 +202,7 @@ export default function BrandsPage() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={handleCreateBrand}>创建</Button>
+                  <Button onClick={handleCreateBrand} className="bg-navy-700 hover:bg-navy-800 text-white">创建</Button>
                   <Button variant="outline" onClick={() => setShowNewBrand(false)}>取消</Button>
                 </div>
               </div>
@@ -207,7 +229,7 @@ export default function BrandsPage() {
                   brands.map(brand => (
                     <div
                       key={brand.id}
-                      className={`p-3 rounded-xl cursor-pointer transition-all border ${
+                      className={`group p-3 rounded-xl cursor-pointer transition-all border ${
                         selectedBrand?.id === brand.id
                           ? "bg-navy-50 border-navy-200 shadow-sm"
                           : "bg-sand-50/40 border-transparent hover:border-border hover:bg-sand-50"
@@ -227,6 +249,17 @@ export default function BrandsPage() {
                             {getUserBrandsCount(brand.id)} 人关联
                           </p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBrand(brand.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </div>
                   ))
