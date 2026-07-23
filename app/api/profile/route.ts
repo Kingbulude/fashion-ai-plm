@@ -113,6 +113,7 @@ export async function PUT(request: Request) {
 
     const userName = name || "小芳";
     const userAvatarUrl = avatarUrl || null;
+    const userEmail = session.user.email || null;
 
     // 头像 base64 长度校验：PostgreSQL text 字段无上限，但建议控制在 1MB 以内
     if (userAvatarUrl && typeof userAvatarUrl === "string" && userAvatarUrl.length > 1024 * 1024) {
@@ -136,6 +137,7 @@ export async function PUT(request: Request) {
         .insert({
           user_id: userId,
           name: userName,
+          email: userEmail,
           avatar_url: userAvatarUrl,
           role: "executor",
           role_level: "executor",
@@ -156,6 +158,7 @@ export async function PUT(request: Request) {
         .from("profiles")
         .update({
           name: userName,
+          email: userEmail,
           avatar_url: userAvatarUrl,
         })
         .eq("user_id", userId)

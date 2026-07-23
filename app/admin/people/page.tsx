@@ -29,10 +29,11 @@ interface Brand {
 interface Profile {
   user_id: string;
   name: string;
+  email?: string | null;
   avatar_url: string | null;
   role: string;
   role_level: string;
-  company_id: string;
+  company_id: string | null;
   brand_id: string | null;
 }
 
@@ -71,6 +72,7 @@ interface OrganizationData {
   company: { id: string; name: string } | null;
   brands: Brand[];
   profiles: Profile[];
+  pendingProfiles: Profile[];
   userBrands: UserBrand[];
   userProcessRoles: UserProcessRole[];
   userProcessOwnerScopes: UserProcessOwnerScope[];
@@ -100,15 +102,14 @@ export default function AdminPeoplePage() {
   const [editProcessOwnerScopeId, setEditProcessOwnerScopeId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // 添加成员
+  // 添加成员（从已注册用户中选择）
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
+  const [inviteUserId, setInviteUserId] = useState<string>("");
   const [inviteRoleLevel, setInviteRoleLevel] = useState<string>(RoleLevel.EXECUTOR);
   const [inviteBrandIds, setInviteBrandIds] = useState<string[]>([]);
   const [inviteProcessRoleIds, setInviteProcessRoleIds] = useState<string[]>([]);
   const [inviteProcessOwnerScopeId, setInviteProcessOwnerScopeId] = useState<string>("");
-  const [inviteResult, setInviteResult] = useState<{ tempPassword?: string; message?: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ name?: string; message?: string } | null>(null);
 
   useEffect(() => {
     fetchOrganization();
@@ -125,6 +126,7 @@ export default function AdminPeoplePage() {
         company: json.company || null,
         brands: json.brands || [],
         profiles: json.profiles || [],
+        pendingProfiles: json.pendingProfiles || [],
         userBrands: json.userBrands || [],
         userProcessRoles: json.userProcessRoles || [],
         userProcessOwnerScopes: json.userProcessOwnerScopes || [],
@@ -188,8 +190,7 @@ export default function AdminPeoplePage() {
   };
 
   const resetInviteForm = () => {
-    setInviteEmail("");
-    setInviteName("");
+    setInviteUserId("");
     setInviteRoleLevel(RoleLevel.EXECUTOR);
     setInviteBrandIds([]);
     setInviteProcessRoleIds([]);
@@ -201,6 +202,10 @@ export default function AdminPeoplePage() {
     resetInviteForm();
     setInviteDialogOpen(true);
   };
+
+  const selectedPendingUser = inviteUserId
+    ? (data?.pendingProfiles || []).find((p) => p.user_id === inviteUserId)
+    : null;
 
   const toggleInviteProcessRole = (roleId: string) => {
     setInviteProcessRoleIds((prev) =>
@@ -215,9 +220,8 @@ export default function AdminPeoplePage() {
   };
 
   const handleInvite = async () => {
-    const email = inviteEmail.trim();
-    if (!email) {
-      alert("请输入邮箱");
+    if (!inviteUserId) {
+      alert("请选择一个已注册的用户");
       return;
     }
     if (!inviteRoleLevel) {
@@ -225,14 +229,15 @@ export default function AdminPeoplePage() {
       return;
     }
 
+    const user = data?.pendingProfiles.find((p) => p.user_id === inviteUserId);
+
     setSaving(true);
     try {
-      const res = await fetch("/api/invite", {
+      const res = await fetch("/api/organization", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
-          name: inviteName.trim() || undefined,
+          userId: inviteUserId,
           roleLevel: inviteRoleLevel,
           brandIds: inviteBrandIds,
           processRoleIds: inviteProcessRoleIds,
@@ -242,13 +247,16 @@ export default function AdminPeoplePage() {
 
       const json = await res.json().catch(() => ({}));
       if (res.ok) {
-        setInviteResult({ tempPassword: json.tempPassword, message: json.message });
+        setInviteResult({
+          name: user?.name || user?.email || undefined,
+          message: "成员已分配到公司，权限已生效",
+        });
         await fetchOrganization();
       } else {
         alert(json.error || "添加失败");
       }
     } catch (error) {
-      console.error("Failed to invite user:", error);
+      console.error("Failed to assign user:", error);
       alert("添加失败，请重试");
     } finally {
       setSaving(false);
@@ -460,8 +468,8 @@ export default function AdminPeoplePage() {
               <DialogTitle>添加成员</DialogTitle>
               <DialogDescription>
                 {inviteResult
-                  ? "成员已创建，请保存初始密码并发给对方"
-                  : "输入邮箱和姓名，选择角色层级和可访问品牌"}
+                  ? "成员已分配到公司"
+                  : "从已注册用户中选择，并为其分配角色、品牌和权限"}
               </DialogDescription>
             </DialogHeader>
 
@@ -469,51 +477,64 @@ export default function AdminPeoplePage() {
               <div className="space-y-4 py-4">
                 <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm space-y-2">
                   <p className="font-medium">{inviteResult.message}</p>
-                  {inviteResult.tempPassword && (
-                    <div>
-                      <p className="text-xs text-green-700 mb-1">初始密码：</p>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 px-3 py-2 bg-white rounded-lg font-mono text-sm border border-green-200">
-                          {inviteResult.tempPassword}
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigator.clipboard.writeText(inviteResult.tempPassword || "")}
-                        >
-                          复制
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-xs text-green-700">
+                    {inviteResult.name} 现在可以在公司下访问对应模块。
+                  </p>
                 </div>
               </div>
             ) : (
               <div className="space-y-5 py-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="invite-email">邮箱</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="invite-email"
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="name@company.com"
-                        className="pl-9"
-                      />
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    选择已注册用户
+                  </Label>
+                  {(data?.pendingProfiles || []).length === 0 ? (
+                    <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground text-center">
+                      暂无待分配的注册用户
+                      <br />
+                      请让对方先在登录页注册账号，完成邮箱验证后再来这里添加
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="invite-name">姓名</Label>
-                    <Input
-                      id="invite-name"
-                      value={inviteName}
-                      onChange={(e) => setInviteName(e.target.value)}
-                      placeholder="如：张三"
-                    />
-                  </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                      {(data?.pendingProfiles || []).map((profile) => {
+                        const selected = inviteUserId === profile.user_id;
+                        return (
+                          <button
+                            key={profile.user_id}
+                            type="button"
+                            onClick={() => setInviteUserId(profile.user_id)}
+                            className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                              selected ? "bg-navy-50" : "hover:bg-sand-50/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                  selected ? "bg-navy-600" : "bg-slate-300"
+                                }`}
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {profile.name || "未命名"}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {profile.email || profile.user_id.slice(0, 8) + "..."}
+                                </p>
+                              </div>
+                            </div>
+                            {selected && <span className="text-xs text-navy-700 font-medium">已选</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedPendingUser && (
+                    <p className="text-xs text-muted-foreground">
+                      已选择：{selectedPendingUser.name || "未命名"}（
+                      {selectedPendingUser.email || selectedPendingUser.user_id.slice(0, 8) + "..."}）
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -632,7 +653,7 @@ export default function AdminPeoplePage() {
               {!inviteResult && (
                 <Button
                   onClick={handleInvite}
-                  disabled={saving || !inviteEmail.trim()}
+                  disabled={saving || !inviteUserId}
                   className="bg-navy-700 hover:bg-navy-800 text-white"
                 >
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

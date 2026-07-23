@@ -42,8 +42,14 @@ export async function GET(request: Request) {
     // 获取公司所有用户资料
     let { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, name, avatar_url, role, role_level, company_id, brand_id")
+      .select("user_id, name, email, avatar_url, role, role_level, company_id, brand_id")
       .eq("company_id", companyId);
+
+    // 获取已注册但尚未分配到公司的待选用户
+    const { data: pendingProfiles } = await supabase
+      .from("profiles")
+      .select("user_id, name, email, avatar_url, role, role_level, company_id, brand_id")
+      .is("company_id", null);
 
     // 兜底：如果当前用户不在查询结果中（常见于 seed 数据未同步时），把自己加入列表
     const profileList = profiles || [];
@@ -51,6 +57,7 @@ export async function GET(request: Request) {
       profileList.push({
         user_id: session.user.id,
         name: session.user.user_metadata?.name || session.user.email || "当前用户",
+        email: session.user.email || null,
         avatar_url: session.user.user_metadata?.avatar_url || null,
         role: currentProfile.role_level || "",
         role_level: currentProfile.role_level || "",
@@ -84,6 +91,7 @@ export async function GET(request: Request) {
       company,
       brands: brands || [],
       profiles: profileList,
+      pendingProfiles: pendingProfiles || [],
       userBrands: userBrands || [],
       userProcessRoles: userProcessRoles || [],
       processOwnerScopes: processOwnerScopes || [],
@@ -110,13 +118,18 @@ export async function POST(request: Request) {
     // 检查是否有权限分配（仅老板/管理员）
     const { data: currentProfile } = await supabase
       .from("profiles")
-      .select("role_level")
+      .select("role_level, company_id")
       .eq("user_id", session.user.id)
       .single();
 
     const roleLevel = currentProfile?.role_level;
+    const companyId = currentProfile?.company_id;
     if (roleLevel !== RoleLevel.BOSS && roleLevel !== RoleLevel.ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!companyId) {
+      return NextResponse.json({ error: "当前用户未绑定公司" }, { status: 400 });
     }
 
     const body = await request.json();
@@ -139,7 +152,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 更新用户角色和姓名
+    // 更新用户角色、姓名和公司（用于分配待选用户）
     if (newRoleLevel !== undefined || name !== undefined) {
       const updatePayload: Record<string, any> = {
         updated_at: new Date().toISOString(),
@@ -153,6 +166,22 @@ export async function POST(request: Request) {
         .eq("user_id", userId);
 
       if (profileError) throw profileError;
+    }
+
+    // 分配待选用户到公司（company_id 为 null 时）
+    const { data: targetProfile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (!targetProfile?.company_id) {
+      const { error: assignCompanyError } = await supabase
+        .from("profiles")
+        .update({ company_id: companyId, updated_at: new Date().toISOString() })
+        .eq("user_id", userId);
+
+      if (assignCompanyError) throw assignCompanyError;
     }
 
     // 更新用户-品牌关联（先删除旧的，再插入新的）
