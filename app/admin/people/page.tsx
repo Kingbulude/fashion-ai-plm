@@ -413,10 +413,11 @@ export default function AdminPeoplePage() {
                             </td>
                             <td className="py-4 px-4">
                               <Badge
-                                variant={
+                                variant="outline"
+                                className={
                                   profile.role_level === RoleLevel.BOSS || profile.role_level === RoleLevel.ADMIN
-                                    ? "default"
-                                    : "secondary"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
                                 }
                               >
                                 {data?.roleLabels[profile.role_level] || profile.role_level}
