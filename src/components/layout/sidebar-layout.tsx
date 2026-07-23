@@ -127,7 +127,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     router.push("/login");
   };
 
-  const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope } = useTenant();
+  const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope, isLoading } = useTenant();
 
   // 优先使用 TenantContext 的权限判断，如果失败则 fallback 到 /api/profile 的角色
   const isBossOrAdmin =
@@ -209,20 +209,31 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item, index) => {
-            const active = isActive(item.href);
-            return (
-              <button
-                key={index}
-                onClick={() => router.push(item.href)}
-                className={`nav-item w-full ${active ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${active ? "text-terracotta-500" : ""}`} />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </button>
-            );
-          })}
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-10 rounded-xl bg-muted/60 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            navItems.map((item, index) => {
+              const active = isActive(item.href);
+              return (
+                <button
+                  key={index}
+                  onClick={() => router.push(item.href)}
+                  className={`nav-item w-full ${active ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${active ? "text-terracotta-500" : ""}`} />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              );
+            })
+          )}
         </nav>
 
       </aside>
