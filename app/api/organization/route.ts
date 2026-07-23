@@ -40,10 +40,24 @@ export async function GET(request: Request) {
       .eq("company_id", companyId);
 
     // 获取公司所有用户资料
-    const { data: profiles } = await supabase
+    let { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, name, avatar_url, role, role_level, company_id, brand_id")
       .eq("company_id", companyId);
+
+    // 兜底：如果当前用户不在查询结果中（常见于 seed 数据未同步时），把自己加入列表
+    const profileList = profiles || [];
+    if (currentProfile && !profileList.some((p) => p.user_id === session.user.id)) {
+      profileList.push({
+        user_id: session.user.id,
+        name: session.user.user_metadata?.name || session.user.email || "当前用户",
+        avatar_url: session.user.user_metadata?.avatar_url || null,
+        role: currentProfile.role_level || "",
+        role_level: currentProfile.role_level || "",
+        company_id: companyId,
+        brand_id: null,
+      });
+    }
 
     // 获取用户-品牌关联
     const { data: userBrands } = await supabase
@@ -69,7 +83,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       company,
       brands: brands || [],
-      profiles: profiles || [],
+      profiles: profileList,
       userBrands: userBrands || [],
       userProcessRoles: userProcessRoles || [],
       processOwnerScopes: processOwnerScopes || [],

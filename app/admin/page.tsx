@@ -13,9 +13,11 @@ import {
   ArrowRight,
   Shield,
   Settings,
+  Loader2,
+  Wand2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
+import { useState } from "react";
 import { ElementType } from "react";
 
 interface AdminModule {
@@ -117,6 +119,28 @@ const adminModules: AdminModule[] = [
 
 export default function AdminPage() {
   const router = useRouter();
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<{ createdRoles?: number; createdSkills?: number } | null>(null);
+
+  const handleSeedDefaults = async () => {
+    if (!confirm("将一键初始化默认工序角色和 AI Skill，是否继续？")) return;
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/admin/seed-defaults", { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setSeedResult({ createdRoles: json.createdRoles, createdSkills: json.createdSkills });
+        setTimeout(() => setSeedResult(null), 5000);
+      } else {
+        alert(json.error || "初始化失败");
+      }
+    } catch (error) {
+      console.error("Failed to seed defaults:", error);
+      alert("初始化失败");
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <SidebarLayout>
@@ -129,16 +153,38 @@ export default function AdminPage() {
 
         {/* 欢迎提示 */}
         <div className="mb-10 p-6 rounded-2xl border border-border/60 bg-gradient-to-r from-navy-50/80 via-card to-sand-50/50 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-white border border-border/60 flex items-center justify-center shadow-sm flex-shrink-0">
-              <Settings className="h-5 w-5 text-navy-700" />
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white border border-border/60 flex items-center justify-center shadow-sm flex-shrink-0">
+                <Settings className="h-5 w-5 text-navy-700" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-foreground">系统管理入口</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
+                  这里是整个 Fashion AI PLM 的系统配置中枢。建议在初始化时先完成「品牌管理」和「人员与权限」，
+                  再配置工序角色与 AI Skill，确保后续业务模块正常运行。
+                </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <h2 className="text-base font-semibold text-foreground">系统管理入口</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-                这里是整个 Fashion AI PLM 的系统配置中枢。建议在初始化时先完成「品牌管理」和「人员与权限」，
-                再配置工序角色与 AI Skill，确保后续业务模块正常运行。
-              </p>
+            <div className="flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={handleSeedDefaults}
+                disabled={seeding}
+                className="border-navy-200 text-navy-700 hover:bg-navy-50 hover:text-navy-800"
+              >
+                {seeding ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 mr-2" />
+                )}
+                初始化默认角色/Skill
+              </Button>
+              {seedResult && (
+                <p className="text-xs text-green-700 mt-2 text-right">
+                  已新增 {seedResult.createdRoles} 个角色、{seedResult.createdSkills} 个 Skill
+                </p>
+              )}
             </div>
           </div>
         </div>

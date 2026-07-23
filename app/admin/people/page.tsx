@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Pencil, Shield, Loader2, Building2, Cpu, Layers } from "lucide-react";
+import { Users, Pencil, Shield, Loader2, Building2, Cpu, Layers, Plus, Mail } from "lucide-react";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -100,6 +100,16 @@ export default function AdminPeoplePage() {
   const [editProcessOwnerScopeId, setEditProcessOwnerScopeId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // 添加成员
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRoleLevel, setInviteRoleLevel] = useState<string>(RoleLevel.EXECUTOR);
+  const [inviteBrandIds, setInviteBrandIds] = useState<string[]>([]);
+  const [inviteProcessRoleIds, setInviteProcessRoleIds] = useState<string[]>([]);
+  const [inviteProcessOwnerScopeId, setInviteProcessOwnerScopeId] = useState<string>("");
+  const [inviteResult, setInviteResult] = useState<{ tempPassword?: string; message?: string } | null>(null);
+
   useEffect(() => {
     fetchOrganization();
     fetchProcessRoles();
@@ -177,6 +187,74 @@ export default function AdminPeoplePage() {
     setDialogOpen(true);
   };
 
+  const resetInviteForm = () => {
+    setInviteEmail("");
+    setInviteName("");
+    setInviteRoleLevel(RoleLevel.EXECUTOR);
+    setInviteBrandIds([]);
+    setInviteProcessRoleIds([]);
+    setInviteProcessOwnerScopeId("");
+    setInviteResult(null);
+  };
+
+  const handleOpenInvite = () => {
+    resetInviteForm();
+    setInviteDialogOpen(true);
+  };
+
+  const toggleInviteProcessRole = (roleId: string) => {
+    setInviteProcessRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
+  };
+
+  const toggleInviteBrand = (brandId: string) => {
+    setInviteBrandIds((prev) =>
+      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
+    );
+  };
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim();
+    if (!email) {
+      alert("请输入邮箱");
+      return;
+    }
+    if (!inviteRoleLevel) {
+      alert("请选择角色层级");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name: inviteName.trim() || undefined,
+          roleLevel: inviteRoleLevel,
+          brandIds: inviteBrandIds,
+          processRoleIds: inviteProcessRoleIds,
+          processOwnerScopeId: inviteProcessOwnerScopeId || undefined,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setInviteResult({ tempPassword: json.tempPassword, message: json.message });
+        await fetchOrganization();
+      } else {
+        alert(json.error || "添加失败");
+      }
+    } catch (error) {
+      console.error("Failed to invite user:", error);
+      alert("添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const toggleProcessRole = (roleId: string) => {
     setEditProcessRoleIds((prev) =>
       prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
@@ -230,6 +308,12 @@ export default function AdminPeoplePage() {
           icon={Users}
           backHref="/admin"
           backLabel="返回后台配置"
+          action={
+            <Button onClick={handleOpenInvite} className="bg-navy-700 hover:bg-navy-800 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              添加成员
+            </Button>
+          }
         />
 
         {loading ? (
@@ -368,6 +452,196 @@ export default function AdminPeoplePage() {
               </div>
           </AdminSectionCard>
         )}
+
+        {/* 添加成员对话框 */}
+        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>添加成员</DialogTitle>
+              <DialogDescription>
+                {inviteResult
+                  ? "成员已创建，请保存初始密码并发给对方"
+                  : "输入邮箱和姓名，选择角色层级和可访问品牌"}
+              </DialogDescription>
+            </DialogHeader>
+
+            {inviteResult ? (
+              <div className="space-y-4 py-4">
+                <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm space-y-2">
+                  <p className="font-medium">{inviteResult.message}</p>
+                  {inviteResult.tempPassword && (
+                    <div>
+                      <p className="text-xs text-green-700 mb-1">初始密码：</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 px-3 py-2 bg-white rounded-lg font-mono text-sm border border-green-200">
+                          {inviteResult.tempPassword}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigator.clipboard.writeText(inviteResult.tempPassword || "")}
+                        >
+                          复制
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-email">邮箱</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="name@company.com"
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-name">姓名</Label>
+                    <Input
+                      id="invite-name"
+                      value={inviteName}
+                      onChange={(e) => setInviteName(e.target.value)}
+                      placeholder="如：张三"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>角色层级</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {roleLevelOptions.map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setInviteRoleLevel(role)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors text-left ${
+                          inviteRoleLevel === role
+                            ? "border-navy-300 bg-navy-50 text-navy-800"
+                            : "border-border bg-card hover:bg-sand-50"
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            inviteRoleLevel === role ? "bg-navy-600" : "bg-slate-300"
+                          }`}
+                        />
+                        {data?.roleLabels[role] || RoleLevelLabels[role]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {inviteRoleLevel === RoleLevel.PROCESS_OWNER && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-muted-foreground" />
+                      工序主管类型
+                    </Label>
+                    <select
+                      value={inviteProcessOwnerScopeId}
+                      onChange={(e) => setInviteProcessOwnerScopeId(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-card"
+                    >
+                      <option value="">请选择主管类型</option>
+                      {processOwnerScopes.map((scope) => (
+                        <option key={scope.id} value={scope.id}>
+                          {scope.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-muted-foreground" />
+                    横向工序角色
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {processRoles.map((role) => {
+                      const selected = inviteProcessRoleIds.includes(role.id);
+                      return (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => toggleInviteProcessRole(role.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                            selected
+                              ? "bg-navy-700 text-white border-navy-700"
+                              : "bg-card border-border text-muted-foreground hover:bg-sand-50"
+                          }`}
+                        >
+                          {selected ? "✓ " : ""}
+                          {role.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    可访问品牌
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(data?.brands || []).map((brand) => {
+                      const selected = inviteBrandIds.includes(brand.id);
+                      return (
+                        <button
+                          key={brand.id}
+                          type="button"
+                          onClick={() => toggleInviteBrand(brand.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                            selected
+                              ? "bg-navy-700 text-white border-navy-700"
+                              : "bg-card border-border text-muted-foreground hover:bg-sand-50"
+                          }`}
+                        >
+                          {selected ? "✓ " : ""}
+                          {brand.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setInviteDialogOpen(false);
+                  setInviteResult(null);
+                }}
+                disabled={saving}
+              >
+                {inviteResult ? "关闭" : "取消"}
+              </Button>
+              {!inviteResult && (
+                <Button
+                  onClick={handleInvite}
+                  disabled={saving || !inviteEmail.trim()}
+                  className="bg-navy-700 hover:bg-navy-800 text-white"
+                >
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  添加成员
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* 编辑对话框 */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -219,10 +219,10 @@ export default function BrandsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-600 to-terracotta-400 flex items-center justify-center text-white font-bold shadow-sm">
-                          {brand.name.charAt(0)}
+                          {(brand.name || "?").charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-foreground truncate">{brand.name}</p>
+                          <p className="font-medium text-sm text-foreground truncate">{brand.name || "未命名品牌"}</p>
                           <p className="text-xs text-muted-foreground">
                             {getUserBrandsCount(brand.id)} 人关联
                           </p>
@@ -293,15 +293,15 @@ export default function BrandsPage() {
                         <div className="flex items-center gap-3 mb-2">
                           <Avatar className="h-9 w-9 rounded-full border-2 border-white shadow-sm">
                             {profile.avatar_url ? (
-                              <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                              <AvatarImage src={profile.avatar_url} alt={profile.name || ""} />
                             ) : (
                               <AvatarFallback className="bg-gradient-to-br from-navy-600 to-terracotta-400 text-white text-xs">
-                                {profile.name.charAt(0)}
+                                {(profile.name || "?").charAt(0)}
                               </AvatarFallback>
                             )}
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{profile.name}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{profile.name || "未命名"}</p>
                             <p className="text-xs text-muted-foreground">
                               {ubList.length} 个品牌关联
                             </p>
