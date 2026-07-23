@@ -43,6 +43,7 @@ interface UserProfile {
   name: string;
   avatarUrl: string | null;
   role: string;
+  roleLevel: string | null;
   brandName: string;
 }
 
@@ -53,6 +54,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     name: "加载中",
     avatarUrl: null,
     role: "",
+    roleLevel: null,
     brandName: "",
   });
   const router = useRouter();
@@ -111,6 +113,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           name: data.name || "用户",
           avatarUrl: data.avatarUrl || null,
           role: displayName,
+          roleLevel: roleLevel || null,
           brandName: data.brandName || "",
         });
       }
@@ -126,7 +129,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope } = useTenant();
 
-  const isBossOrAdmin = isAdmin || userRole === RoleLevel.BOSS || userRole === RoleLevel.ADMIN;
+  // 优先使用 TenantContext 的权限判断，如果失败则 fallback 到 /api/profile 的角色
+  const isBossOrAdmin =
+    isAdmin ||
+    userRole === RoleLevel.BOSS ||
+    userRole === RoleLevel.ADMIN ||
+    profile.roleLevel === RoleLevel.BOSS ||
+    profile.roleLevel === RoleLevel.ADMIN;
 
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
