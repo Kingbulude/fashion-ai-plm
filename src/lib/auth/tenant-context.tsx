@@ -145,17 +145,20 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       // 并行获取公司、品牌、季节、当前用户权限
-      const [companiesRes, brandsRes, seasonsRes, meRes] = await Promise.all([
+      const [companiesRes, brandsRes, seasonsRes, meRes, profileRes] = await Promise.all([
         fetch("/api/organization/companies").then((r) => r.json()).catch(() => ({ data: [] })),
         fetch("/api/organization/brands").then((r) => r.json()).catch(() => ({ data: [] })),
         fetch("/api/organization/seasons").then((r) => r.json()).catch(() => ({ data: [] })),
         fetch("/api/auth/me").then((r) => r.json()).catch(() => ({ roleLevel: null, allowedBrandIds: [] })),
+        fetch("/api/profile").then((r) => r.json()).catch(() => ({ roleLevel: null })),
       ]);
 
       const loadedCompanies: Company[] = companiesRes.data || [];
       const loadedBrands: Brand[] = brandsRes.data || [];
       const loadedSeasons: Season[] = seasonsRes.data || [];
-      const loadedRoleLevel: string | null = meRes.roleLevel || null;
+
+      // 优先使用 /api/auth/me 的角色，如果失败或为空则 fallback 到 /api/profile
+      const loadedRoleLevel: string | null = meRes.roleLevel || profileRes.roleLevel || null;
       const allowedBrandIds: string[] = meRes.allowedBrandIds || [];
       const loadedProcessRoles: ProcessRole[] = (meRes.processRoles || []).filter(
         (r: any) => r && r.is_active !== false
@@ -176,9 +179,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       // 设置权限状态
       setUserRole(loadedRoleLevel);
       setUserPermissions(RolePermissions[loadedRoleLevel || ""] || []);
-      setIsAdmin(loadedRoleLevel === RoleLevel.BOSS || loadedRoleLevel === RoleLevel.ADMIN);
+      const isAdminRole = loadedRoleLevel === RoleLevel.BOSS || loadedRoleLevel === RoleLevel.ADMIN;
+      setIsAdmin(isAdminRole);
       setIsBoss(loadedRoleLevel === RoleLevel.BOSS);
-      setAllowedBrandIds(allowedBrandIds);
       setProcessRoles(loadedProcessRoles);
       setAccessibleRoutes(loadedAccessibleRoutes);
       setProcessOwnerScope(loadedProcessOwnerScope);
@@ -199,9 +202,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         storedCompanyId ||
         (loadedCompanies.length > 0 ? loadedCompanies[0].id : DEFAULT_COMPANY_ID);
 
+      // BOSS/ADMIN 如果 allowedBrandIds 为空，则允许访问该公司下所有品牌
+      const finalAllowedBrandIds =
+        isAdminRole && allowedBrandIds.length === 0
+          ? loadedBrands.filter((b) => b.company_id === finalCompanyId).map((b) => b.id)
+          : allowedBrandIds;
+      setAllowedBrandIds(finalAllowedBrandIds);
+
       // 品牌选择（必须在可访问列表中）
-      const accessibleBrandIds = new Set(allowedBrandIds);
-      const accessibleBrands = isAdmin
+      const accessibleBrandIds = new Set(finalAllowedBrandIds);
+      const accessibleBrands = isAdminRole
         ? loadedBrands.filter((b) => b.company_id === finalCompanyId)
         : loadedBrands.filter((b) => accessibleBrandIds.has(b.id));
 
