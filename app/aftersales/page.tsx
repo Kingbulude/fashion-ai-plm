@@ -19,8 +19,9 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  RotateCcw,
+  AlertTriangle,
   RefreshCw,
+  RotateCcw,
   MessageSquareWarning,
   ShieldAlert,
 } from "lucide-react";
@@ -29,6 +30,7 @@ export default function AftersalesPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [styles, setStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -50,6 +52,7 @@ export default function AftersalesPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError("");
     try {
       const [recordsRes, stylesRes] = await Promise.all([
         fetch("/api/aftersales"),
@@ -57,11 +60,15 @@ export default function AftersalesPage() {
       ]);
       const recordsData = recordsRes.ok ? await recordsRes.json() : { records: [] };
       const stylesData = stylesRes.ok ? await stylesRes.json() : [];
+      if (!recordsRes.ok && !stylesRes.ok) {
+        setError("加载售后数据失败，请稍后重试");
+      }
       setRecords(recordsData.records || []);
       // 防御：确保 styles 始终是数组
       setStyles(Array.isArray(stylesData) ? stylesData : stylesData.data || []);
-    } catch {
-      showToast("error", "获取数据失败");
+    } catch (err) {
+      console.error("获取售后数据失败:", err);
+      setError("网络异常，加载售后数据失败");
     } finally {
       setLoading(false);
     }
@@ -166,6 +173,22 @@ export default function AftersalesPage() {
             <Loader2 className="h-4 w-4 animate-spin" />
             加载中...
           </div>
+        ) : error ? (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchData()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : records.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <ShieldAlert className="h-16 w-16 text-slate-400 mx-auto mb-4" />

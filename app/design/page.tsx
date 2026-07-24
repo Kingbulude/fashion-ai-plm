@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
   Palette,
   ImageIcon,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
@@ -15,29 +18,34 @@ import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 export default function DesignPage() {
   const [styles, setStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/styles");
-        if (res.ok) {
-          const data = await res.json();
-          // 防御：确保 styles 始终是数组
-          setStyles(Array.isArray(data) ? data : data.data || []);
-        } else {
-          setStyles([]);
-        }
-      } catch {
-        console.error("获取数据失败");
-        setStyles([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/styles");
+      if (res.ok) {
+        const data = await res.json();
+        // 防御：确保 styles 始终是数组
+        setStyles(Array.isArray(data) ? data : data.data || []);
+      } else {
+        setError("加载设计资产失败，请稍后重试");
+        setStyles([]);
+      }
+    } catch (err) {
+      console.error("获取设计资产失败:", err);
+      setError("网络异常，加载设计资产失败");
+      setStyles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { label: string; color: string }> = {
@@ -67,6 +75,22 @@ export default function DesignPage() {
             <Loader2 className="h-4 w-4 animate-spin" />
             加载中...
           </div>
+        ) : error ? (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchData()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : styles.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <Palette className="h-16 w-16 text-slate-400 mx-auto mb-4" />
