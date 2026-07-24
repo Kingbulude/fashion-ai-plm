@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -42,6 +43,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 type StatusFilter = "all" | "pending" | "in_progress" | "completed";
 
 export default function TodosPage() {
+  const router = useRouter();
   const { currentBrand, currentSeason, currentCompany } = useTenant();
   const [todos, setTodos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -306,11 +308,12 @@ export default function TodosPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p
-                        className={`text-sm font-medium ${
+                        className={`text-sm font-medium cursor-pointer hover:underline ${
                           todo.status === "completed"
                             ? "text-slate-500 line-through"
                             : "text-slate-800"
                         }`}
+                        onClick={() => router.push(`/todos/${todo.id}`)}
                       >
                         {todo.title}
                       </p>

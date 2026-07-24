@@ -203,11 +203,6 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     fetchTodos();
   }, [currentBrand?.id, currentCompany?.id, currentSeason?.id]);
 
-  const getTodoHref = (todo: TodoItem): string => {
-    if (todo.targetTable === "styles" && todo.targetId) return `/styles/${todo.targetId}`;
-    return "/todos";
-  };
-
   const unreadCount = todos.length;
 
   const getStatusColor = (status: string) => {
@@ -528,7 +523,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                       {todos.slice(0, 8).map((todo) => (
                         <button
                           key={todo.id}
-                          onClick={() => router.push(getTodoHref(todo))}
+                          onClick={() => router.push(`/todos/${todo.id}`)}
                           className="w-full text-left p-3 rounded-lg transition-colors hover:bg-sand-50"
                         >
                           <div className="flex gap-3">
