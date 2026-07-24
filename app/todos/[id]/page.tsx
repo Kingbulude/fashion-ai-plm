@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,8 @@ import {
   Wrench,
   Building2,
 } from "lucide-react";
+
+export const runtime = "edge";
 
 interface TodoDetail {
   id: string;
@@ -96,8 +98,10 @@ function getTargetLabel(targetTable: string | null): string {
   }
 }
 
-export default function TodoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function TodoDetailPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
   const { currentBrand, currentCompany, currentSeason } = useTenant();
 
   const [todo, setTodo] = useState<TodoDetail | null>(null);
@@ -196,14 +200,14 @@ export default function TodoDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const { id } = await params;
+      if (!id) return;
       if (!cancelled) await fetchTodo(id);
     };
     run();
     return () => {
       cancelled = true;
     };
-  }, [params, currentBrand?.id, currentSeason?.id]);
+  }, [id, currentBrand?.id, currentSeason?.id]);
 
   if (loading) {
     return (
