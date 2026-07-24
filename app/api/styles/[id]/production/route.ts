@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { quantity, status, schedule, startDate, expectedEndDate } = body;
+    const { quantity, status, schedule, startDate, expectedEndDate, factoryId, materialReady, colorSizeRatio, totalCost } = body;
 
     if (!quantity) {
       return NextResponse.json({ error: "订单数量不能为空" }, { status: 400 });
@@ -56,6 +56,10 @@ export async function POST(request: Request, { params }: RouteContext) {
             schedule: schedule || null,
             start_date: startDate || null,
             expected_end_date: expectedEndDate || null,
+            factory_id: factoryId || null,
+            material_ready: materialReady === true,
+            color_size_ratio: colorSizeRatio || null,
+            total_cost: totalCost ? Number(totalCost) : null,
           },
           tenant
         )
