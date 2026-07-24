@@ -27,11 +27,11 @@ const NODE_RADIUS = NODE_SIZE / 2;
 
 const NODES = [
   { id: "planning", name: "企划", icon: "📋", route: "/planning", x: 150, y: 140, number: 1 },
-  { id: "design", name: "设计", icon: "🎨", route: "/styles", x: 470, y: 140, number: 2 },
+  { id: "design", name: "设计", icon: "🎨", route: "/design", x: 470, y: 140, number: 2 },
   { id: "sampling", name: "打样", icon: "✂️", route: "/styles", x: 790, y: 140, number: 3 },
-  { id: "testing", name: "测款", icon: "🎯", route: "/ai", x: 1110, y: 140, number: 4 },
-  { id: "procurement", name: "采购", icon: "🛒", route: "/styles", x: 940, y: 520, number: 5 },
-  { id: "stocking", name: "备货", icon: "📦", route: "/styles", x: 1410, y: 520, number: 6 },
+  { id: "testing", name: "测款", icon: "🎯", route: "/ai-review", x: 1110, y: 140, number: 4 },
+  { id: "procurement", name: "采购", icon: "🛒", route: "/suppliers", x: 940, y: 520, number: 5 },
+  { id: "stocking", name: "备货", icon: "📦", route: "/production", x: 1410, y: 520, number: 6 },
   { id: "sales", name: "销售", icon: "💰", route: "/sales", x: 1550, y: 140, number: 7 },
   { id: "aftersales", name: "售后", icon: "🔄", route: "/aftersales", x: 1930, y: 140, number: 8 },
 ];
