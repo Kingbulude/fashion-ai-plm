@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
+import { useTenant, AISkill } from "@/lib/auth/tenant-context";
 import { Button } from "@/components/ui/button";
 import { DraggableDialog } from "@/components/ui/draggable-dialog";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import {
   Clock,
   UserCog,
 } from "lucide-react";
-import { RoleLevel } from "@/lib/auth/rbac";
+import { RoleLevel, RouteProcessNodeMap } from "@/lib/auth/rbac";
 import { supabase } from "@/lib/auth/supabase";
 
 const NODE_SIZE = 100;
@@ -134,6 +135,32 @@ interface ProcessLink {
 
 export default function HomePage() {
   const router = useRouter();
+  const { userRole, processRoles, processOwnerScope, accessibleRoutes, isLoading: tenantLoading } = useTenant();
+
+  // 计算当前用户可访问的工序节点
+  const allowedNodes = useMemo(() => {
+    const nodes = new Set<string>();
+    const isManagerOrAbove =
+      userRole === RoleLevel.BOSS || userRole === RoleLevel.ADMIN || userRole === RoleLevel.BRAND_MANAGER;
+
+    if (isManagerOrAbove) {
+      NODES.forEach((n) => nodes.add(n.id));
+    } else {
+      processRoles.forEach((r) => {
+        if (r.process_node) nodes.add(r.process_node);
+      });
+      if (processOwnerScope?.process_nodes) {
+        processOwnerScope.process_nodes.forEach((n) => nodes.add(n));
+      }
+      // 兜底：通过 route_permissions 映射回工序节点
+      accessibleRoutes.forEach((route) => {
+        const node = Object.entries(RouteProcessNodeMap).find(([r]) => route === r || route.startsWith(`${r}/`));
+        if (node) nodes.add(node[1]);
+      });
+    }
+    return nodes;
+  }, [userRole, processRoles, processOwnerScope, accessibleRoutes]);
+
   const [loading, setLoading] = useState(true);
   const [links, setLinks] = useState<ProcessLink[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -879,25 +906,29 @@ export default function HomePage() {
                 </svg>
 
                 <div className="relative" style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, zIndex: 2, pointerEvents: "none" }}>
-                  {NODES.map(node => (
-                    <div
-                      key={node.id}
-                      onClick={() => handleNodeClick(node)}
-                      className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
-                      style={{
-                        left: node.x - NODE_RADIUS,
-                        top: node.y - NODE_RADIUS,
-                        width: NODE_SIZE,
-                        height: NODE_SIZE,
-                        pointerEvents: "auto",
-                      }}
-                    >
-                      <div className="w-full h-full rounded-2xl flex flex-col items-center justify-center shadow-premium gradient-navy text-white border border-white/10">
-                        <span className="text-2xl mb-0.5">{node.icon}</span>
-                        <span className="font-bold text-sm">{node.number}.{node.name}</span>
+                  {NODES.map(node => {
+                    const allowed = allowedNodes.has(node.id);
+                    return (
+                      <div
+                        key={node.id}
+                        onClick={() => allowed && handleNodeClick(node)}
+                        className={`absolute transition-all duration-300 ${allowed ? "cursor-pointer hover:scale-110" : "cursor-not-allowed opacity-50 grayscale"}`}
+                        style={{
+                          left: node.x - NODE_RADIUS,
+                          top: node.y - NODE_RADIUS,
+                          width: NODE_SIZE,
+                          height: NODE_SIZE,
+                          pointerEvents: "auto",
+                        }}
+                        title={allowed ? `进入${node.name}工作区` : "暂无该工序访问权限"}
+                      >
+                        <div className={`w-full h-full rounded-2xl flex flex-col items-center justify-center shadow-premium border border-white/10 ${allowed ? "gradient-navy text-white" : "bg-slate-300 text-slate-600"}`}>
+                          <span className="text-2xl mb-0.5">{node.icon}</span>
+                          <span className="font-bold text-sm">{node.number}.{node.name}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

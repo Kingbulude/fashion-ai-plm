@@ -91,7 +91,7 @@ export async function canAccessProcess(
 ): Promise<boolean> {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role_level")
+    .select("role_level, company_id")
     .eq("user_id", userId)
     .single();
 
@@ -102,10 +102,37 @@ export async function canAccessProcess(
     return true;
   }
 
-  // 工序负责人和执行者只能访问关联的工序
-  // TODO: 后续通过 user_processes 表关联具体工序
-  // MVP阶段先开放所有工序访问
-  return true;
+  // 校验用户是否被分配到目标品牌
+  const canAccessTargetBrand = await canAccessBrand(userId, brandId);
+  if (!canAccessTargetBrand) return false;
+
+  // 工序负责人：检查主管范围是否包含目标工序节点
+  const { data: ownerScopes } = await supabase
+    .from("user_process_owner_scopes")
+    .select("scope_id, process_owner_scopes!inner(process_nodes)")
+    .eq("user_id", userId);
+
+  if (ownerScopes && ownerScopes.length > 0) {
+    const nodes = ownerScopes.flatMap((s: any) => {
+      const scope = s.process_owner_scopes;
+      return Array.isArray(scope?.process_nodes) ? scope.process_nodes : [];
+    });
+    if (nodes.includes(processNode)) return true;
+  }
+
+  // 横向工序角色：检查角色关联的工序节点
+  const { data: processRoleAssignments } = await supabase
+    .from("user_process_roles")
+    .select("role_id, process_roles!inner(process_node)")
+    .eq("user_id", userId)
+    .eq("brand_id", brandId);
+
+  if (processRoleAssignments && processRoleAssignments.length > 0) {
+    const nodes = processRoleAssignments.map((r: any) => r.process_roles?.process_node).filter(Boolean);
+    if (nodes.includes(processNode)) return true;
+  }
+
+  return false;
 }
 
 // 检查季度编辑权限（本季度可编辑，历史只读）

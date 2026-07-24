@@ -67,13 +67,21 @@ export async function GET(request: Request) {
 
     // 计算可访问路由
     const routeSet = new Set<string>();
+    // 计算可访问工序节点
+    const processNodeSet = new Set<string>();
+
     if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
-      // BOSS/ADMIN 可访问全部路由
+      // BOSS/ADMIN 可访问全部路由和全部工序节点
       routeSet.add("*");
+      processNodeSet.add("*");
     } else {
       processRoles.forEach((role: any) => {
         Object.keys(role.route_permissions || {}).forEach((route) => routeSet.add(route));
+        if (role.process_node) processNodeSet.add(role.process_node);
       });
+      if (processOwnerScope?.process_nodes) {
+        processOwnerScope.process_nodes.forEach((node: string) => processNodeSet.add(node));
+      }
     }
 
     // 计算可访问 AI Skills
@@ -129,6 +137,7 @@ export async function GET(request: Request) {
       processRoles,
       processOwnerScope,
       accessibleRoutes: Array.from(routeSet),
+      accessibleProcessNodes: Array.from(processNodeSet),
       accessibleAISkills,
     });
   } catch (error) {

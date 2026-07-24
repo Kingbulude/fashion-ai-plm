@@ -33,6 +33,8 @@ import {
   ShieldAlert,
   Plus,
   BarChart3,
+  Wand2,
+  Bot,
 } from "lucide-react";
 
 const PIPELINE_STAGES = [
@@ -70,8 +72,10 @@ const RISK_LEVEL_CONFIG: Record<string, { label: string; className: string; icon
 };
 
 export default function DashboardPage() {
-  const { currentBrand, currentSeason, currentCompany } = useTenant();
+  const { currentBrand, currentSeason, currentCompany, accessibleAISkills } = useTenant();
   const api = useApi();
+
+  const aiSkills = accessibleAISkills.slice(0, 8);
 
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -499,6 +503,48 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* My AI Skills */}
+            {aiSkills.length > 0 && (
+              <Card className="card-premium">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                      <Bot className="h-4 w-4 text-navy-500" />
+                      我的 AI 工具
+                    </CardTitle>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/ai-workspace">查看全部</Link>
+                    </Button>
+                  </div>
+                  <CardDescription className="text-xs">根据当前角色和工序自动分配的 AI 智能体</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {aiSkills.map((skill) => {
+                      const Icon = skill.entry_route ? Wand2 : Sparkles;
+                      return (
+                        <Link
+                          key={skill.id}
+                          href={skill.entry_route || "/ai-workspace"}
+                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group"
+                        >
+                          <div className="p-2.5 rounded-xl bg-navy-100 text-navy-600 group-hover:bg-navy-200 transition-colors flex-shrink-0">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate">{skill.name}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {skill.description || "AI 智能体"}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Links */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

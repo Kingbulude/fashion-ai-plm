@@ -25,9 +25,9 @@ export async function GET() {
     env: {
       NEXT_PUBLIC_SUPABASE_URL: !!url && !url.includes("placeholder"),
       NEXT_PUBLIC_SUPABASE_URL_LENGTH: url.length,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!anonKey && !anonKey.includes("your-anon-key"),
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!anonKey && anonKey.length > 0,
       NEXT_PUBLIC_SUPABASE_ANON_KEY_LENGTH: anonKey.length,
-      SUPABASE_SERVICE_ROLE_KEY: !!serviceKey && !serviceKey.includes("your-service-role-key"),
+      SUPABASE_SERVICE_ROLE_KEY: !!serviceKey && serviceKey.length > 0,
       SUPABASE_SERVICE_ROLE_KEY_LENGTH: serviceKey.length,
       SUPABASE_SERVICE_ROLE_KEY_PREFIX: serviceKey ? serviceKey.slice(0, 8) : null,
       CLOUDFLARE_ACCOUNT_ID: !!process.env.CLOUDFLARE_ACCOUNT_ID,
