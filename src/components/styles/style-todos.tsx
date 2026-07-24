@@ -73,6 +73,8 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
   const [newDescription, setNewDescription] = useState("");
   const [newPriority, setNewPriority] = useState("medium");
   const [newDueDate, setNewDueDate] = useState("");
+  const [newAssignee, setNewAssignee] = useState<string | null>(null);
+  const [members, setMembers] = useState<{ userId: string; name: string; role?: string }[]>([]);
 
   const getHeaders = () => ({
     "x-company-id": currentCompany?.id || "",
@@ -99,6 +101,26 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
     }
   };
 
+  const fetchMembers = async () => {
+    try {
+      const res = await fetch("/api/organization", { headers: getHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      const profiles: any[] = data.profiles || [];
+      const mapped = profiles
+        .filter((p) => p.user_id && p.name)
+        .map((p) => ({
+          userId: String(p.user_id),
+          name: String(p.name),
+          role: p.role_level ? String(p.role_level) : undefined,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+      setMembers(mapped);
+    } catch {
+      // 忽略成员加载失败，仍可用当前用户创建
+    }
+  };
+
   const createTodo = async () => {
     if (!newTitle.trim()) return;
     setCreating(true);
@@ -116,7 +138,7 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
           priority: newPriority,
           targetTable: "styles",
           targetId: styleId,
-          assignedTo: currentUserId,
+          assignedTo: newAssignee || currentUserId,
           dueDate: newDueDate || null,
         }),
       });
@@ -125,6 +147,7 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
       setNewDescription("");
       setNewPriority("medium");
       setNewDueDate("");
+      setNewAssignee(null);
       await fetchTodos();
     } catch (err: any) {
       setError(err?.message || "创建失败");
@@ -172,9 +195,13 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
 
   useEffect(() => {
     fetchTodos();
+    fetchMembers();
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data.user?.id) setCurrentUserId(data.user.id);
+      if (data.user?.id) {
+        setCurrentUserId(data.user.id);
+        setNewAssignee(data.user.id);
+      }
     };
     getUser();
   }, [styleId, currentBrand?.id]);
@@ -213,6 +240,18 @@ export function StyleTodos({ styleId }: StyleTodosProps) {
               <option value="high">高</option>
               <option value="medium">中</option>
               <option value="low">低</option>
+            </select>
+            <select
+              value={newAssignee || ""}
+              onChange={(e) => setNewAssignee(e.target.value || null)}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm min-w-[140px]"
+            >
+              <option value="">选择负责人</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.name} {m.role ? `(${m.role})` : ""}
+                </option>
+              ))}
             </select>
             <Input
               type="date"
