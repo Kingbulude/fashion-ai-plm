@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
+import { getSession } from "@/lib/auth/supabase";
 import {
   StyleStatus,
   getAvailableTransitions,
@@ -62,6 +63,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 export async function POST(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
+    const session = await getSession(request as any);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { toStatus, event, comment } = body;
 
@@ -87,6 +93,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       toStatus: toStatus as StyleStatus,
       event,
       comment,
+      userId: session.user.id,
+      brandId: style.brand_id,
     });
 
     if (!result.success) {

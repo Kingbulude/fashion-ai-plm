@@ -135,7 +135,7 @@ interface ProcessLink {
 
 export default function HomePage() {
   const router = useRouter();
-  const { userRole, processRoles, processOwnerScope, accessibleRoutes, isLoading: tenantLoading } = useTenant();
+  const { userRole, processRoles, processOwnerScope, accessibleRoutes, currentBrand, isLoading: tenantLoading } = useTenant();
 
   // 计算当前用户可访问的工序节点
   const allowedNodes = useMemo(() => {
@@ -288,13 +288,19 @@ export default function HomePage() {
   // 计算某条工序连线的负责主管：
   // - 正向/关键流程：由目标节点的主管负责
   // - 反馈流程（如售后→企划）：由起始节点的主管负责；未设置则取品牌负责人
+  const currentBrandId = currentBrand?.id;
   const getResponsibleOwner = (fromNode: string, toNode: string, linkType: string): { name: string; role: string } => {
     const responsibleNode = linkType === "feedback" ? fromNode : toNode;
     const scope = processOwnerScopes.find((s: any) =>
       Array.isArray(s.process_nodes) && s.process_nodes.includes(responsibleNode)
     );
     if (scope) {
-      const assignment = userProcessOwnerScopes.find((a: any) => a.scope_id === scope.id);
+      const assignment = userProcessOwnerScopes.find((a: any) => {
+        if (a.scope_id !== scope.id) return false;
+        // 若主管类型分配带有品牌维度，优先匹配当前品牌，也兼容未指定品牌（全局）
+        if (a.brand_id && currentBrandId) return a.brand_id === currentBrandId;
+        return true;
+      });
       if (assignment) {
         const owner = organizationProfiles.find((p: any) => p.user_id === assignment.user_id);
         if (owner?.name) {
@@ -302,7 +308,12 @@ export default function HomePage() {
         }
       }
     }
-    const brandManager = organizationProfiles.find((p: any) => p.role_level === RoleLevel.BRAND_MANAGER);
+    // 品牌负责人回退：优先匹配当前品牌
+    const brandManager = organizationProfiles.find((p: any) => {
+      if (p.role_level !== RoleLevel.BRAND_MANAGER) return false;
+      if (currentBrandId && p.brand_id) return p.brand_id === currentBrandId;
+      return true;
+    });
     if (brandManager?.name) {
       return { name: brandManager.name, role: "品牌负责人" };
     }

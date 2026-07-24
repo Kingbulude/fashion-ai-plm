@@ -9,7 +9,9 @@ import {
   isValidTransition,
   STYLE_TRANSITIONS,
   STATUS_CONFIG,
+  getTransitionResponsibleNode,
 } from "./style-state-machine";
+import { resolveResponsibleUserByNode } from "./responsible-user";
 
 interface TransitionInput {
   styleId: string;
@@ -18,6 +20,7 @@ interface TransitionInput {
   event: string;
   userId?: string;
   comment?: string;
+  brandId?: string;
 }
 
 interface TransitionResult {
@@ -71,22 +74,38 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
     after_data: { from: fromStatus, to: toStatus, event, comment },
   });
 
-  // 5. 自动创建待办
+  // 5. 自动创建待办并指派给对应负责人
   let createdTodoId: string | undefined;
   if (transition?.autoCreateTodo) {
+    const styleTenant = await getStyleCompany(styleId);
+    const responsibleNode = getTransitionResponsibleNode(transition);
+    let assignedTo = userId;
+    let assignmentSource = "trigger_user";
+
+    if (responsibleNode) {
+      const responsible = await resolveResponsibleUserByNode(
+        responsibleNode,
+        input.brandId || styleTenant?.brand_id
+      );
+      if (responsible) {
+        assignedTo = responsible.userId;
+        assignmentSource = responsible.source;
+      }
+    }
+
     const { data: todo } = await supabase
       .from("todos")
       .insert({
-        company_id: (await getStyleCompany(styleId))?.company_id,
-        brand_id: (await getStyleCompany(styleId))?.brand_id,
+        company_id: styleTenant?.company_id,
+        brand_id: styleTenant?.brand_id,
         type: "task",
         title: transition.autoCreateTodo,
-        description: `款式状态变更为「${STATUS_CONFIG[toStatus].label}」，自动生成的待办`,
+        description: `款式状态变更为「${STATUS_CONFIG[toStatus].label}」，自动生成的待办（来源：${assignmentSource}）`,
         target_table: "styles",
         target_id: styleId,
         priority: "high",
         status: "pending",
-        assigned_to: userId,
+        assigned_to: assignedTo,
         created_by: userId,
       })
       .select("id")

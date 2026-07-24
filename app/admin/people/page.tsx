@@ -58,6 +58,7 @@ interface ProcessRole {
 interface UserProcessOwnerScope {
   user_id: string;
   scope_id: string;
+  brand_id?: string | null;
 }
 
 interface ProcessOwnerScope {

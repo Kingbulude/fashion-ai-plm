@@ -136,10 +136,10 @@ export async function GET(request: Request) {
       .select("id, key, name, description, process_nodes")
       .eq("is_active", true);
 
-    // 获取用户-主管类型关联
+    // 获取用户-主管类型关联（含品牌维度）
     const { data: userProcessOwnerScopes } = await supabase
       .from("user_process_owner_scopes")
-      .select("user_id, scope_id");
+      .select("user_id, scope_id, brand_id");
 
     return NextResponse.json({
       company,

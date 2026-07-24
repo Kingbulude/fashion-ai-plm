@@ -22,6 +22,7 @@ export interface StateTransition {
   requiredFields?: string[];
   autoCreateTodo?: string;
   checkGuard?: string; // 检查函数名
+  responsibleNode?: string; // 负责该转换的工序节点，默认取 to 状态对应节点
 }
 
 export const STYLE_TRANSITIONS: StateTransition[] = [
@@ -108,6 +109,7 @@ export const STYLE_TRANSITIONS: StateTransition[] = [
     to: "planning",
     event: "back_to_planning",
     description: "返回企划",
+    responsibleNode: "design",
   },
   {
     from: "sampling",
@@ -115,6 +117,7 @@ export const STYLE_TRANSITIONS: StateTransition[] = [
     event: "design_revision",
     description: "设计修改",
     autoCreateTodo: "上传修改后设计",
+    responsibleNode: "design",
   },
 ];
 
@@ -128,6 +131,30 @@ export function isValidTransition(from: StyleStatus, to: StyleStatus, event: str
   return STYLE_TRANSITIONS.some(
     (t) => t.from === from && t.to === to && t.event === event
   );
+}
+
+// 款式状态 → 工序节点映射（用于确定待办负责人）
+export function statusToProcessNode(status: StyleStatus): string | null {
+  const map: Record<StyleStatus, string | null> = {
+    planning: "planning",
+    designing: "design",
+    designed: "design",
+    sampling: "sampling",
+    sampled: "sampling",
+    producing: "stocking",
+    produced: "stocking",
+    selling: "sales",
+    sold: "sales",
+    reviewing: "aftersales",
+    archived: null,
+  };
+  return map[status] || null;
+}
+
+// 获取某转换的负责工序节点
+export function getTransitionResponsibleNode(transition: StateTransition): string | null {
+  if (transition.responsibleNode) return transition.responsibleNode;
+  return statusToProcessNode(transition.to);
 }
 
 // 状态显示配置
