@@ -19,6 +19,8 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
+  RefreshCw,
   ShoppingCart,
   TrendingUp,
   Calendar,
@@ -28,6 +30,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState<any[]>([]);
   const [styles, setStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -37,6 +40,9 @@ export default function SalesPage() {
     saleDate: new Date().toISOString().split("T")[0],
     quantity: "",
     amount: "",
+    unitPrice: "",
+    color: "",
+    size: "",
     channel: "",
     customerInfo: "",
   });
@@ -48,17 +54,23 @@ export default function SalesPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError("");
     try {
       const [salesRes, stylesRes] = await Promise.all([
         fetch("/api/sales"),
         fetch("/api/styles"),
       ]);
-      const salesData = await salesRes.json();
-      const stylesData = await stylesRes.json();
+      const salesData = salesRes.ok ? await salesRes.json() : { sales: [] };
+      const stylesData = stylesRes.ok ? await stylesRes.json() : [];
+      if (!salesRes.ok && !stylesRes.ok) {
+        setError("加载销售数据失败，请稍后重试");
+      }
       setSales(salesData.sales || []);
-      setStyles(stylesData || []);
-    } catch {
-      showToast("error", "获取数据失败");
+      // 防御：确保 styles 始终是数组
+      setStyles(Array.isArray(stylesData) ? stylesData : stylesData.data || []);
+    } catch (err) {
+      console.error("获取销售数据失败:", err);
+      setError("网络异常，加载销售数据失败");
     } finally {
       setLoading(false);
     }
@@ -83,6 +95,9 @@ export default function SalesPage() {
           saleDate: form.saleDate,
           quantity: Number(form.quantity),
           amount: Number(form.amount),
+          unitPrice: form.unitPrice ? Number(form.unitPrice) : undefined,
+          color: form.color || null,
+          size: form.size || null,
           channel: form.channel || null,
           customerInfo: form.customerInfo || null,
         }),
@@ -95,6 +110,9 @@ export default function SalesPage() {
         saleDate: new Date().toISOString().split("T")[0],
         quantity: "",
         amount: "",
+        unitPrice: "",
+        color: "",
+        size: "",
         channel: "",
         customerInfo: "",
       });
@@ -107,7 +125,7 @@ export default function SalesPage() {
     }
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalRevenue = sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
 
   const formatCurrency = (value: number) =>
@@ -170,6 +188,22 @@ export default function SalesPage() {
             <Loader2 className="h-4 w-4 animate-spin" />
             加载中...
           </div>
+        ) : error ? (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchData()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : sales.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <ShoppingCart className="h-16 w-16 text-slate-400 mx-auto mb-4" />
@@ -193,11 +227,12 @@ export default function SalesPage() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(sale.saleDate).toLocaleDateString("zh-CN")}
                         {sale.channel && ` · ${sale.channel}`}
+                        {(sale.color || sale.size) && ` · ${[sale.color, sale.size].filter(Boolean).join(" / ")}`}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">+{formatCurrency(sale.amount)}</p>
+                    <p className="font-semibold text-green-600">+{formatCurrency(sale.totalAmount)}</p>
                     <p className="text-xs text-muted-foreground">{sale.quantity} 件</p>
                   </div>
                 </CardContent>
@@ -236,14 +271,28 @@ export default function SalesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">数量 *</Label>
                   <Input type="number" placeholder="件数" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs">单价</Label>
+                  <Input type="number" placeholder="¥" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs">金额 *</Label>
                   <Input type="number" placeholder="¥" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">颜色</Label>
+                  <Input placeholder="如：黑色" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">尺码</Label>
+                  <Input placeholder="如：M" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-1">

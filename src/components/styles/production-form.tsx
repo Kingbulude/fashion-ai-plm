@@ -35,7 +35,17 @@ interface ProductionOrder {
   startDate: string | null;
   expectedEndDate: string | null;
   actualEndDate: string | null;
+  totalCost: number | null;
   suppliers?: { name: string };
+}
+
+interface MaterialFulfillment {
+  bomId: string;
+  materialName: string;
+  requiredQuantity: number;
+  status: string;
+  receivedDate: string | null;
+  isFulfilled: boolean;
 }
 
 interface ProductionFormProps {
@@ -57,6 +67,8 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
   const [editingOrder, setEditingOrder] = useState<ProductionOrder | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [materialFulfillment, setMaterialFulfillment] = useState<MaterialFulfillment[]>([]);
+  const [fulfillmentLoading, setFulfillmentLoading] = useState(false);
 
   const [form, setForm] = useState({
     factoryId: "",
@@ -66,12 +78,31 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
     materialReady: false,
     startDate: "",
     expectedEndDate: "",
+    totalCost: "",
   });
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
   };
+
+  const fetchFulfillment = useCallback(async () => {
+    setFulfillmentLoading(true);
+    try {
+      const res = await fetch(`/api/styles/${styleId}/procurement`);
+      if (res.ok) {
+        const data = await res.json();
+        const items: MaterialFulfillment[] = Array.isArray(data.fulfillment) ? data.fulfillment : [];
+        setMaterialFulfillment(items);
+      } else {
+        setMaterialFulfillment([]);
+      }
+    } catch {
+      setMaterialFulfillment([]);
+    } finally {
+      setFulfillmentLoading(false);
+    }
+  }, [styleId]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -85,7 +116,7 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
         setOrders((await prodRes.json()) || []);
       }
       if (supRes.ok) {
-        setFactories((await prodRes.json()).filter((s: any) => s.type === "factory") || []);
+        setFactories((await supRes.json()).filter((s: any) => s.type === "factory") || []);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "获取失败";
@@ -95,13 +126,26 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
     }
   }, [styleId]);
 
+  const allMaterialsReady = materialFulfillment.length > 0 && materialFulfillment.every((f) => f.isFulfilled);
+  const missingMaterials = materialFulfillment.filter((f) => !f.isFulfilled);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchFulfillment();
+  }, [fetchData, fetchFulfillment]);
 
   const openAdd = () => {
     setEditingOrder(null);
-    setForm({ factoryId: "", status: "pending", quantity: "", colorSizeRatio: "", materialReady: false, startDate: "", expectedEndDate: "" });
+    setForm({
+      factoryId: "",
+      status: "pending",
+      quantity: "",
+      colorSizeRatio: "",
+      materialReady: allMaterialsReady,
+      startDate: "",
+      expectedEndDate: "",
+      totalCost: "",
+    });
     setDialogOpen(true);
   };
 
@@ -115,6 +159,7 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
       materialReady: order.materialReady,
       startDate: order.startDate || "",
       expectedEndDate: order.expectedEndDate || "",
+      totalCost: order.totalCost ? String(order.totalCost) : "",
     });
     setDialogOpen(true);
   };
@@ -146,6 +191,7 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
           materialReady: form.materialReady,
           startDate: form.startDate || null,
           expectedEndDate: form.expectedEndDate || null,
+          totalCost: form.totalCost ? Number(form.totalCost) : null,
         }),
       });
 
@@ -188,6 +234,43 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
         </Button>
       </div>
 
+      {fulfillmentLoading ? (
+        <div className="py-4 text-center text-muted-foreground flex items-center justify-center gap-2 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          加载物料齐套状态...
+        </div>
+      ) : materialFulfillment.length > 0 ? (
+        <Card className={`border-0 ${allMaterialsReady ? "bg-green-50/50" : "bg-amber-50/50"}`}>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-lg ${allMaterialsReady ? "bg-green-100" : "bg-amber-100"}`}>
+                {allMaterialsReady ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${allMaterialsReady ? "text-green-700" : "text-amber-700"}`}>
+                  {allMaterialsReady
+                    ? "物料已齐套，可以开工"
+                    : `物料未齐套，还差 ${missingMaterials.length} 项`}
+                </p>
+                {missingMaterials.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {missingMaterials.map((m) => (
+                      <Badge key={m.bomId} variant="outline" className="text-xs bg-white">
+                        {m.materialName}（{m.status === "pending" ? "待采购" : m.status === "ordered" ? "已下单" : m.status}）
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {loading ? (
         <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,6 +302,9 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
                         </Badge>
                         <span className="text-sm font-medium">数量：{order.quantity}</span>
                         {factory && <span className="text-xs text-muted-foreground">· {factory.name}</span>}
+                        {order.totalCost != null && (
+                          <span className="text-xs text-muted-foreground">· 成本 ¥{order.totalCost}</span>
+                        )}
                         {order.materialReady && (
                           <Badge variant="secondary" className="bg-green-50 text-green-700">
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -277,13 +363,24 @@ export function ProductionForm({ styleId }: ProductionFormProps) {
                 <Input type="number" placeholder="生产数量" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">色码配比（JSON格式）</Label>
-              <textarea className="min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none" placeholder='{"黑色": {"S": 10, "M": 20}}' value={form.colorSizeRatio} onChange={(e) => setForm({ ...form, colorSizeRatio: e.target.value })} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">总成本</Label>
+                <Input type="number" placeholder="¥" value={form.totalCost} onChange={(e) => setForm({ ...form, totalCost: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">色码配比（JSON）</Label>
+                <textarea className="min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none" placeholder='{"黑色": {"S": 10, "M": 20}}' value={form.colorSizeRatio} onChange={(e) => setForm({ ...form, colorSizeRatio: e.target.value })} />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <input type="checkbox" id="materialReady" checked={form.materialReady} onChange={(e) => setForm({ ...form, materialReady: e.target.checked })} />
-              <Label htmlFor="materialReady" className="text-xs">物料已齐套</Label>
+              <div className="flex-1">
+                <Label htmlFor="materialReady" className="text-xs">物料已齐套</Label>
+                {!form.materialReady && form.status === "in_progress" && (
+                  <p className="text-[11px] text-amber-600 mt-0.5">状态为「生产中」但物料未齐套，可能影响排产</p>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

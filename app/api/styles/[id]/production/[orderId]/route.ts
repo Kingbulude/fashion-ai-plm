@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   try {
     const { orderId } = await params;
     const body = await request.json();
-    const { factoryId, status, quantity, colorSizeRatio, materialReady, startDate, expectedEndDate, actualEndDate } = body;
+    const { factoryId, status, quantity, colorSizeRatio, materialReady, startDate, expectedEndDate, actualEndDate, totalCost } = body;
 
     const updateData: Record<string, unknown> = {};
     if (factoryId !== undefined) updateData.factory_id = factoryId;
@@ -34,6 +34,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     if (startDate !== undefined) updateData.start_date = startDate;
     if (expectedEndDate !== undefined) updateData.expected_end_date = expectedEndDate;
     if (actualEndDate !== undefined) updateData.actual_end_date = actualEndDate;
+    if (totalCost !== undefined) updateData.total_cost = totalCost ? Number(totalCost) : null;
 
     const { data, error } = await supabase.from("production_orders").update(updateData).eq("id", orderId).select().single();
     if (error || !data) {

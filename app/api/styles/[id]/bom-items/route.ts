@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -75,19 +76,32 @@ export async function POST(request: Request, { params }: RouteContext) {
     const up = unitPrice ? Number(unitPrice) : null;
     const totalCost = computeTotalCost(uc, lr, up);
 
+    // 自动从款式继承租户字段（多品牌隔离）
+    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    if (tenantError) {
+      return NextResponse.json({ error: tenantError }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from("bom_items")
-      .insert({
-        style_id: id,
-        material_name: materialName,
-        material_type: materialType,
-        specification: specification ?? null,
-        unit_consumption: uc,
-        loss_rate: lr,
-        unit_price: up,
-        total_cost: totalCost,
-        ai_suggested: aiSuggested ?? false,
-      })
+      .insert(
+        withTenant(
+          {
+            style_id: id,
+            material_name: materialName,
+            material_type: materialType,
+            specification: specification ?? null,
+            unit_consumption: uc,
+            loss_rate: lr,
+            unit_price: up,
+            total_cost: totalCost,
+            ai_suggested: aiSuggested ?? false,
+            status: "draft",
+            version_no: 1,
+          },
+          tenant
+        )
+      )
       .select()
       .single();
 

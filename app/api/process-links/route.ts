@@ -18,6 +18,23 @@ const defaultLinks = [
   { id: "10", from_node: "aftersales", to_node: "planning", link_type: "feedback", duration_hours: 10, deadline: null, work_content: "售后复盘、客户反馈收集、数据沉淀", deliverables: "售后报告、客户反馈汇总、复盘分析报告", sort_order: 10 },
 ];
 
+function getDefaultLink(from_node?: string, to_node?: string) {
+  if (!from_node || !to_node) return null;
+  return defaultLinks.find(l => l.from_node === from_node && l.to_node === to_node) || null;
+}
+
+function mergeWithDefault(row: any): any {
+  if (!row) return row;
+  const def = getDefaultLink(row.from_node, row.to_node);
+  if (!def) return row;
+  return {
+    ...def,
+    ...row,
+    work_content: row.work_content && String(row.work_content).trim() ? row.work_content : def.work_content,
+    deliverables: row.deliverables && String(row.deliverables).trim() ? row.deliverables : def.deliverables,
+  };
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -27,7 +44,7 @@ export async function GET() {
 
     if (error) throw error;
     if (data && data.length > 0) {
-      return NextResponse.json(data);
+      return NextResponse.json(data.map(mergeWithDefault));
     }
     return NextResponse.json(defaultLinks);
   } catch (err) {
@@ -41,60 +58,117 @@ export async function PUT(request: Request) {
     const userId = session?.user?.id || "anonymous";
 
     const body = await request.json();
-    const { id, duration_hours, deadline, work_content, deliverables } = body;
+    const { id, duration_hours, deadline, work_content, deliverables, from_node, to_node, link_type } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "缺少ID参数" }, { status: 400 });
+    if (!id && !(from_node && to_node)) {
+      return NextResponse.json({ error: "缺少ID或from_node/to_node参数" }, { status: 400 });
     }
-
-    // 获取修改前的数据（用于操作日志）
-    const { data: beforeData } = await supabase
-      .from("process_links")
-      .select("*")
-      .eq("id", id)
-      .single();
 
     const updateData: any = {};
     if (duration_hours !== undefined) updateData.duration_hours = duration_hours;
-    if (deadline !== undefined) updateData.deadline = deadline;
+    if (deadline !== undefined) updateData.deadline = deadline || null;
     if (work_content !== undefined) updateData.work_content = work_content;
     if (deliverables !== undefined) updateData.deliverables = deliverables;
+    if (from_node !== undefined) updateData.from_node = from_node;
+    if (to_node !== undefined) updateData.to_node = to_node;
+    if (link_type !== undefined) updateData.link_type = link_type;
 
-    const { data, error } = await supabase
-      .from("process_links")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
+    let recordId = id;
+    let beforeData: any = null;
+    let resultData: any = null;
 
-    if (error) throw error;
+    const isPlaceholderId = typeof id === "string" && id.startsWith("default-");
+    if (id && !isPlaceholderId) {
+      const { data: existing } = await supabase
+        .from("process_links")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (existing) {
+        beforeData = existing;
+        const { data, error } = await supabase
+          .from("process_links")
+          .update(updateData)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+      }
+    }
 
-    // 记录操作日志和数据版本（失败不影响主流程）
+    if (!resultData && from_node && to_node) {
+      const { data: existing } = await supabase
+        .from("process_links")
+        .select("*")
+        .eq("from_node", from_node)
+        .eq("to_node", to_node)
+        .maybeSingle();
+
+      if (existing) {
+        beforeData = existing;
+        recordId = existing.id;
+        const { data, error } = await supabase
+          .from("process_links")
+          .update(updateData)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+      } else {
+        const def = getDefaultLink(from_node, to_node);
+        const insertPayload: any = {
+          from_node,
+          to_node,
+          link_type: link_type || "critical",
+          duration_hours: duration_hours ?? 0,
+          deadline: deadline || null,
+          work_content: (work_content && String(work_content).trim()) ? work_content : (def?.work_content ?? ""),
+          deliverables: (deliverables && String(deliverables).trim()) ? deliverables : (def?.deliverables ?? ""),
+        };
+        const { data, error } = await supabase
+          .from("process_links")
+          .insert(insertPayload)
+          .select()
+          .single();
+        if (error) throw error;
+        resultData = data;
+        recordId = data?.id ?? id;
+      }
+    }
+
+    if (!resultData) {
+      return NextResponse.json({ error: "未找到可更新的工序链接" }, { status: 404 });
+    }
+
     try {
       await Promise.all([
         logOperation({
           userId,
-          action: "update",
+          action: beforeData ? "update" : "create",
           targetTable: "process_links",
-          targetId: id,
+          targetId: recordId,
           beforeData,
-          afterData: data,
+          afterData: resultData,
           request,
         }),
         recordVersion({
           tableName: "process_links",
-          recordId: id,
-          data: data,
+          recordId: recordId,
+          data: resultData,
           changedBy: userId,
-          changeReason: "更新工序链接",
+          changeReason: beforeData ? "更新工序链接" : "新建工序链接",
         }),
       ]);
     } catch (logError) {
       console.error("Failed to log operation:", logError);
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(resultData);
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "更新失败" }, { status: 500 });
+    console.error("PUT /api/process-links error:", err);
+    const errorMessage = err instanceof Error ? err.message : typeof err === "object" && err !== null ? JSON.stringify(err) : "更新失败";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
