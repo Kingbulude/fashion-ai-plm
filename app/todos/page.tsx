@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTenant } from "@/lib/auth/tenant-context";
+import { supabase } from "@/lib/auth/supabase";
 import {
   Check,
   Trash2,
@@ -25,6 +26,7 @@ import {
   ChevronRight,
   Inbox,
   Sparkles,
+  User,
 } from "lucide-react";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; order: number }> = {
@@ -49,7 +51,18 @@ export default function TodosPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [showMineOnly, setShowMineOnly] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // 获取当前用户 ID，用于「仅看我负责的」筛选
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.id) setCurrentUserId(data.user.id);
+    };
+    getUser();
+  }, []);
 
   // 加载待办
   useEffect(() => {
@@ -99,6 +112,9 @@ export default function TodosPage() {
     if (priorityFilter) {
       result = result.filter((t) => t.priority === priorityFilter);
     }
+    if (showMineOnly && currentUserId) {
+      result = result.filter((t) => t.assignedTo === currentUserId);
+    }
     // 按优先级 + 创建时间排序
     return [...result].sort((a, b) => {
       const pa = PRIORITY_CONFIG[a.priority]?.order || 0;
@@ -106,7 +122,7 @@ export default function TodosPage() {
       if (pa !== pb) return pb - pa;
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
-  }, [todos, statusFilter, priorityFilter]);
+  }, [todos, statusFilter, priorityFilter, showMineOnly, currentUserId]);
 
   // 操作：更新状态
   const updateTodo = async (id: string, updates: any) => {
@@ -239,6 +255,19 @@ export default function TodosPage() {
             <option value="medium">中</option>
             <option value="low">低</option>
           </select>
+
+          <button
+            onClick={() => setShowMineOnly((v) => !v)}
+            className={`h-8 px-3 rounded-md border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+              showMineOnly
+                ? "bg-navy-50 border-navy-200 text-navy-700"
+                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+            title="仅看我负责的待办"
+          >
+            <User className="h-3.5 w-3.5" />
+            {showMineOnly ? "仅看我负责的" : "看我负责的"}
+          </button>
 
           <div className="ml-auto text-sm text-slate-500">
             共 <span className="font-semibold text-slate-700">{filtered.length}</span> 项
