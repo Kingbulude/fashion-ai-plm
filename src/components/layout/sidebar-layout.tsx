@@ -37,7 +37,9 @@ import {
   Bell,
   Search,
   Store,
+  CheckCircle2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
 import { useTenant } from "@/lib/auth/tenant-context";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
@@ -62,6 +64,34 @@ interface SearchItem {
   admin?: boolean;
 }
 
+interface TodoItem {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  dueDate: string | null;
+  createdAt: string;
+  targetTable: string | null;
+  targetId: string | null;
+}
+
+function formatRelative(dateValue: string | Date | null): string {
+  if (!dateValue) return "无截止日期";
+  const date = typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffSeconds = Math.round(diffMs / 1000);
+  const diffMinutes = Math.round(diffSeconds / 60);
+  const diffHours = Math.round(diffMinutes / 60);
+  const diffDays = Math.round(diffHours / 24);
+
+  const rtf = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
+  if (Math.abs(diffDays) >= 1) return rtf.format(diffDays, "day");
+  if (Math.abs(diffHours) >= 1) return rtf.format(diffHours, "hour");
+  if (Math.abs(diffMinutes) >= 1) return rtf.format(diffMinutes, "minute");
+  return rtf.format(diffSeconds, "second");
+}
+
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -84,7 +114,20 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const pathname = usePathname();
 
   // 使用 TenantContext 的品牌名称，确保与顶部 TenantSwitcher 保持一致
-  const { currentBrand } = useTenant();
+  const {
+    currentBrand,
+    currentCompany,
+    currentSeason,
+    isAdmin,
+    userRole,
+    processRoles,
+    accessibleRoutes,
+    processOwnerScope,
+    isLoading,
+  } = useTenant();
+
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [todoLoading, setTodoLoading] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -122,6 +165,64 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     };
   }, []);
 
+  // 拉取当前品牌/公司的待办事项
+  useEffect(() => {
+    const fetchTodos = async () => {
+      if (!currentBrand?.id) return;
+      setTodoLoading(true);
+      try {
+        const headers: Record<string, string> = {
+          "x-company-id": currentCompany?.id || "",
+          "x-brand-id": currentBrand.id || "",
+          "x-season-id": currentSeason?.id || "",
+        };
+        const res = await fetch("/api/todos", { headers });
+        if (!res.ok) return;
+        const raw = await res.json();
+        const items: unknown[] = Array.isArray(raw) ? raw : [];
+        const mapped: TodoItem[] = items
+          .filter((t): t is Record<string, unknown> => typeof t === "object" && t !== null)
+          .map((t) => ({
+            id: String(t.id || ""),
+            title: String(t.title || "未命名待办"),
+            status: String(t.status || "pending"),
+            priority: String(t.priority || "medium"),
+            dueDate: t.dueDate ? String(t.dueDate) : null,
+            createdAt: String(t.createdAt || ""),
+            targetTable: t.targetTable ? String(t.targetTable) : null,
+            targetId: t.targetId ? String(t.targetId) : null,
+          }))
+          .filter((t) => t.status === "pending" || t.status === "in_progress");
+        setTodos(mapped);
+      } catch (error) {
+        console.error("Failed to fetch todos:", error);
+      } finally {
+        setTodoLoading(false);
+      }
+    };
+    fetchTodos();
+  }, [currentBrand?.id, currentCompany?.id, currentSeason?.id]);
+
+  const getTodoHref = (todo: TodoItem): string => {
+    if (todo.targetTable === "styles" && todo.targetId) return `/styles/${todo.targetId}`;
+    return "/todos";
+  };
+
+  const unreadCount = todos.length;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-amber-500";
+      case "in_progress":
+        return "bg-blue-500";
+      case "completed":
+        return "bg-emerald-500";
+      default:
+        return "bg-sand-400";
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -152,8 +253,6 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     await supabase.auth.signOut();
     router.push("/login");
   };
-
-  const { isAdmin, userRole, processRoles, accessibleRoutes, processOwnerScope, isLoading } = useTenant();
 
   // 优先使用 TenantContext 的权限判断，如果失败则 fallback 到 /api/profile 的角色
   const isBossOrAdmin =
@@ -388,10 +487,71 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             >
               <Search className="h-[18px] w-[18px]" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground relative">
-              <Bell className="h-[18px] w-[18px]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-terracotta-500 rounded-full ring-2 ring-white" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground relative">
+                  <Bell className="h-[18px] w-[18px]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-terracotta-500 rounded-full ring-2 ring-white" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 p-0">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h3 className="font-medium text-sm">最近待办</h3>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => router.push("/todos")}>
+                    查看全部
+                  </Button>
+                </div>
+                {todoLoading ? (
+                  <div className="p-4 space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-sand-300 mt-2 flex-shrink-0 animate-pulse" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-4 bg-sand-200 rounded animate-pulse" style={{ width: "80%" }} />
+                          <div className="h-3 bg-sand-200 rounded animate-pulse" style={{ width: "60%" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : todos.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-sand-100 flex items-center justify-center">
+                      <CheckCircle2 className="h-6 w-6 text-sand-400" />
+                    </div>
+                    暂无待办事项
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto">
+                    <div className="p-2">
+                      {todos.slice(0, 8).map((todo) => (
+                        <button
+                          key={todo.id}
+                          onClick={() => router.push(getTodoHref(todo))}
+                          className="w-full text-left p-3 rounded-lg transition-colors hover:bg-sand-50"
+                        >
+                          <div className="flex gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getStatusColor(todo.status)}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{todo.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                                <span>{formatRelative(todo.dueDate || todo.createdAt)}</span>
+                                {(todo.priority === "high" || todo.priority === "urgent") && (
+                                  <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                                    {todo.priority === "urgent" ? "紧急" : "高优先级"}
+                                  </Badge>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <div className="p-6 min-h-[calc(100vh-3.5rem)]">{children}</div>
