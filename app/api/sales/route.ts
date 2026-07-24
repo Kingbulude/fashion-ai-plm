@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     const sales = (toCamelCase(data) || []) as any[];
 
-    const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+    const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0);
     const totalQuantity = sales.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
     const totalOrders = sales.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;

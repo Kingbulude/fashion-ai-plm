@@ -117,7 +117,7 @@ export default function SalesPage() {
     }
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalRevenue = sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
   const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
 
   const formatCurrency = (value: number) =>
@@ -208,7 +208,7 @@ export default function SalesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">+{formatCurrency(sale.amount)}</p>
+                    <p className="font-semibold text-green-600">+{formatCurrency(sale.totalAmount)}</p>
                     <p className="text-xs text-muted-foreground">{sale.quantity} 件</p>
                   </div>
                 </CardContent>
