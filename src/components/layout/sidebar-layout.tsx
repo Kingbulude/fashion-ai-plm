@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/auth/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ import {
   Search,
   Store,
   CheckCircle2,
+  ListTodo,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
@@ -93,15 +95,39 @@ function formatRelative(dateValue: string | Date | null): string {
   return rtf.format(diffSeconds, "second");
 }
 
+interface SearchDataItem {
+  type: "style" | "supplier" | "todo";
+  id: string;
+  label: string;
+  sublabel?: string;
+  href: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searchData, setSearchData] = useState<SearchDataItem[]>([]);
+  const [searchDataLoading, setSearchDataLoading] = useState(false);
 
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
+
+  // ⌘K / Ctrl+K 打开全局搜索
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile>({
@@ -348,19 +374,104 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     );
   });
 
+  // 数据搜索（去抖动）
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 1) {
+      setSearchData([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      if (!currentBrand?.id) return;
+      setSearchDataLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          headers: {
+            "x-company-id": currentCompany?.id || "",
+            "x-brand-id": currentBrand.id,
+            "x-season-id": currentSeason?.id || "",
+          },
+        });
+        if (!res.ok) {
+          setSearchData([]);
+          return;
+        }
+        const data = await res.json();
+        const items: SearchDataItem[] = [];
+
+        const rawStyles = Array.isArray(data?.styles) ? data.styles : [];
+        for (const s of rawStyles) {
+          items.push({
+            type: "style",
+            id: `style-${s.id}`,
+            label: s.name || "未命名款式",
+            sublabel: s.styleNo || s.category || "",
+            href: `/styles/${s.id}`,
+            icon: Shirt,
+            badge: s.status || "",
+          });
+        }
+
+        const rawSuppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
+        for (const s of rawSuppliers) {
+          items.push({
+            type: "supplier",
+            id: `supplier-${s.id}`,
+            label: s.name || "未命名供应商",
+            sublabel: s.type || s.contact || "",
+            href: `/suppliers/${s.id}`,
+            icon: Store,
+            badge: s.type || "",
+          });
+        }
+
+        const rawTodos = Array.isArray(data?.todos) ? data.todos : [];
+        for (const t of rawTodos) {
+          items.push({
+            type: "todo",
+            id: `todo-${t.id}`,
+            label: t.title || "未命名待办",
+            sublabel: t.priority === "urgent" ? "紧急" : t.priority === "high" ? "高优先级" : "",
+            href: `/todos/${t.id}`,
+            icon: ListTodo,
+            badge: t.status || "",
+          });
+        }
+
+        setSearchData(items);
+      } catch (e) {
+        console.warn("data search failed:", e);
+        setSearchData([]);
+      } finally {
+        setSearchDataLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentBrand?.id, currentCompany?.id, currentSeason?.id]);
+
+  // 合并所有搜索结果用于键盘导航
+  const allSearchResults = useMemo(() => {
+    const results: { href: string; label: string }[] = [];
+    for (const item of filteredItems) results.push({ href: item.href, label: item.label });
+    for (const item of searchData) results.push({ href: item.href, label: item.label });
+    return results;
+  }, [filteredItems, searchData]);
+
   useEffect(() => {
     if (!searchOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (filteredItems.length === 0) return;
+      if (allSearchResults.length === 0) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((i) => (i + 1) % filteredItems.length);
+        setSelectedIndex((i) => (i + 1) % allSearchResults.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
+        setSelectedIndex((i) => (i - 1 + allSearchResults.length) % allSearchResults.length);
       } else if (e.key === "Enter") {
         e.preventDefault();
-        const item = filteredItems[selectedIndex];
+        const item = allSearchResults[selectedIndex];
         if (item) {
           setSearchOpen(false);
           setSearchQuery("");
@@ -370,7 +481,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [searchOpen, filteredItems, selectedIndex, router]);
+  }, [searchOpen, allSearchResults, selectedIndex, router]);
 
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
@@ -622,7 +733,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         <div className="p-6 min-h-[calc(100vh-3.5rem)]">{children}</div>
       </main>
 
-      {/* 全局页面搜索 */}
+      {/* 全局搜索 */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
         <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-2">
@@ -635,51 +746,110 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索页面、功能或关键词..."
+              placeholder="搜索款式、供应商、待办、页面..."
               className="h-11"
               autoFocus
             />
           </div>
           <div className="max-h-[60vh] overflow-y-auto border-t">
-            {filteredItems.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                未找到与「{searchQuery}」相关的页面
+            {searchDataLoading && searchQuery.trim() && (
+              <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground border-b">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                搜索数据中...
               </div>
-            ) : (
-              <div className="p-2 space-y-1">
-                {filteredItems.map((item, index) => {
-                  const Icon = item.icon;
-                  const selected = index === selectedIndex;
-                  return (
-                    <button
-                      key={item.href}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setSearchQuery("");
-                        router.push(item.href);
-                      }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                        selected ? "bg-navy-50 border border-navy-100" : "hover:bg-sand-50"
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        selected ? "bg-navy-100" : "bg-sand-100"
-                      }`}>
-                        <Icon className={`h-4 w-4 ${selected ? "text-navy-700" : "text-navy-600"}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{item.label}</p>
-                        <p className="text-xs text-muted-foreground truncate">{item.href}</p>
-                      </div>
-                    </button>
-                  );
-                })}
+            )}
+
+            {searchData.length > 0 && (
+              <div className="border-b">
+                <div className="px-4 pt-3 pb-1.5 text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider">
+                  数据结果 ({searchData.length})
+                </div>
+                <div className="p-2 space-y-0.5">
+                  {searchData.map((item, dataIndex) => {
+                    const Icon = item.icon;
+                    const flatIndex = filteredItems.length + dataIndex;
+                    const selected = flatIndex === selectedIndex;
+                    const typeLabel = item.type === "style" ? "款式" : item.type === "supplier" ? "供应商" : "待办";
+                    const typeColor = item.type === "style" ? "text-navy-600 bg-navy-50" : item.type === "supplier" ? "text-emerald-600 bg-emerald-50" : "text-terracotta-600 bg-terracotta-50";
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery("");
+                          router.push(item.href);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                          selected ? "bg-navy-50 border border-navy-100" : "hover:bg-sand-50"
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${typeColor}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{item.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.sublabel || item.href}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-border">
+                          {typeLabel}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="px-4 pt-3 pb-1.5 text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider">
+                页面导航
+              </div>
+              {filteredItems.length === 0 ? (
+                <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
+                  未找到相关页面
+                </div>
+              ) : (
+                <div className="p-2 space-y-0.5">
+                  {filteredItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const selected = index === selectedIndex;
+                    return (
+                      <button
+                        key={item.href}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery("");
+                          router.push(item.href);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                          selected ? "bg-navy-50 border border-navy-100" : "hover:bg-sand-50"
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          selected ? "bg-navy-100" : "bg-sand-100"
+                        }`}>
+                          <Icon className={`h-4 w-4 ${selected ? "text-navy-700" : "text-navy-600"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">{item.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.href}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {!searchDataLoading && searchQuery.trim() && filteredItems.length === 0 && searchData.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                未找到与「{searchQuery}」相关的结果
               </div>
             )}
           </div>
           <div className="px-4 py-2.5 border-t bg-sand-50/50 text-[10px] text-muted-foreground flex items-center justify-between">
-            <span>按 Enter 跳转第一个结果</span>
-            <span>ESC 关闭</span>
+            <span>↑↓ 选择 · Enter 跳转 · ESC 关闭</span>
+            <span>⌘K</span>
           </div>
         </DialogContent>
       </Dialog>
