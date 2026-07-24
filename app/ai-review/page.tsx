@@ -260,6 +260,29 @@ function ReviewCard({ item }: { item: any }) {
   const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.medium;
   const TypeIcon = typeConfig.icon;
 
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysisError, setAnalysisError] = useState("");
+
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setAnalysisError("");
+    try {
+      const res = await fetch("/api/ai-review/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewItem: item }),
+      });
+      if (!res.ok) throw new Error("AI 分析失败");
+      const json = await res.json();
+      setAnalysis(json.analysis);
+    } catch (err: any) {
+      setAnalysisError(err.message || "AI 分析失败");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   return (
     <Card className="card-premium hover:shadow-lg transition-all overflow-hidden">
       <div className="flex">
@@ -308,6 +331,58 @@ function ReviewCard({ item }: { item: any }) {
                 </div>
               )}
 
+              {/* AI 深度分析结果 */}
+              {analysis && (
+                <div className="mb-3 p-3 rounded-lg bg-gradient-to-br from-navy-50 to-purple-50 border border-navy-100 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-navy-700" />
+                    <span className="text-sm font-semibold text-navy-800">AI 深度分析</span>
+                    <Badge variant="outline" className={`text-[10px] ${
+                      analysis.riskLevel === "high" ? "bg-red-50 text-destructive border-red-200" :
+                      analysis.riskLevel === "medium" ? "bg-orange-50 text-orange-700 border-orange-200" :
+                      "bg-emerald-50 text-success border-emerald-200"
+                    }`}>
+                      {analysis.riskLevel === "high" ? "高风险" : analysis.riskLevel === "medium" ? "中风险" : "低风险"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-foreground leading-relaxed">{analysis.aiSummary}</p>
+                  {analysis.rootCauses?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">根本原因：</p>
+                      {analysis.rootCauses.map((cause: string, i: number) => (
+                        <div key={i} className="flex items-start gap-1.5 text-xs text-foreground">
+                          <span className="text-navy-600 mt-0.5">•</span>
+                          <span>{cause}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {analysis.recommendations?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">改进建议：</p>
+                      {analysis.recommendations.map((rec: any, i: number) => (
+                        <div key={i} className="flex items-start gap-1.5 text-xs text-foreground">
+                          <Lightbulb className="h-3 w-3 mt-0.5 text-terracotta-600 flex-shrink-0" />
+                          <span>{rec.action} <span className="text-muted-foreground">（{rec.expectedImpact}）</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {analysis.estimatedCostImpact && (
+                    <p className="text-xs text-terracotta-600 font-medium pt-1 border-t border-navy-100">
+                      {analysis.estimatedCostImpact}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {analysisError && (
+                <div className="mb-3 flex items-center gap-2 text-xs text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  {analysisError}
+                </div>
+              )}
+
               {/* 底部操作 */}
               <div className="flex items-center justify-between pt-2 border-t border-border">
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -317,12 +392,28 @@ function ReviewCard({ item }: { item: any }) {
                     </span>
                   )}
                 </div>
-                <Link href={`/styles/${item.styleId}`}>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-navy-700 hover:text-navy-800 hover:bg-navy-50">
-                    查看款式
-                    <ChevronRight className="h-3 w-3 ml-1" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAnalyze}
+                    disabled={analyzing}
+                    className="h-7 text-xs border-navy-200 text-navy-700 hover:bg-navy-50"
+                  >
+                    {analyzing ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Brain className="h-3 w-3 mr-1" />
+                    )}
+                    {analysis ? "重新分析" : "AI 深度分析"}
                   </Button>
-                </Link>
+                  <Link href={`/styles/${item.styleId}`}>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-navy-700 hover:text-navy-800 hover:bg-navy-50">
+                      查看款式
+                      <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

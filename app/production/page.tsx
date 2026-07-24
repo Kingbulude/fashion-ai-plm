@@ -28,6 +28,7 @@ import {
   Shirt,
   List,
   LayoutGrid,
+  RefreshCw,
 } from "lucide-react";
 import { useTenant } from "@/lib/auth/tenant-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
@@ -54,6 +55,7 @@ export default function ProductionPage() {
   const { currentBrand } = useTenant();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -72,20 +74,24 @@ export default function ProductionPage() {
   useEffect(() => {
     fetchData();
     fetchStyles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBrand?.id]);
 
   const fetchData = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/production");
       if (res.ok) {
         const json = await res.json();
         setData(json);
       } else {
+        setError("加载生产数据失败，请稍后重试");
         setData({ orders: [], summary: {}, factoryStats: [] });
       }
     } catch (err) {
       console.error(err);
+      setError("网络异常，加载生产数据失败");
       setData({ orders: [], summary: {}, factoryStats: [] });
     } finally {
       setLoading(false);
@@ -326,6 +332,25 @@ export default function ProductionPage() {
             })}
           </div>
         </div>
+
+        {/* 错误提示 */}
+        {error && !loading && (
+          <Card className="card-premium border-destructive/30 bg-destructive/5 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchData()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 内容区 */}
         {loading ? (

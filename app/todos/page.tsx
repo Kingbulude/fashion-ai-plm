@@ -54,6 +54,7 @@ export default function TodosPage() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   // 获取当前用户 ID，用于「仅看我负责的」筛选
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function TodosPage() {
 
   const fetchTodos = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/todos", {
         headers: {
@@ -83,9 +85,12 @@ export default function TodosPage() {
       if (res.ok) {
         const data = await res.json();
         setTodos(Array.isArray(data) ? data : []);
+      } else {
+        setError("加载待办失败，请稍后重试");
       }
     } catch (err) {
       console.error("获取待办失败:", err);
+      setError("网络异常，加载待办失败");
     } finally {
       setLoading(false);
     }

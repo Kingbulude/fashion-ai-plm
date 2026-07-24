@@ -25,8 +25,10 @@ import {
   Table as TableIcon,
   ChevronRight,
   AlertCircle,
+  AlertTriangle,
   Filter,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 
 // 11 个状态配置（对应 state machine）
@@ -73,6 +75,7 @@ export default function StylesPage() {
 
   const [allStyles, setAllStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [view, setView] = useState<ViewMode>("kanban");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -80,20 +83,23 @@ export default function StylesPage() {
   const [sortBy, setSortBy] = useState<"updatedAt" | "createdAt" | "styleNo">("updatedAt");
 
   // 加载款式数据
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get<any>("/api/styles");
+      // 兼容两种返回格式
+      const styles = Array.isArray(res) ? res : res.data || [];
+      setAllStyles(styles);
+    } catch (err: any) {
+      console.error("获取款式失败:", err);
+      setError(err?.message || "加载款式失败，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get<any>("/api/styles");
-        // 兼容两种返回格式
-        const styles = Array.isArray(res) ? res : res.data || [];
-        setAllStyles(styles);
-      } catch (err) {
-        console.error("获取款式失败:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBrand?.id, currentSeason?.id]);
@@ -307,6 +313,22 @@ export default function StylesPage() {
             <Loader2 className="h-5 w-5 animate-spin" />
             加载款式数据...
           </div>
+        ) : error ? (
+          <Card className="card-premium border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchData()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : allStyles.length === 0 ? (
           <EmptyState onCreate={() => router.push("/styles/new")} hasBrand={!!currentBrand} />
         ) : filteredStyles.length === 0 ? (

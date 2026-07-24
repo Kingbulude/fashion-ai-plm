@@ -28,6 +28,8 @@ import {
   Package,
   X,
   User,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 const SUPPLIER_TYPES: Record<string, { label: string; color: string }> = {
@@ -43,6 +45,7 @@ export default function SuppliersPage() {
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -65,14 +68,20 @@ export default function SuppliersPage() {
 
   const fetchSuppliers = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/suppliers");
       if (res.ok) {
         const data = await res.json();
         setSuppliers(Array.isArray(data) ? data : []);
+      } else {
+        setError("加载供应商失败，请稍后重试");
+        setSuppliers([]);
       }
     } catch (err) {
       console.error("获取供应商失败:", err);
+      setError("网络异常，加载供应商失败");
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -229,6 +238,22 @@ export default function SuppliersPage() {
             <Loader2 className="h-5 w-5 animate-spin" />
             加载供应商...
           </div>
+        ) : error ? (
+          <Card className="card-premium border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-destructive">加载失败</p>
+                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchSuppliers()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  重试
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="card-premium border-dashed">
             <CardContent className="py-16 text-center">
