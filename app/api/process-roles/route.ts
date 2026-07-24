@@ -5,7 +5,7 @@ import { RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
-// 校验当前用户是否为 BOSS/ADMIN
+// 校验当前用户是否为 BOSS/ADMIN，并返回 company_id
 async function requireAdmin(request: Request) {
   const session = await getSession(request as any);
   if (!session?.user) {
@@ -14,7 +14,7 @@ async function requireAdmin(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role_level")
+    .select("role_level, company_id")
     .eq("user_id", session.user.id)
     .single();
 
@@ -22,7 +22,11 @@ async function requireAdmin(request: Request) {
     return { error: "Forbidden", status: 403 };
   }
 
-  return { session };
+  if (!profile?.company_id) {
+    return { error: "当前用户未绑定公司", status: 400 };
+  }
+
+  return { session, companyId: profile.company_id };
 }
 
 // 获取工序角色列表（仅 BOSS/ADMIN）
@@ -33,10 +37,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const { data } = await supabase
       .from("process_roles")
       .select("*")
       .eq("is_active", true)
+      .eq("company_id", companyId)
       .order("name");
 
     return NextResponse.json(data || []);
@@ -54,6 +61,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const body = await request.json();
     const { id, key, name, description, process_node, route_permissions } = body;
 
@@ -67,6 +76,7 @@ export async function POST(request: Request) {
       description: description || null,
       process_node,
       route_permissions: route_permissions || {},
+      company_id: companyId,
       updated_at: new Date().toISOString(),
     };
 
@@ -75,6 +85,7 @@ export async function POST(request: Request) {
         .from("process_roles")
         .update(payload)
         .eq("id", id)
+        .eq("company_id", companyId)
         .select()
         .single();
       if (error) throw error;
@@ -102,6 +113,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
 
@@ -112,7 +125,8 @@ export async function DELETE(request: Request) {
     const { error } = await supabase
       .from("process_roles")
       .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (error) throw error;
 

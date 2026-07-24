@@ -106,11 +106,17 @@ export async function canAccessProcess(
   const canAccessTargetBrand = await canAccessBrand(userId, brandId);
   if (!canAccessTargetBrand) return false;
 
-  // 工序负责人：检查主管范围是否包含目标工序节点
-  const { data: ownerScopes } = await supabase
+  // 工序负责人：检查主管范围是否包含目标工序节点（按公司隔离）
+  let ownerScopeQuery = supabase
     .from("user_process_owner_scopes")
     .select("scope_id, process_owner_scopes!inner(process_nodes)")
     .eq("user_id", userId);
+
+  if (profile.company_id) {
+    ownerScopeQuery = ownerScopeQuery.eq("company_id", profile.company_id);
+  }
+
+  const { data: ownerScopes } = await ownerScopeQuery;
 
   if (ownerScopes && ownerScopes.length > 0) {
     const nodes = ownerScopes.flatMap((s: any) => {
@@ -120,12 +126,18 @@ export async function canAccessProcess(
     if (nodes.includes(processNode)) return true;
   }
 
-  // 横向工序角色：检查角色关联的工序节点
-  const { data: processRoleAssignments } = await supabase
+  // 横向工序角色：检查角色关联的工序节点（按公司隔离）
+  let processRoleQuery = supabase
     .from("user_process_roles")
     .select("role_id, process_roles!inner(process_node)")
     .eq("user_id", userId)
     .eq("brand_id", brandId);
+
+  if (profile.company_id) {
+    processRoleQuery = processRoleQuery.eq("company_id", profile.company_id);
+  }
+
+  const { data: processRoleAssignments } = await processRoleQuery;
 
   if (processRoleAssignments && processRoleAssignments.length > 0) {
     const nodes = processRoleAssignments.map((r: any) => r.process_roles?.process_node).filter(Boolean);

@@ -43,22 +43,24 @@ export async function GET(request: Request) {
       allowedBrandIds = (ub || []).map((x: any) => x.brand_id);
     }
 
-    // 加载横向工序角色
+    // 加载横向工序角色（按公司隔离）
     const { data: userProcessRoles } = await supabase
       .from("user_process_roles")
       .select("process_role_id, process_roles(*)")
-      .eq("user_id", session.user.id);
+      .eq("user_id", session.user.id)
+      .eq("company_id", profile.company_id);
 
     const processRoles = ((userProcessRoles || [])
       .map((ur: any) => ur.process_roles)
       .filter(Boolean) as any[])
       .filter((r: any) => r.is_active !== false);
 
-    // 加载工序主管类型
+    // 加载工序主管类型（按公司隔离）
     const { data: userProcessOwnerScopes } = await supabase
       .from("user_process_owner_scopes")
       .select("process_owner_scopes(*)")
-      .eq("user_id", session.user.id);
+      .eq("user_id", session.user.id)
+      .eq("company_id", profile.company_id);
 
     const processOwnerScope = ((userProcessOwnerScopes || [])
       .map((us: any) => us.process_owner_scopes)
@@ -84,13 +86,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // 计算可访问 AI Skills
+    // 计算可访问 AI Skills（按公司隔离）
     let accessibleAISkills: any[] = [];
     if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
       const { data: allSkills } = await supabase
         .from("ai_skills")
         .select("*")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .eq("company_id", profile.company_id);
       accessibleAISkills = allSkills || [];
     } else {
       const aiSkillIdSet = new Set<string>();
@@ -125,7 +128,8 @@ export async function GET(request: Request) {
           .from("ai_skills")
           .select("*")
           .in("id", Array.from(aiSkillIdSet))
-          .eq("is_active", true);
+          .eq("is_active", true)
+          .eq("company_id", profile.company_id);
         accessibleAISkills = skills || [];
       }
     }

@@ -125,21 +125,24 @@ export async function GET(request: Request) {
       .from("user_brands")
       .select("user_id, brand_id, role_level");
 
-    // 获取用户-工序角色关联
+    // 获取用户-工序角色关联（按公司隔离）
     const { data: userProcessRoles } = await supabase
       .from("user_process_roles")
-      .select("user_id, process_role_id");
+      .select("user_id, process_role_id")
+      .eq("company_id", companyId);
 
-    // 获取工序主管类型
+    // 获取工序主管类型（按公司隔离）
     const { data: processOwnerScopes } = await supabase
       .from("process_owner_scopes")
       .select("id, key, name, description, process_nodes")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("company_id", companyId);
 
-    // 获取用户-主管类型关联（含品牌维度）
+    // 获取用户-主管类型关联（按公司隔离）
     const { data: userProcessOwnerScopes } = await supabase
       .from("user_process_owner_scopes")
-      .select("user_id, scope_id, brand_id");
+      .select("user_id, scope_id, brand_id")
+      .eq("company_id", companyId);
 
     return NextResponse.json({
       company,
@@ -260,17 +263,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // 更新用户-工序角色关联
+    // 更新用户-工序角色关联（仅限当前公司）
     if (processRoleIds && Array.isArray(processRoleIds)) {
       await supabase
         .from("user_process_roles")
         .delete()
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .eq("company_id", companyId);
 
       if (processRoleIds.length > 0) {
         const insertData = processRoleIds.map((processRoleId: string) => ({
           user_id: userId,
           process_role_id: processRoleId,
+          company_id: companyId,
           assigned_by: session.user.id,
         }));
 
@@ -282,12 +287,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // 更新用户-主管类型关联
+    // 更新用户-主管类型关联（仅限当前公司）
     if (processOwnerScopeId !== undefined) {
       await supabase
         .from("user_process_owner_scopes")
         .delete()
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .eq("company_id", companyId);
 
       if (processOwnerScopeId) {
         const { error: scopeError } = await supabase
@@ -295,6 +301,7 @@ export async function POST(request: Request) {
           .insert({
             user_id: userId,
             scope_id: processOwnerScopeId,
+            company_id: companyId,
             assigned_by: session.user.id,
           });
 

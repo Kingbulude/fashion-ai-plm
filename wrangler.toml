@@ -2,3 +2,11 @@ name = "styleforge"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
+
+[build]
+command = "npm run pages:build"
+cwd = "."
+
+[build.environment]
+NEXT_ON_PAGES_MAX_CPU_TIME = "60"
+SKIP_DEPENDENCY_INSTALL = "false"

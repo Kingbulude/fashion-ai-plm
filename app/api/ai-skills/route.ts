@@ -30,7 +30,7 @@ async function requireAdmin(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role_level")
+    .select("role_level, company_id")
     .eq("user_id", session.user.id)
     .single();
 
@@ -38,20 +38,47 @@ async function requireAdmin(request: Request) {
     return { error: "Forbidden", status: 403 };
   }
 
-  return { session };
+  if (!profile?.company_id) {
+    return { error: "当前用户未绑定公司", status: 400 };
+  }
+
+  return { session, companyId: profile.company_id };
+}
+
+// 获取当前用户的 company_id（用于普通用户的列表查询）
+async function getCompanyId(request: Request) {
+  const session = await getSession(request as any);
+  if (!session?.user) {
+    return { error: "Unauthorized", status: 401 } as const;
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("user_id", session.user.id)
+    .single();
+
+  if (!profile?.company_id) {
+    return { error: "当前用户未绑定公司", status: 400 } as const;
+  }
+
+  return { companyId: profile.company_id } as const;
 }
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const companyCheck = await getCompanyId(request);
+    if ("error" in companyCheck) {
+      return NextResponse.json({ error: companyCheck.error }, { status: companyCheck.status });
     }
+
+    const { companyId } = companyCheck;
 
     const { data } = await supabase
       .from("ai_skills")
       .select("*")
       .eq("is_active", true)
+      .eq("company_id", companyId)
       .order("name");
 
     const skills = data || [];
@@ -98,6 +125,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const body = await request.json();
     const { id, key, name, description, skill_type, process_node, config_schema, entry_route, processRoleIds, scopeIds } = body;
 
@@ -117,6 +146,7 @@ export async function POST(request: Request) {
       process_node: process_node || null,
       config_schema: config_schema || null,
       entry_route: entry_route || null,
+      company_id: companyId,
       updated_at: new Date().toISOString(),
     };
 
@@ -128,6 +158,7 @@ export async function POST(request: Request) {
         .from("ai_skills")
         .update(payload)
         .eq("id", id)
+        .eq("company_id", companyId)
         .select()
         .single();
       if (error) throw error;
@@ -186,6 +217,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
 
@@ -196,7 +229,8 @@ export async function DELETE(request: Request) {
     const { error } = await supabase
       .from("ai_skills")
       .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (error) throw error;
 

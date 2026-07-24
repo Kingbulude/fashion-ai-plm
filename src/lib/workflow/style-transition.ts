@@ -85,7 +85,8 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
     if (responsibleNode) {
       const responsible = await resolveResponsibleUserByNode(
         responsibleNode,
-        input.brandId || styleTenant?.brand_id
+        input.brandId || styleTenant?.brand_id,
+        styleTenant?.company_id
       );
       if (responsible) {
         assignedTo = responsible.userId;

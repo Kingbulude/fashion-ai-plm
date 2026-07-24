@@ -19,30 +19,42 @@ interface ResponsibleUserResult {
  * 根据工序节点解析负责人
  * @param node 工序节点ID，如 planning / design / aftersales
  * @param brandId 当前品牌ID
+ * @param companyId 当前公司ID（多租户隔离必传，未传则不按公司过滤）
  * @returns 负责人信息，未找到返回 null
  */
 export async function resolveResponsibleUserByNode(
   node: string,
-  brandId?: string | null
+  brandId?: string | null,
+  companyId?: string | null
 ): Promise<ResponsibleUserResult | null> {
   if (!node) return null;
 
-  // 1. 查找覆盖该节点的工序主管类型
-  const { data: scopes } = await supabase
+  // 1. 查找覆盖该节点的工序主管类型（按公司隔离）
+  let scopeQuery = supabase
     .from("process_owner_scopes")
-    .select("id, key, name, process_nodes")
+    .select("id, key, name, process_nodes, company_id")
     .eq("is_active", true);
+
+  if (companyId) {
+    scopeQuery = scopeQuery.eq("company_id", companyId);
+  }
+
+  const { data: scopes } = await scopeQuery;
 
   const matchedScope = (scopes || []).find(
     (s) => Array.isArray(s.process_nodes) && s.process_nodes.includes(node)
   );
 
   if (matchedScope) {
-    // 2. 查找该主管类型下、对应当前品牌的负责人
+    // 2. 查找该主管类型下、对应当前品牌的负责人（按公司隔离）
     let assignmentQuery = supabase
       .from("user_process_owner_scopes")
       .select("user_id")
       .eq("scope_id", matchedScope.id);
+
+    if (companyId) {
+      assignmentQuery = assignmentQuery.eq("company_id", companyId);
+    }
 
     if (brandId) {
       assignmentQuery = assignmentQuery.or(`brand_id.eq.${brandId},brand_id.is.null`);
@@ -72,7 +84,7 @@ export async function resolveResponsibleUserByNode(
   }
 
   // 3. 回退到品牌负责人
-  return resolveBrandManager(brandId);
+  return resolveBrandManager(brandId, companyId);
 }
 
 /**
@@ -81,18 +93,23 @@ export async function resolveResponsibleUserByNode(
  * @param toNode 目标节点
  * @param linkType 连线类型：critical / parallel / feedback
  * @param brandId 当前品牌ID
+ * @param companyId 当前公司ID
  */
 export async function resolveResponsibleUserByLink(
   fromNode: string,
   toNode: string,
   linkType: string,
-  brandId?: string | null
+  brandId?: string | null,
+  companyId?: string | null
 ): Promise<ResponsibleUserResult | null> {
   const responsibleNode = linkType === "feedback" ? fromNode : toNode;
-  return resolveResponsibleUserByNode(responsibleNode, brandId);
+  return resolveResponsibleUserByNode(responsibleNode, brandId, companyId);
 }
 
-async function resolveBrandManager(brandId?: string | null): Promise<ResponsibleUserResult | null> {
+async function resolveBrandManager(
+  brandId?: string | null,
+  companyId?: string | null
+): Promise<ResponsibleUserResult | null> {
   // 优先从 user_brands 中查找当前品牌的 brand_manager
   if (brandId) {
     const { data: userBrand } = await supabase
@@ -121,11 +138,15 @@ async function resolveBrandManager(brandId?: string | null): Promise<Responsible
     }
   }
 
-  // 其次从 profiles 中查找 brand_manager 且 brand_id 匹配
+  // 其次从 profiles 中查找 brand_manager 且 brand_id 匹配（按公司隔离）
   let profileQuery = supabase
     .from("profiles")
     .select("user_id, name")
     .eq("role_level", RoleLevel.BRAND_MANAGER);
+
+  if (companyId) {
+    profileQuery = profileQuery.eq("company_id", companyId);
+  }
 
   if (brandId) {
     profileQuery = profileQuery.or(`brand_id.eq.${brandId},brand_id.is.null`);

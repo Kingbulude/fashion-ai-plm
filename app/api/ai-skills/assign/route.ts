@@ -13,7 +13,7 @@ async function requireAdmin(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role_level")
+    .select("role_level, company_id")
     .eq("user_id", session.user.id)
     .single();
 
@@ -21,7 +21,11 @@ async function requireAdmin(request: Request) {
     return { error: "Forbidden", status: 403 };
   }
 
-  return { session };
+  if (!profile?.company_id) {
+    return { error: "当前用户未绑定公司", status: 400 };
+  }
+
+  return { session, companyId: profile.company_id };
 }
 
 export async function GET(request: Request) {
@@ -74,6 +78,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
 
+    const { companyId } = adminCheck;
+
     const body = await request.json();
     const { aiSkillId, processRoleIds, scopeIds } = body;
 
@@ -81,15 +87,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少 aiSkillId" }, { status: 400 });
     }
 
-    // 校验 aiSkillId 存在
+    // 校验 aiSkillId 存在且归属当前公司
     const { data: skill } = await supabase
       .from("ai_skills")
       .select("id")
       .eq("id", aiSkillId)
+      .eq("company_id", companyId)
       .single();
 
     if (!skill) {
-      return NextResponse.json({ error: "AI Skill 不存在" }, { status: 400 });
+      return NextResponse.json({ error: "AI Skill 不存在或无权访问" }, { status: 400 });
+    }
+
+    // 校验所有 processRoleIds 归属当前公司
+    if (processRoleIds && Array.isArray(processRoleIds) && processRoleIds.length > 0) {
+      const { data: validRoles, error: roleCheckError } = await supabase
+        .from("process_roles")
+        .select("id")
+        .in("id", processRoleIds)
+        .eq("company_id", companyId);
+
+      if (roleCheckError || (validRoles || []).length !== processRoleIds.length) {
+        return NextResponse.json({ error: "存在不属于当前公司的工序角色" }, { status: 400 });
+      }
+    }
+
+    // 校验所有 scopeIds 归属当前公司
+    if (scopeIds && Array.isArray(scopeIds) && scopeIds.length > 0) {
+      const { data: validScopes, error: scopeCheckError } = await supabase
+        .from("process_owner_scopes")
+        .select("id")
+        .in("id", scopeIds)
+        .eq("company_id", companyId);
+
+      if (scopeCheckError || (validScopes || []).length !== scopeIds.length) {
+        return NextResponse.json({ error: "存在不属于当前公司的主管类型" }, { status: 400 });
+      }
     }
 
     // 更新角色绑定：先删除该 skill 的所有角色绑定，再插入新的
