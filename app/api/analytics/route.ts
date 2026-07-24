@@ -54,6 +54,34 @@ export async function GET(request: Request) {
           deadStockStyles: [],
           avgSellthroughRate: 0,
         },
+        supplyChain: {
+          totalProcurements: 0,
+          fullyReceived: 0,
+          partiallyReceived: 0,
+          pendingProcurement: 0,
+          delayedProcurement: 0,
+          procurementRate: 0,
+          totalProduction: 0,
+          completedProduction: 0,
+          inProduction: 0,
+          pendingProduction: 0,
+          onTimeDelivery: 0,
+          onTimeRate: 0,
+          totalSuppliers: 0,
+          activeSuppliers: 0,
+          avgSupplierRating: 0,
+          supplierByType: {},
+        },
+        inventory: {
+          totalProduced: 0,
+          totalSold: 0,
+          totalRemaining: 0,
+          inventoryValue: 0,
+          inventoryByCategory: {},
+          slowMovingStyles: [],
+          deadStockValue: 0,
+          inventoryTurnover: 0,
+        },
         insights: [],
       });
     }
@@ -71,6 +99,16 @@ export async function GET(request: Request) {
       .select("*")
       .in("style_id", styleIds);
     const aftersales = (toCamelCase(aftersalesData) || []) as any[];
+
+    // 4. 供应链数据
+    const [{ data: procurementData }, { data: productionData }, { data: suppliersData }] = await Promise.all([
+      supabase.from("material_procurement").select("*").in("style_id", styleIds),
+      supabase.from("production_orders").select("*").in("style_id", styleIds),
+      supabase.from("suppliers").select("id, name, type, overall_rating, is_active").limit(20),
+    ]);
+    const procurements = (toCamelCase(procurementData) || []) as any[];
+    const production = (toCamelCase(productionData) || []) as any[];
+    const suppliers = (toCamelCase(suppliersData) || []) as any[];
 
     // 4. KPI 计算
     const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0);
@@ -286,6 +324,68 @@ export async function GET(request: Request) {
           )
         : 0;
 
+    // 12. 供应链分析
+    const totalProcurements = procurements.length;
+    const fullyReceived = procurements.filter((p) => p.status === "fully_received").length;
+    const partiallyReceived = procurements.filter((p) => p.status === "partially_received").length;
+    const pendingProcurement = procurements.filter((p) => p.status === "pending" || p.status === "ordered").length;
+    const delayedProcurement = procurements.filter((p) => p.isDelayed === true).length;
+    const procurementRate = totalProcurements > 0 ? (fullyReceived / totalProcurements) * 100 : 0;
+
+    const totalProduction = production.length;
+    const completedProduction = production.filter((p) => p.status === "completed").length;
+    const inProduction = production.filter((p) => ["cutting", "sewing", "finishing"].includes(p.status)).length;
+    const pendingProduction = production.filter((p) => p.status === "pending").length;
+    const onTimeDelivery = production.filter((p: any) => {
+      if (!p.expectedDate || !p.completedAt) return false;
+      return new Date(p.completedAt) <= new Date(p.expectedDate);
+    }).length;
+    const onTimeRate = completedProduction > 0 ? (onTimeDelivery / completedProduction) * 100 : 0;
+
+    const activeSuppliers = suppliers.filter((s) => s.isActive === true).length;
+    const avgSupplierRating = activeSuppliers > 0
+      ? suppliers.filter((s) => s.isActive).reduce((sum: number, s: any) => sum + (s.overallRating || 0), 0) / activeSuppliers
+      : 0;
+
+    const supplierByType: Record<string, number> = {};
+    for (const s of suppliers) {
+      const type = s.type || "其他";
+      supplierByType[type] = (supplierByType[type] || 0) + 1;
+    }
+
+    // 13. 库存分析
+    const totalProduced = styleList.reduce((sum: number, s: any) => sum + (s.producedQuantity || 0), 0);
+    const totalSold = styleList.reduce((sum: number, s: any) => sum + (s.soldQuantity || 0), 0);
+    const totalRemaining = Math.max(0, totalProduced - totalSold);
+    const inventoryValue = styleList.reduce((sum: number, s: any) => {
+      const remaining = Math.max(0, (s.producedQuantity || 0) - (s.soldQuantity || 0));
+      return sum + remaining * (s.actualCost || s.targetCost || 0);
+    }, 0);
+
+    const inventoryByCategory: Record<string, { quantity: number; value: number; styles: number }> = {};
+    for (const s of styleList) {
+      const cat = s.category || "未分类";
+      const remaining = Math.max(0, (s.producedQuantity || 0) - (s.soldQuantity || 0));
+      if (!inventoryByCategory[cat]) {
+        inventoryByCategory[cat] = { quantity: 0, value: 0, styles: 0 };
+      }
+      inventoryByCategory[cat].quantity += remaining;
+      inventoryByCategory[cat].value += remaining * (s.actualCost || s.targetCost || 0);
+      if (remaining > 0) inventoryByCategory[cat].styles++;
+    }
+
+    const slowMovingStyles = sellthroughStyles
+      .filter((s) => s.sellthroughRate < 30 && s.remainingQuantity > 0)
+      .sort((a, b) => a.sellthroughRate - b.sellthroughRate)
+      .slice(0, 10);
+
+    const deadStockValue = slowMovingStyles.reduce((sum, s) => {
+      const style = styleMap[s.styleId];
+      return sum + s.remainingQuantity * (style?.actualCost || style?.targetCost || 0);
+    }, 0);
+
+    const inventoryTurnover = inventoryValue > 0 ? (totalRevenue / inventoryValue) : 0;
+
     return NextResponse.json({
       brand: { id: brandId, seasonId },
       kpi: {
@@ -314,6 +414,34 @@ export async function GET(request: Request) {
         avgSellthroughRate,
       },
       insights,
+      supplyChain: {
+        totalProcurements,
+        fullyReceived,
+        partiallyReceived,
+        pendingProcurement,
+        delayedProcurement,
+        procurementRate: parseFloat(procurementRate.toFixed(1)),
+        totalProduction,
+        completedProduction,
+        inProduction,
+        pendingProduction,
+        onTimeDelivery,
+        onTimeRate: parseFloat(onTimeRate.toFixed(1)),
+        totalSuppliers: suppliers.length,
+        activeSuppliers,
+        avgSupplierRating: parseFloat(avgSupplierRating.toFixed(1)),
+        supplierByType,
+      },
+      inventory: {
+        totalProduced,
+        totalSold,
+        totalRemaining,
+        inventoryValue,
+        inventoryByCategory,
+        slowMovingStyles,
+        deadStockValue,
+        inventoryTurnover: parseFloat(inventoryTurnover.toFixed(2)),
+      },
       period: { days, startDate: startDate.toISOString(), endDate: now.toISOString() },
     });
   } catch (err) {

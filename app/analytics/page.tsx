@@ -31,6 +31,10 @@ import {
   Award,
   TrendingDown,
   ChevronRight,
+  Factory,
+  Store,
+  Warehouse,
+  Layers,
 } from "lucide-react";
 
 const INSIGHT_CONFIG = {
@@ -463,6 +467,290 @@ export default function AnalyticsPage() {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 供应链看板 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package className="h-4 w-4 text-indigo-500" />
+                    采购进度
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    齐套率 {analytics?.supplyChain?.procurementRate || 0}%
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { label: "采购单", value: analytics?.supplyChain?.totalProcurements || 0, color: "text-indigo-600" },
+                      { label: "已齐套", value: analytics?.supplyChain?.fullyReceived || 0, color: "text-emerald-600" },
+                      { label: "部分到货", value: analytics?.supplyChain?.partiallyReceived || 0, color: "text-amber-600" },
+                      { label: "延迟中", value: analytics?.supplyChain?.delayedProcurement || 0, color: "text-red-600" },
+                    ].map((item, i) => (
+                      <div key={i} className="p-3 bg-slate-50 rounded-lg">
+                        <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-slate-600">齐套进度</span>
+                      <span className="font-semibold text-slate-900">{analytics?.supplyChain?.procurementRate || 0}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
+                        style={{ width: `${analytics?.supplyChain?.procurementRate || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Factory className="h-4 w-4 text-orange-500" />
+                    生产进度
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    准交率 {analytics?.supplyChain?.onTimeRate || 0}%
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { label: "生产单", value: analytics?.supplyChain?.totalProduction || 0, color: "text-orange-600" },
+                      { label: "已完成", value: analytics?.supplyChain?.completedProduction || 0, color: "text-emerald-600" },
+                      { label: "生产中", value: analytics?.supplyChain?.inProduction || 0, color: "text-blue-600" },
+                      { label: "待排产", value: analytics?.supplyChain?.pendingProduction || 0, color: "text-slate-500" },
+                    ].map((item, i) => (
+                      <div key={i} className="p-3 bg-slate-50 rounded-lg">
+                        <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-slate-600">生产完成率</span>
+                      <span className="font-semibold text-slate-900">
+                        {analytics?.supplyChain?.totalProduction > 0
+                          ? ((analytics.supplyChain.completedProduction / analytics.supplyChain.totalProduction) * 100).toFixed(1)
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"
+                        style={{
+                          width: `${analytics?.supplyChain?.totalProduction > 0
+                            ? (analytics.supplyChain.completedProduction / analytics.supplyChain.totalProduction) * 100
+                            : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Store className="h-4 w-4 text-emerald-500" />
+                    供应商概览
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    平均评分 {analytics?.supplyChain?.avgSupplierRating || 0}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { label: "供应商总数", value: analytics?.supplyChain?.totalSuppliers || 0, color: "text-emerald-600" },
+                      { label: "活跃供应商", value: analytics?.supplyChain?.activeSuppliers || 0, color: "text-blue-600" },
+                    ].map((item, i) => (
+                      <div key={i} className="p-3 bg-slate-50 rounded-lg">
+                        <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-3 border-t border-slate-100">
+                    <p className="text-sm text-slate-600 mb-2">供应商类型分布</p>
+                    {Object.entries(analytics?.supplyChain?.supplierByType || {}).length > 0 ? (
+                      <div className="space-y-1.5">
+                        {Object.entries(analytics.supplyChain.supplierByType).slice(0, 4).map(([type, count]) => {
+                          const total = analytics.supplyChain.totalSuppliers || 1;
+                          const pct = ((count as number) / total) * 100;
+                          return (
+                            <div key={type}>
+                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="text-slate-600">{type}</span>
+                                <span className="text-slate-500">{count as number}家</span>
+                              </div>
+                              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 text-center py-2">暂无供应商数据</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 库存分析看板 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              {/* 库存概览 */}
+              <Card className="border-0 shadow-sm lg:col-span-1">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Warehouse className="h-4 w-4 text-blue-500" />
+                    库存概览
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-blue-600">库存总值</p>
+                      <p className="text-2xl font-bold text-blue-700 mt-1">
+                        {formatCurrency(analytics?.inventory?.inventoryValue || 0)}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500">已生产</p>
+                        <p className="text-lg font-bold text-slate-900">
+                          {analytics?.inventory?.totalProduced || 0}件
+                        </p>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500">已售出</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          {analytics?.inventory?.totalSold || 0}件
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-amber-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-amber-600">剩余库存</p>
+                          <p className="text-xl font-bold text-amber-700 mt-0.5">
+                            {analytics?.inventory?.totalRemaining || 0}件
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-amber-600">库存周转</p>
+                          <p className="text-lg font-bold text-amber-700 mt-0.5">
+                            {analytics?.inventory?.inventoryTurnover || 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 库存品类结构 */}
+              <Card className="border-0 shadow-sm lg:col-span-1">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-purple-500" />
+                    库存品类结构
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {Object.entries(analytics?.inventory?.inventoryByCategory || {}).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(analytics.inventory.inventoryByCategory)
+                        .sort((a: any, b: any) => b[1].value - a[1].value)
+                        .slice(0, 6)
+                        .map(([cat, data]: [string, any]) => {
+                          const total = analytics.inventory.inventoryValue || 1;
+                          const pct = (data.value / total) * 100;
+                          return (
+                            <div key={cat}>
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="text-slate-700 font-medium">{cat}</span>
+                                <span className="text-slate-500 text-xs">
+                                  {data.quantity}件 · {formatCurrency(data.value)}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-slate-400 mt-0.5">{data.styles}款</p>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-slate-400">
+                      暂无库存数据
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 滞销库存预警 */}
+              <Card className="border-0 shadow-sm lg:col-span-1">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      滞销库存预警
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-red-600 bg-red-50 border-red-100">
+                      风险 ¥{((analytics?.inventory?.deadStockValue || 0) / 10000).toFixed(1)}万
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {analytics?.inventory?.slowMovingStyles?.length > 0 ? (
+                    <div className="max-h-56 overflow-y-auto space-y-2">
+                      {analytics.inventory.slowMovingStyles.slice(0, 6).map((style: any) => (
+                        <Link
+                          key={style.styleId}
+                          href={`/styles/${style.styleId}`}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-red-50 transition-colors group"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-800 truncate">{style.name}</p>
+                              <Badge variant="outline" className="text-[10px] border-red-200 text-red-600 bg-red-50">
+                                {style.sellthroughRate}%
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {style.styleNo} · 剩余 {style.remainingQuantity}件
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-red-500 flex-shrink-0" />
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-slate-400">
+                      <CheckCircle className="h-8 w-8 text-emerald-300 mx-auto mb-2" />
+                      暂无滞销库存
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
