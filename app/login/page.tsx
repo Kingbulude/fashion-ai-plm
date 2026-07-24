@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { dbAdmin } from "@/lib/db/client";
+import { supabase } from "@/lib/auth/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ function LoginForm() {
       setRedirect(searchParams.get("redirect") || "/dashboard");
     }
 
-    const { data: { subscription } } = dbAdmin.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user?.email_confirmed_at) {
         router.push(redirect);
       } else if (event === "PASSWORD_RECOVERY") {
@@ -52,7 +52,7 @@ function LoginForm() {
     setSuccess("");
 
     try {
-      const { data, error: authError } = await dbAdmin.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -91,7 +91,7 @@ function LoginForm() {
     setSuccess("");
 
     try {
-      const { error: authError } = await dbAdmin.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -284,7 +284,7 @@ function LoginForm() {
                   onClick={async () => {
                     setLoading(true);
                     try {
-                      const { error: resendError } = await dbAdmin.auth.resend({
+                      const { error: resendError } = await supabase.auth.resend({
                         type: "signup",
                         email,
                       });

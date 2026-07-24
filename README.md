@@ -15,12 +15,12 @@
 ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
 │  P1企划 │ ──→ │  P2设计 │ ──→ │  P3打样 │ ──→ │  P4测款 │ ──→ │ P6大货  │
 └─────────┘     └─────────┘     └─────────┘     └─────────┘     └────┬────┘
-                                                                    │
-                                                                    ↓
+                                                                     │
+                                                                     ↓
 ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
 │ P10售后 │ ←── │  P9销售 │ ←── │  P8入库 │ ←── │  P7质检 │     │         │
 └─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘
-                         
+
                               ┌─────────────┐
                               │ P5物料采购  │ ←── 与 P4测款 并行
                               └──────┬──────┘
@@ -28,114 +28,32 @@
                                      └──────────→ 汇入 P6大货生产
 ```
 
-### 1.2 工序节点与子模块规划
+### 1.2 业务模块全景
 
-| 工序 | 节点ID | 名称 | 图标 | 主路径 | 子模块 |
-|------|--------|------|------|--------|--------|
-| P1 | planning | 企划 | 📋 | `/planning` | 商品企划、设计企划、面料企划、色彩企划、趋势预测 |
-| P2 | design | 设计 | 🎨 | `/styles` | 款式管理、BOM管理、工艺单、设计资产库 |
-| P3 | sampling | 打样 | ✂️ | `/styles/[id]` | 打样申请、样衣评审、版型调整、成本核算 |
-| P4 | testing | 测款 | 🎯 | `/ai` | AI生图、目标受众反馈、市场接受度评估、下单数量建议 |
-| P5 | procurement | 物料采购 | 🛒 | `/styles/[id]` | 物料齐套校验、缺料预警、供应商管理、采购记录 |
-| P6 | production | 大货生产 | 🏭 | `/production` | 生产订单、进度跟踪、制程质检、交期预测 |
-| P7 | qc | 质检 | ✅ | `/styles/[id]` | 质检标准、缺陷记录、返工处理、合格判定 |
-| P8 | inventory | 入库 | 📦 | `/styles/[id]` | 色码台账、库存登记、库存查询、入库记录 |
-| P9 | sales | 销售 | 💰 | `/sales` | 销售订单、渠道管理、销售额统计、销售趋势 |
-| P10 | aftersales | 售后 | 🔄 | `/aftersales` | 退货管理、换货管理、投诉记录、售后复盘 |
+| 模块 | 路由 | 说明 |
+|------|------|------|
+| 工作台 | `/dashboard` | 数据看板、快捷入口 |
+| 智能调度 | `/` | PERT网络图、工序流转、交期预测 |
+| 企划中心 | `/planning` | 商品企划、设计企划、面料/色彩企划、趋势预测、灵感白板 |
+| AI智能分析 | `/ai` | AI测款、销量预估、供应商匹配、AI生图 |
+| AI审核中心 | `/ai-review` | AI深度审核、自动质检分析 |
+| 款式管理 | `/styles` | 款式全生命周期（设计→打样→采购→生产→质检→库存→销售→售后） |
+| 设计资产 | `/design` | 设计图片、版型文件、AI衍生图、3D样衣展示 |
+| 生产管理 | `/production` | 生产订单、进度跟踪、物料齐套、缺料预警 |
+| 品牌管理 | `/brands` | 多品牌管理、品牌资料维护 |
+| 供应商 | `/suppliers` | 供应商档案、评分体系、智能匹配 |
+| 灵感库 | `/inspiration` | 灵感白板、素材收藏 |
+| 待办中心 | `/todos` | 待办任务、样式级待办、指定负责人 |
+| 管理后台 | `/admin` | 组织架构、人员管理、流程角色、AI技能配置 |
+| 设置 | `/settings` | 个人资料、品牌配置 |
 
-### 1.3 各工序子模块详细规划
+### 1.3 款式生命周期状态机
 
-#### P1 企划中心
 ```
-/planning
-├── 商品企划    → 季节波段、品类规划、目标成本、上市计划
-├── 设计企划    → 主题概念、设计方向、灵感收集、设计规范
-├── 面料企划    → 面料趋势、供应商对接、样品确认、成本预估
-├── 色彩企划    → 色彩方案、流行色预测、配色搭配、色卡管理
-└── 趋势预测    → AI趋势分析、竞品分析、市场洞察
+planning → designing → designed → sampling → sampled → producing → produced → selling → sold → reviewing → archived
 ```
 
-#### P2 设计管理
-```
-/styles
-├── 款式列表    → 款式卡片网格、搜索筛选、状态标签
-├── 款式详情    → 款式信息、图片、BOM、工艺单、打样
-├── BOM管理     → 物料清单、用量核算、成本汇总
-├── 工艺单      → 工艺说明、工序流程、质量标准
-└── 设计资产库  → 设计图片、版型文件、设计稿归档
-```
-
-#### P3 打样管理
-```
-/styles/[id]/sampling
-├── 打样申请    → 打样单创建、样品要求、交期设定
-├── 样衣评审    → 评审记录、修改意见、通过/驳回
-├── 版型调整    → 版型修改记录、尺寸确认
-└── 成本核算    → 打样成本、材料损耗、工时统计
-```
-
-#### P4 测款中心（AI驱动）
-```
-/ai
-├── AI生图      → 款式AI生成、风格调整、细节优化
-├── 市场测试    → 生成图片投放目标受众、收集反馈
-├── 接受度评估  → AI分析反馈数据、竞争力评分
-└── 下单建议    → 基于测款结果的大货数量建议
-```
-
-#### P5 物料采购
-```
-/styles/[id]/procurement
-├── 物料齐套    → BOM物料清单、采购进度、齐套校验
-├── 缺料预警    → 未采购/未到货物料提醒、交期预警
-├── 供应商管理  → 供应商信息、报价记录、交货评级
-└── 采购记录    → 采购单创建、跟踪、到货确认
-```
-
-#### P6 大货生产
-```
-/production
-├── 生产订单    → 订单创建、数量设定、交期规划
-├── 进度跟踪    → 裁剪/缝制/后整进度、实时更新
-├── 制程质检    → 各工序质检记录、缺陷统计
-└── 交期预测    → AI预测实际交期、延误预警
-```
-
-#### P7 质检管理
-```
-/styles/[id]/qc
-├── 质检标准    → 检验项目、合格标准、抽样规则
-├── 缺陷记录    → 缺陷类型、位置、严重程度
-├── 返工处理    → 返工流程、返工记录、二次检验
-└── 合格判定    → 批量合格/不合格、放行/扣留
-```
-
-#### P8 库存管理
-```
-/styles/[id]/inventory
-├── 色码台账    → 颜色×尺码矩阵、库存数量
-├── 库存登记    → 入库数量、批次管理、有效期
-├── 库存查询    → 实时库存、库存预警、库存调拨
-└── 入库记录    → 入库单、质检关联、凭证管理
-```
-
-#### P9 销售管理
-```
-/sales
-├── 销售订单    → 订单创建、款式关联、渠道选择
-├── 渠道管理    → 渠道信息、销售目标、业绩统计
-├── 销售额统计  → 日/周/月销售、品类占比、客单价
-└── 销售趋势    → 销售曲线、增长分析、同比环比
-```
-
-#### P10 售后管理
-```
-/aftersales
-├── 退货管理    → 退货申请、原因分类、退款处理
-├── 换货管理    → 换货申请、尺码调换、发货记录
-├── 投诉记录    → 投诉类型、问题描述、处理结果
-└── 售后复盘    → 售后数据分析、改进建议、质量追溯
-```
+每个状态流转均触发事件总线，自动通知相关AI专员生成建议。
 
 ---
 
@@ -145,85 +63,176 @@
 
 | 层级 | 技术 | 版本 |
 |------|------|------|
-| 前端框架 | Next.js | 15.5.2 (App Router) |
+| 前端框架 | Next.js (App Router + Turbopack) | 15.5.2 |
 | UI框架 | React | 19 |
 | 语言 | TypeScript | 5.x |
-| 样式 | Tailwind CSS | 3.x |
-| UI组件 | shadcn/ui | latest |
+| 样式 | Tailwind CSS | 3.4 |
+| UI组件 | shadcn/ui (Radix UI) | latest |
 | 图标 | Lucide React | latest |
-| 后端/数据库 | Supabase | PostgreSQL |
-| 文件存储 | Supabase Storage | - |
-| AI服务 | Cloudflare Workers AI | - |
+| 数据库 | Supabase (PostgreSQL) | - |
+| ORM | Drizzle ORM | 0.45 |
+| AI引擎 | Cloudflare Workers AI | - |
+| 状态管理 | @tanstack/react-query | 5.x |
+| 认证 | Supabase Auth (JWT) | - |
 | 部署 | Cloudflare Pages | `@cloudflare/next-on-pages` |
-| 认证 | Supabase Auth | Email/Password |
 
 ### 2.2 架构特点
 
+- **多租户隔离**：基于 `brandId` 的行级安全（RLS）策略，品牌间数据完全隔离
 - **延迟初始化模式**：使用 Proxy 包裹 Supabase 客户端，避免构建时环境变量未加载导致报错
-- **Edge Runtime**：API 路由使用 Edge Runtime，支持更快的冷启动和全球边缘部署
-- **RLS行级安全**：Supabase 数据库启用行级安全策略，保障数据隔离
+- **Edge Runtime**：API 路由使用 Edge Runtime，支持全球边缘部署
+- **AI三级角色体系**：AI总控 → 8个工序AI专员 → 16+执行助手，模拟人类组织架构
+- **事件驱动架构**：29种业务事件触发Pipeline自动执行，支持同步/异步两种模式
+- **Pipeline引擎**：可编排多步骤自动化流程（日签到、采购自动化、测款决策下单）
+- **Skill系统**：可注册/执行的AI技能（技术包生成、采购单生成、飞书/微信通知）
 - **组件化开发**：所有功能模块封装为独立组件，便于维护和扩展
 
 ### 2.3 项目结构
 
 ```
-/workspace
-├── app/                    # Next.js App Router
-│   ├── page.tsx            # 首页（PERT网络图）
-│   ├── planning/page.tsx   # 企划中心
-│   ├── styles/             # 款式管理
-│   ├── production/page.tsx # 大货生产
-│   ├── ai/page.tsx         # AI测款中心
-│   ├── sales/page.tsx      # 销售管理
-│   ├── aftersales/page.tsx # 售后管理
-│   ├── dashboard/page.tsx  # 数据看板
-│   └── api/                # API路由
-├── src/                    # 源代码
-│   ├── components/         # UI组件
-│   │   ├── layout/         # 布局组件
-│   │   ├── styles/         # 款式相关组件
-│   │   └── ui/             # 通用组件
-│   ├── lib/                # 工具函数
-│   │   ├── supabase.ts     # Supabase客户端
-│   │   └── utils.ts        # 通用工具
-│   └── types/              # TypeScript类型定义
-├── public/                 # 静态资源
-├── supabase/               # Supabase迁移脚本
-├── next.config.js          # Next.js配置
-├── tsconfig.json           # TypeScript配置
-├── tailwind.config.ts      # Tailwind配置
-└── package.json            # 依赖管理
+├── app/                         # Next.js App Router
+│   ├── page.tsx                 # 首页（PERT网络图）
+│   ├── dashboard/               # 工作台
+│   ├── planning/                # 企划中心
+│   ├── ai/                      # AI智能分析
+│   ├── ai-review/               # AI审核中心
+│   ├── styles/                  # 款式管理
+│   ├── design/                  # 设计资产
+│   ├── production/              # 生产管理
+│   ├── brands/                  # 品牌管理
+│   ├── suppliers/               # 供应商管理
+│   ├── sales/                   # 销售管理
+│   ├── aftersales/              # 售后管理
+│   ├── inspiration/             # 灵感库
+│   ├── todos/                   # 待办中心
+│   ├── settings/                # 设置
+│   ├── admin/                   # 管理后台
+│   ├── api/                     # API路由（90+端点）
+│   │   ├── ai/                  # AI服务（测款/生图/销量预测/供应商匹配）
+│   │   ├── planning/ai/         # 企划AI（品牌DNA/趋势/面料/色彩/定价）
+│   │   ├── styles/[id]/         # 款式子资源（BOM/打样/采购/生产/质检/库存）
+│   │   ├── suppliers/           # 供应商管理API
+│   │   ├── organization/        # 组织架构API
+│   │   ├── pipeline/            # Pipeline恢复API
+│   │   └── ...
+│   └── login/                   # 登录页
+├── src/
+│   ├── components/
+│   │   ├── layout/              # 侧边栏布局、租户切换器
+│   │   ├── styles/              # 款式相关组件（14个表单/展示组件）
+│   │   ├── chat/                # AI对话面板
+│   │   ├── ai/                  # AI对话弹窗、AI助手面板
+│   │   ├── planning/            # 灵感白板组件
+│   │   └── ui/                  # shadcn/ui基础组件
+│   ├── lib/
+│   │   ├── ai/                  # AI架构定义、Cloudflare AI封装、JSON解析
+│   │   ├── auth/                # 认证、RBAC、权限、审计、租户上下文
+│   │   ├── db/                  # 数据库客户端、Drizzle Schema、字段映射
+│   │   ├── events/              # 事件总线（29种事件类型）
+│   │   ├── pipeline/            # Pipeline引擎（注册/执行/步骤定义）
+│   │   ├── skills/              # Skill系统（注册/执行/4个内置技能）
+│   │   ├── storage/             # Supabase Storage上传下载
+│   │   ├── workflow/            # 款式状态机、状态流转、负责人解析
+│   │   └── api/                 # API调用Hook
+│   ├── services/
+│   │   └── crawler.ts           # 爬虫服务（小红书/淘宝趋势数据）
+│   └── middleware.ts            # 中间件（已移至Supabase Auth处理）
+├── supabase/
+│   └── migrations/              # 29个数据库迁移脚本
+├── public/                      # 静态资源
+├── drizzle.config.ts            # Drizzle ORM配置
+├── next.config.mjs              # Next.js配置（Turbopack + instrumentation）
+├── wrangler.toml                # Cloudflare Pages部署配置（含Cron触发器）
+├── tailwind.config.ts           # Tailwind配置
+├── tsconfig.json                # TypeScript配置
+└── package.json                 # 依赖管理
 ```
 
 ---
 
-## 三、开发计划
+## 三、AI架构
 
-### 3.1 已完成阶段
+### 3.1 三级角色体系
 
-| 阶段 | 完成状态 | 说明 |
-|------|---------|------|
-| Phase 1 MVP | ✅ 完成 | 款式设计、打样管理、物料采购、大货生产、库存管理 |
-| Phase 2 企划+AI | ✅ 完成 | 企划中心、AI趋势分析、AI测款、AI销量预估、供应商智能匹配 |
-| Phase 3 销售+售后+看板 | ✅ 完成 | 销售管理、售后管理、数据看板 |
-| 首页重构 | ✅ 完成 | PERT网络图风格首页，点击节点跳转对应工作区 |
+| 层级 | 名称 | 职责 |
+|------|------|------|
+| Level 1 | AI总控（AI Master） | 品牌全局决策、战略建议、跨工序协调 |
+| Level 2 | AI工序专员（AI Specialist） | 企划/设计/打样/测款/采购/备货/销售/售后 8个专员 |
+| Level 3 | AI执行助手（AI Assistant） | 色彩匹配、面料选择、技术包生成等 16+ 专项助手 |
 
-### 3.2 待完善内容
+### 3.2 事件驱动 Pipeline
 
-| 序号 | 任务 | 优先级 | 状态 |
-|------|------|--------|------|
-| 1 | 企划中心子模块细化（商品/设计/面料/色彩企划） | 高 | ⏳ 待开发 |
-| 2 | 测款中心细化（AI生图、市场测试、接受度评估） | 高 | ⏳ 待开发 |
-| 3 | 生产管理页面完善（生产订单、进度跟踪） | 高 | ⏳ 待开发 |
-| 4 | 设计资产库页面开发 | 中 | ⏳ 待开发 |
-| 5 | 销售趋势图表动态化 | 中 | ⏳ 待开发 |
-| 6 | 用户权限体系（按角色区分功能可见性） | 低 | ⏳ 待开发 |
+| Pipeline | 触发条件 | 执行步骤 |
+|----------|---------|---------|
+| 日签到 | 每日 9:00 Cron | 数据汇总 → AI分析 → 飞书/微信推送 |
+| 采购自动化 | 物料缺料事件 | 供应商匹配 → 采购单生成 → 审批流 |
+| 测款决策下单 | 测款数据就绪 | AI评分 → 下单建议 → 人工确认 → 创建生产单 |
+
+### 3.3 内置 Skill
+
+| Skill | 功能 |
+|-------|------|
+| 技术包生成 | 根据款式信息自动生成BOM、工艺单、尺码表 |
+| 采购单生成 | 根据缺料清单自动创建采购订单 |
+| 飞书通知 | 通过 Webhook 发送飞书消息/卡片 |
+| 微信通知 | 通过 Webhook 发送企业微信消息 |
 
 ---
 
-## 四、运行项目
+## 四、数据库设计
 
-### 4.1 开发环境
+### 4.1 核心表（25+张）
+
+| 分类 | 表名 | 说明 |
+|------|------|------|
+| 款式核心 | `styles`, `designAssets`, `techPacks`, `bomItems` | 款式、设计资产、技术包、物料清单 |
+| 供应链 | `samplingRecords`, `materialProcurement`, `productionOrders` | 打样、采购、生产 |
+| 质量/库存 | `qcRecords`, `inventory` | 质检、库存 |
+| 销售/售后 | `salesData`, `afterSales` | 销售、售后 |
+| 供应商 | `suppliers` | 供应商档案 |
+| 企划 | `planning`, `moodBoards`, `moodBoardShapes`, `moodBoardAreas`, `moodBoardAssets` | 企划、灵感白板 |
+| 组织 | `companies`, `brands`, `profiles`, `userBrands`, `seasons` | 多租户组织架构 |
+| AI | `aiSuggestions` | AI建议记录 |
+| 审批 | `approvalFlows`, `operationLogs`, `dataVersions` | 审批流、操作日志、数据版本 |
+| 系统 | `tempAuthorizations` | 临时授权 |
+
+### 4.2 枚举类型（10个）
+
+`style_status`, `design_asset_type`, `material_type`, `sampling_status`, `procurement_status`, `production_status`, `qc_type`, `qc_result`, `after_sales_type`, `supplier_type`
+
+---
+
+## 五、开发计划
+
+### 5.1 已完成阶段
+
+| 阶段 | 说明 |
+|------|------|
+| Phase 1 MVP | 款式设计、打样管理、物料采购、大货生产、库存管理 |
+| Phase 2 企划+AI | 企划中心、AI趋势分析、AI测款、AI销量预估、供应商智能匹配 |
+| Phase 3 销售+售后+看板 | 销售管理、售后管理、数据看板 |
+| 首页重构 | PERT网络图风格首页，点击节点跳转对应工作台 |
+| AI Pipeline | 事件系统 + 3条自动化Pipeline + Skill系统 |
+| 通信集成 | 飞书/微信 Webhook 通知 |
+| 5大功能 | 物料缺料预警、灵感白板、3D样衣展示、供应商评分体系、售后缺陷反向迭代 |
+| 多租户安全 | RLS品牌隔离、操作审计、数据版本、审批流 |
+
+### 5.2 待完善内容
+
+| 任务 | 优先级 |
+|------|--------|
+| 企划中心子模块细化（商品/设计/面料/色彩企划） | 高 |
+| 测款中心细化（AI生图、市场测试、接受度评估） | 高 |
+| 生产管理页面完善（生产订单、进度跟踪） | 高 |
+| 设计资产库页面开发 | 中 |
+| 销售趋势图表动态化 | 中 |
+| 用户权限体系（按角色区分功能可见性） | 低 |
+
+---
+
+## 六、运行项目
+
+### 6.1 开发环境
 
 ```bash
 # 安装依赖
@@ -235,7 +244,7 @@ npm run dev
 # 访问 http://localhost:3000
 ```
 
-### 4.2 构建部署
+### 6.2 构建部署
 
 ```bash
 # 构建
@@ -245,14 +254,40 @@ npm run build
 npx tsc --noEmit
 
 # 部署到 Cloudflare Pages
+npm run pages:build
 npx wrangler pages deploy .vercel/output/static
 ```
 
 ---
 
-## 五、数据库初始化
+## 七、环境变量
 
-执行以下 SQL 脚本初始化数据库表结构：
+在 `.env.local` 中配置：
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Cloudflare Workers AI
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_AI_TOKEN=your-ai-token
+
+# AI Pipeline 内部密钥
+AI_API_KEY=generate-a-strong-random-string
+
+# 通信渠道
+LARK_WEBHOOK_URL=
+WECHAT_WEBHOOK_URL=
+
+# 应用配置
+NODE_ENV=development
+```
+
+---
+
+## 八、数据库初始化
 
 ```bash
 # 执行迁移脚本
@@ -260,21 +295,7 @@ npx supabase migration up
 
 # 刷新数据库类型
 npx supabase gen types --local > src/types/supabase.ts
-```
 
----
-
-## 六、环境变量
-
-在 `.env.local` 中配置：
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# AI
-CLOUDFLARE_API_KEY=
-CLOUDFLARE_ACCOUNT_ID=
+# 或使用 Drizzle
+npx drizzle-kit push
 ```
