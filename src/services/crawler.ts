@@ -1,3 +1,5 @@
+import { generateText } from "@/lib/ai/cloudflare-ai";
+
 export interface CrawlerResult {
   platform: string;
   query: string;
@@ -117,42 +119,109 @@ const MARKET_TRENDS = [
 
 export async function crawlXiaohongshu(query: string): Promise<CrawlerResult> {
   try {
-    const result: CrawlerResult = {
+    const aiData = await generateXiaohongshuData(query);
+    return {
       platform: "xiaohongshu",
       query,
       crawledAt: new Date().toISOString(),
-      data: {
-        trendingKeywords: TREND_KEYWORDS.filter(k => k.includes(query) || query.includes(k)).slice(0, 5),
-        hotPosts: MOCK_XHS_DATA.filter(p => 
-          p.title.includes(query) || p.tags.some(t => t.includes(query))
-        ).slice(0, 5),
-        trends: MARKET_TRENDS,
-      },
+      data: aiData,
     };
-    return result;
   } catch (error) {
-    console.error("Xiaohongshu crawl error:", error);
+    console.warn("Xiaohongshu AI crawl fallback:", error);
     return {
       platform: "xiaohongshu",
       query,
       crawledAt: new Date().toISOString(),
       data: {
-        trendingKeywords: TREND_KEYWORDS.slice(0, 5),
-        hotPosts: MOCK_XHS_DATA.slice(0, 3),
-        trends: MARKET_TRENDS.slice(0, 3),
+        trendingKeywords: TREND_KEYWORDS.filter(k => k.includes(query) || query.includes(k)).slice(0, 5),
+        hotPosts: MOCK_XHS_DATA.filter(p =>
+          p.title.includes(query) || p.tags.some(t => t.includes(query))
+        ).slice(0, 5),
+        trends: MARKET_TRENDS,
       },
     };
   }
 }
 
+async function generateXiaohongshuData(query: string) {
+  const prompt = `你是一位服装行业的小红书趋势分析专家。请围绕关键词「${query}」生成小红书平台的热门内容分析。
+
+请严格以JSON格式输出，不要包含任何其他文字：
+{
+  "trendingKeywords": ["关键词1", "关键词2", "关键词3", "关键词4", "关键词5"],
+  "hotPosts": [
+    {
+      "title": "帖子标题",
+      "likes": 12000,
+      "comments": 800,
+      "shares": 1500,
+      "images": [],
+      "tags": ["标签1", "标签2"],
+      "author": "作者昵称",
+      "content": "帖子核心内容摘要"
+    }
+  ],
+  "trends": [
+    {
+      "trend": "趋势名称",
+      "confidence": 88,
+      "description": "趋势描述"
+    }
+  ]
+}`;
+
+  const text = await generateText(prompt, "你是服装行业社交媒体趋势分析专家，熟悉小红书平台的内容特征和时尚趋势。");
+  const parsed = safeJsonParse(text, {
+    trendingKeywords: TREND_KEYWORDS.slice(0, 5),
+    hotPosts: MOCK_XHS_DATA.slice(0, 3),
+    trends: MARKET_TRENDS.slice(0, 3),
+  });
+
+  return {
+    trendingKeywords: Array.isArray(parsed.trendingKeywords) ? parsed.trendingKeywords.slice(0, 5) : TREND_KEYWORDS.slice(0, 5),
+    hotPosts: Array.isArray(parsed.hotPosts) ? parsed.hotPosts.slice(0, 5).map(normalizeXhsPost) : MOCK_XHS_DATA.slice(0, 3),
+    trends: Array.isArray(parsed.trends) ? parsed.trends.slice(0, 3).map(normalizeTrend) : MARKET_TRENDS.slice(0, 3),
+  };
+}
+
+function normalizeXhsPost(p: any): XiaohongshuPost {
+  return {
+    title: String(p.title || ""),
+    likes: Number(p.likes || 0),
+    comments: Number(p.comments || 0),
+    shares: Number(p.shares || 0),
+    images: Array.isArray(p.images) ? p.images : [],
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    author: String(p.author || ""),
+    content: String(p.content || ""),
+  };
+}
+
+function normalizeTrend(t: any) {
+  return {
+    trend: String(t.trend || ""),
+    confidence: Number(t.confidence || 0),
+    description: String(t.description || ""),
+  };
+}
+
 export async function crawlTaobao(query: string): Promise<CrawlerResult> {
   try {
-    const result: CrawlerResult = {
+    const aiData = await generateTaobaoData(query);
+    return {
+      platform: "taobao",
+      query,
+      crawledAt: new Date().toISOString(),
+      data: aiData,
+    };
+  } catch (error) {
+    console.warn("Taobao AI crawl fallback:", error);
+    return {
       platform: "taobao",
       query,
       crawledAt: new Date().toISOString(),
       data: {
-        hotProducts: MOCK_TB_DATA.filter(p => 
+        hotProducts: MOCK_TB_DATA.filter(p =>
           p.name.includes(query) || query.includes("外套") || query.includes("上衣")
         ).slice(0, 5),
         categoryAnalysis: {
@@ -163,52 +232,129 @@ export async function crawlTaobao(query: string): Promise<CrawlerResult> {
         },
       },
     };
-    return result;
-  } catch (error) {
-    console.error("Taobao crawl error:", error);
-    return {
-      platform: "taobao",
-      query,
-      crawledAt: new Date().toISOString(),
-      data: {
-        hotProducts: MOCK_TB_DATA.slice(0, 3),
-        categoryAnalysis: {
-          tops: { ratio: 35, growth: "+23%" },
-          bottoms: { ratio: 28, growth: "+18%" },
-          outerwear: { ratio: 22, growth: "+35%" },
-          accessories: { ratio: 15, growth: "+42%" },
-        },
-      },
-    };
   }
+}
+
+async function generateTaobaoData(query: string) {
+  const prompt = `你是一位服装电商数据分析专家。请围绕关键词「${query}」生成淘宝平台的热门商品和品类分析。
+
+请严格以JSON格式输出，不要包含任何其他文字：
+{
+  "hotProducts": [
+    {
+      "name": "商品名称",
+      "sales": 15000,
+      "growthRate": "+120%",
+      "price": "¥199-299",
+      "image": "",
+      "shopName": "店铺名"
+    }
+  ],
+  "categoryAnalysis": {
+    "tops": { "ratio": 35, "growth": "+23%" },
+    "bottoms": { "ratio": 28, "growth": "+18%" },
+    "outerwear": { "ratio": 22, "growth": "+35%" },
+    "accessories": { "ratio": 15, "growth": "+42%" }
+  }
+}`;
+
+  const text = await generateText(prompt, "你是服装电商数据分析专家，熟悉淘宝平台的爆款特征和品类趋势。");
+  const parsed = safeJsonParse(text, {
+    hotProducts: MOCK_TB_DATA.slice(0, 3),
+    categoryAnalysis: {
+      tops: { ratio: 35, growth: "+23%" },
+      bottoms: { ratio: 28, growth: "+18%" },
+      outerwear: { ratio: 22, growth: "+35%" },
+      accessories: { ratio: 15, growth: "+42%" },
+    },
+  });
+
+  return {
+    hotProducts: Array.isArray(parsed.hotProducts) ? parsed.hotProducts.slice(0, 5).map(normalizeTbProduct) : MOCK_TB_DATA.slice(0, 3),
+    categoryAnalysis: parsed.categoryAnalysis || {
+      tops: { ratio: 35, growth: "+23%" },
+      bottoms: { ratio: 28, growth: "+18%" },
+      outerwear: { ratio: 22, growth: "+35%" },
+      accessories: { ratio: 15, growth: "+42%" },
+    },
+  };
+}
+
+function normalizeTbProduct(p: any): TaobaoProduct {
+  return {
+    name: String(p.name || ""),
+    sales: Number(p.sales || 0),
+    growthRate: String(p.growthRate || ""),
+    price: String(p.price || ""),
+    image: String(p.image || ""),
+    shopName: String(p.shopName || ""),
+  };
 }
 
 export async function crawlDouyin(query: string): Promise<CrawlerResult> {
   try {
-    const result: CrawlerResult = {
+    const aiData = await generateDouyinData(query);
+    return {
+      platform: "douyin",
+      query,
+      crawledAt: new Date().toISOString(),
+      data: aiData,
+    };
+  } catch (error) {
+    console.warn("Douyin AI crawl fallback:", error);
+    return {
       platform: "douyin",
       query,
       crawledAt: new Date().toISOString(),
       data: {
-        viralVideos: MOCK_DY_DATA.filter(v => 
+        viralVideos: MOCK_DY_DATA.filter(v =>
           v.title.includes(query) || query.includes("穿搭")
         ).slice(0, 5),
         trendingTopics: ["#职场穿搭", "#秋冬穿搭", "#极简风", "#平价时尚", "#新中式"],
       },
     };
-    return result;
-  } catch (error) {
-    console.error("Douyin crawl error:", error);
-    return {
-      platform: "douyin",
-      query,
-      crawledAt: new Date().toISOString(),
-      data: {
-        viralVideos: MOCK_DY_DATA.slice(0, 3),
-        trendingTopics: ["#职场穿搭", "#秋冬穿搭", "#极简风"],
-      },
-    };
   }
+}
+
+async function generateDouyinData(query: string) {
+  const prompt = `你是一位服装行业短视频趋势分析专家。请围绕关键词「${query}」生成抖音平台的热门视频和话题分析。
+
+请严格以JSON格式输出，不要包含任何其他文字：
+{
+  "viralVideos": [
+    {
+      "title": "视频标题",
+      "views": 568000,
+      "likes": 45600,
+      "comments": 3200,
+      "shares": 18000,
+      "cover": ""
+    }
+  ],
+  "trendingTopics": ["#话题1", "#话题2", "#话题3", "#话题4", "#话题5"]
+}`;
+
+  const text = await generateText(prompt, "你是服装行业短视频趋势分析专家，熟悉抖音平台的内容热点和时尚传播规律。");
+  const parsed = safeJsonParse(text, {
+    viralVideos: MOCK_DY_DATA.slice(0, 3),
+    trendingTopics: ["#职场穿搭", "#秋冬穿搭", "#极简风"],
+  });
+
+  return {
+    viralVideos: Array.isArray(parsed.viralVideos) ? parsed.viralVideos.slice(0, 5).map(normalizeDyVideo) : MOCK_DY_DATA.slice(0, 3),
+    trendingTopics: Array.isArray(parsed.trendingTopics) ? parsed.trendingTopics.slice(0, 5) : ["#职场穿搭", "#秋冬穿搭", "#极简风"],
+  };
+}
+
+function normalizeDyVideo(v: any): DouyinVideo {
+  return {
+    title: String(v.title || ""),
+    views: Number(v.views || 0),
+    likes: Number(v.likes || 0),
+    comments: Number(v.comments || 0),
+    shares: Number(v.shares || 0),
+    cover: String(v.cover || ""),
+  };
 }
 
 export async function crawlAllPlatforms(query: string): Promise<CrawlerResult[]> {
@@ -241,6 +387,15 @@ export interface FabricDetail {
   supplier: string;
   characteristics: string[];
   usage: string[];
+}
+
+function safeJsonParse<T>(text: string, fallback: T): T {
+  try {
+    const normalized = text.replace(/^[\s\S]*?```json\s*([\s\S]*?)\s*```[\s\S]*$/, "$1").trim();
+    return JSON.parse(normalized || text) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 const FABRIC_SUPPLIERS: FabricSupplier[] = [
