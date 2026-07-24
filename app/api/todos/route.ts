@@ -17,6 +17,9 @@ export async function GET(request: Request) {
     const headerTenant = getTenantFromHeaders(request);
     const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
     const status = url.searchParams.get("status"); // pending/in_progress/completed
+    const targetTable = url.searchParams.get("targetTable");
+    const targetId = url.searchParams.get("targetId");
+    const assignedTo = url.searchParams.get("assignedTo");
 
     let query = supabase
       .from("todos")
@@ -29,6 +32,15 @@ export async function GET(request: Request) {
     }
     if (status) {
       query = query.eq("status", status);
+    }
+    if (targetTable) {
+      query = query.eq("target_table", targetTable);
+    }
+    if (targetId) {
+      query = query.eq("target_id", targetId);
+    }
+    if (assignedTo) {
+      query = query.eq("assigned_to", assignedTo);
     }
 
     const { data, error } = await query;

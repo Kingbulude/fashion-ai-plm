@@ -34,11 +34,13 @@ import {
   LayoutDashboard,
   ShoppingCart,
   ShieldAlert,
+  ListTodo,
 } from "lucide-react";
 import { StyleOverview } from "@/components/styles/style-overview";
 import { StyleStateFlow } from "@/components/styles/style-state-flow";
 import { StyleSalesTab } from "@/components/styles/sales-tab";
 import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
+import { StyleTodos } from "@/components/styles/style-todos";
 
 export const runtime = "edge";
 
@@ -308,6 +310,10 @@ export default function StyleDetailPage() {
                 <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
                 作战室
               </TabsTrigger>
+              <TabsTrigger value="todos" className="h-9 px-4">
+                <ListTodo className="h-3.5 w-3.5 mr-1.5" />
+                待办
+              </TabsTrigger>
               <TabsTrigger value="info" className="h-9 px-4">基本信息</TabsTrigger>
               <TabsTrigger value="assets" className="h-9 px-4">设计资产</TabsTrigger>
               <TabsTrigger value="techpack" className="h-9 px-4">工艺包</TabsTrigger>
@@ -341,6 +347,11 @@ export default function StyleDetailPage() {
               completion={completion}
               onTransition={handleTransition}
             />
+          </TabsContent>
+
+          {/* 待办 Tab */}
+          <TabsContent value="todos" className="mt-0">
+            <StyleTodos styleId={id} />
           </TabsContent>
 
           <TabsContent value="info" className="mt-0">
