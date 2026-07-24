@@ -285,10 +285,13 @@ export default function HomePage() {
     return str.split("\n").filter(line => line.trim()).map(line => line.trim());
   };
 
-  // 计算某条工序连线的负责主管：优先匹配包含目标节点的主管类型，无则取品牌负责人
-  const getResponsibleOwner = (toNode: string): { name: string; role: string } => {
+  // 计算某条工序连线的负责主管：
+  // - 正向/关键流程：由目标节点的主管负责
+  // - 反馈流程（如售后→企划）：由起始节点的主管负责；未设置则取品牌负责人
+  const getResponsibleOwner = (fromNode: string, toNode: string, linkType: string): { name: string; role: string } => {
+    const responsibleNode = linkType === "feedback" ? fromNode : toNode;
     const scope = processOwnerScopes.find((s: any) =>
-      Array.isArray(s.process_nodes) && s.process_nodes.includes(toNode)
+      Array.isArray(s.process_nodes) && s.process_nodes.includes(responsibleNode)
     );
     if (scope) {
       const assignment = userProcessOwnerScopes.find((a: any) => a.scope_id === scope.id);
@@ -969,7 +972,11 @@ export default function HomePage() {
                   <span className="truncate">
                     {editingLink
                       ? (() => {
-                          const owner = getResponsibleOwner(editingLink.to_node);
+                          const owner = getResponsibleOwner(
+                            editingLink.from_node,
+                            editingLink.to_node,
+                            editingLink.link_type
+                          );
                           return owner.role
                             ? `${owner.name}（${owner.role}）`
                             : owner.name;
