@@ -89,7 +89,7 @@ export default function DesignPage() {
                     <span className="text-xs text-muted-foreground">{style.category || "未分类"}</span>
                   </div>
                   <p className="font-medium text-sm truncate">{style.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{style.season || "无季节"}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{style.seasonId || "无季节"}</p>
                 </CardContent>
               </Card>
             ))}

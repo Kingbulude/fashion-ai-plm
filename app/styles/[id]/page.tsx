@@ -276,7 +276,7 @@ export default function StyleDetailPage() {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                {style.styleNo} · {style.category || "未分类"} · {style.season || "-"}
+                {style.styleNo} · {style.category || "未分类"} · {style.seasonId || "-"}
               </p>
             </div>
           </div>

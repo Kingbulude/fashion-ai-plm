@@ -398,7 +398,7 @@ function KanbanView({
 // 看板小卡片
 function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) {
   const cfg = STATUS_CONFIG[style.status] || STATUS_CONFIG.planning;
-  const costOverrun = style.target_cost && style.actual_cost && style.actual_cost > style.target_cost;
+  const costOverrun = style.targetCost && style.actualCost && style.actualCost > style.targetCost;
   return (
     <div
       onClick={onClick}
@@ -408,7 +408,7 @@ function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) 
         <p className="text-sm font-semibold text-foreground truncate flex-1 leading-tight">{style.name}</p>
         <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-navy-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
       </div>
-      <p className="text-xs text-muted-foreground mb-2.5">{style.style_no}</p>
+      <p className="text-xs text-muted-foreground mb-2.5">{style.styleNo}</p>
       {style.coverImage || style.cover_image ? (
         <div className="aspect-[4/3] bg-sand-100 rounded-lg mb-3 overflow-hidden">
           <img
@@ -430,12 +430,12 @@ function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) 
         ) : (
           <span />
         )}
-        {style.target_cost ? (
+        {style.targetCost ? (
           <span className={`text-xs font-medium ${costOverrun ? "text-destructive" : "text-foreground"}`}>
-            ¥{style.target_cost}
-            {style.actual_cost && (
+            ¥{style.targetCost}
+            {style.actualCost && (
               <span className={costOverrun ? "text-destructive/80" : "text-muted-foreground/70 font-normal ml-1"}>
-                / ¥{style.actual_cost}
+                / ¥{style.actualCost}
               </span>
             )}
           </span>
@@ -460,7 +460,7 @@ function GridView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id: 
 
 function StyleCardLarge({ style, onClick }: { style: any; onClick: () => void }) {
   const cfg = STATUS_CONFIG[style.status] || STATUS_CONFIG.planning;
-  const costOverrun = style.target_cost && style.actual_cost && style.actual_cost > style.target_cost;
+  const costOverrun = style.targetCost && style.actualCost && style.actualCost > style.targetCost;
   return (
     <Card className="card-premium cursor-pointer hover:shadow-premium transition-all overflow-hidden group" onClick={onClick}>
       <div className="aspect-[3/4] bg-gradient-to-br from-sand-100 to-sand-200 flex items-center justify-center relative overflow-hidden">
@@ -482,7 +482,7 @@ function StyleCardLarge({ style, onClick }: { style: any; onClick: () => void })
       </div>
       <CardContent className="p-4">
         <p className="font-semibold text-sm text-foreground truncate">{style.name}</p>
-        <p className="text-xs text-muted-foreground mt-1 mb-3">{style.style_no}</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-3">{style.styleNo}</p>
         <div className="flex items-center justify-between">
           {style.category ? (
             <Badge variant="outline" className="text-[11px] h-5 px-1.5 border-border">
@@ -491,12 +491,12 @@ function StyleCardLarge({ style, onClick }: { style: any; onClick: () => void })
           ) : (
             <span />
           )}
-          {style.target_cost ? (
+          {style.targetCost ? (
             <span className={`text-xs font-medium ${costOverrun ? "text-destructive" : "text-foreground"}`}>
-              ¥{style.target_cost}
-              {style.actual_cost && (
+              ¥{style.targetCost}
+              {style.actualCost && (
                 <span className={costOverrun ? "text-destructive/80" : "text-muted-foreground/70 font-normal ml-1"}>
-                  / ¥{style.actual_cost}
+                  / ¥{style.actualCost}
                 </span>
               )}
             </span>
@@ -531,14 +531,14 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
             {styles.map((style) => {
               const cfg = STATUS_CONFIG[style.status] || STATUS_CONFIG.planning;
               const costOverrun =
-                style.target_cost && style.actual_cost && style.actual_cost > style.target_cost;
+                style.targetCost && style.actualCost && style.actualCost > style.targetCost;
               return (
                 <tr
                   key={style.id}
                   onClick={() => onStyleClick(style.id)}
                   className="border-b border-border hover:bg-sand-50/50 cursor-pointer transition-colors"
                 >
-                  <td className="px-5 py-3.5 font-mono text-xs text-foreground">{style.style_no}</td>
+                  <td className="px-5 py-3.5 font-mono text-xs text-foreground">{style.styleNo}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-lg bg-sand-100 flex-shrink-0 overflow-hidden">
@@ -560,24 +560,24 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                     <Badge className={`${cfg.bg} ${cfg.text} border-0`}>{cfg.label}</Badge>
                   </td>
                   <td className="px-5 py-3.5 text-right text-foreground">
-                    {style.target_cost ? `¥${style.target_cost}` : "-"}
+                    {style.targetCost ? `¥${style.targetCost}` : "-"}
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    {style.actual_cost ? (
+                    {style.actualCost ? (
                       <span className={costOverrun ? "text-destructive font-semibold" : "text-foreground"}>
-                        ¥{style.actual_cost}
+                        ¥{style.actualCost}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
                   <td className="px-5 py-3.5 text-muted-foreground text-xs">
-                    {new Date(style.updated_at).toLocaleDateString("zh-CN", {
+                    {style.updatedAt ? new Date(style.updatedAt).toLocaleDateString("zh-CN", {
                       month: "numeric",
                       day: "numeric",
                       hour: "numeric",
                       minute: "numeric",
-                    })}
+                    }) : "-"}
                   </td>
                   <td className="px-5 py-3.5">
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
