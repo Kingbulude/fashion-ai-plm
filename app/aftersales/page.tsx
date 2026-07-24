@@ -37,9 +37,10 @@ export default function AftersalesPage() {
     styleId: "",
     type: "return",
     reason: "",
+    quantity: "1",
     amount: "",
-    resolution: "",
-    customerInfo: "",
+    status: "pending",
+    solution: "",
   });
 
   const showToast = (type: "success" | "error", message: string) => {
@@ -84,15 +85,16 @@ export default function AftersalesPage() {
           styleId: form.styleId,
           type: form.type,
           reason: form.reason,
+          quantity: form.quantity ? Number(form.quantity) : 1,
           amount: form.amount ? Number(form.amount) : null,
-          resolution: form.resolution || null,
-          customerInfo: form.customerInfo || null,
+          status: form.status || "pending",
+          solution: form.solution || null,
         }),
       });
       if (!res.ok) throw new Error("保存失败");
       showToast("success", "售后记录已添加");
       setDialogOpen(false);
-      setForm({ styleId: "", type: "return", reason: "", amount: "", resolution: "", customerInfo: "" });
+      setForm({ styleId: "", type: "return", reason: "", quantity: "1", amount: "", status: "pending", solution: "" });
       fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "保存失败";
@@ -195,7 +197,7 @@ export default function AftersalesPage() {
                     </div>
                     <div className="text-right">
                       {record.amount > 0 && <p className="font-semibold text-red-500">-{formatCurrency(record.amount)}</p>}
-                      <p className="text-xs text-muted-foreground">{record.resolution || "待处理"}</p>
+                      <p className="text-xs text-muted-foreground">{record.quantity || 1} 件 · {record.solution || "待处理"}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -229,6 +231,21 @@ export default function AftersalesPage() {
                   </select>
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs">状态</Label>
+                  <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="resolved">已解决</option>
+                    <option value="closed">已关闭</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">数量 *</Label>
+                  <Input type="number" placeholder="件数" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs">金额</Label>
                   <Input type="number" placeholder="¥" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
                 </div>
@@ -239,11 +256,7 @@ export default function AftersalesPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">处理方案</Label>
-                <Input placeholder="如：已退款、已换货" value={form.resolution} onChange={(e) => setForm({ ...form, resolution: e.target.value })} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">客户信息</Label>
-                <Input placeholder="可选" value={form.customerInfo} onChange={(e) => setForm({ ...form, customerInfo: e.target.value })} />
+                <Input placeholder="如：已退款、已换货" value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} />
               </div>
             </div>
             <DialogFooter>

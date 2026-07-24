@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     const { data, error } = await supabase
-      .from("sales")
+      .from("sales_records")
       .select("*, styles:style_id(name, category, style_no)")
       .in("style_id", styleIds)
       .order("sale_date", { ascending: false });
@@ -63,21 +63,39 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { styleId, saleDate, quantity, amount, channel, customerInfo } = body;
+    const { styleId, saleDate, quantity, amount, unitPrice, color, size, channel, customerInfo } = body;
 
     if (!styleId || !saleDate || !quantity || !amount) {
       return NextResponse.json({ error: "必填字段不能为空" }, { status: 400 });
     }
 
+    // 从款式自动继承租户字段
+    const { data: style } = await supabase
+      .from("styles")
+      .select("company_id, brand_id, season_id")
+      .eq("id", styleId)
+      .single();
+
+    const orderNo = `SO-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const qty = Number(quantity);
+    const amt = Number(amount);
+    const computedUnitPrice = unitPrice ? Number(unitPrice) : (qty > 0 ? amt / qty : 0);
+
     const { data, error } = await supabase
-      .from("sales")
+      .from("sales_records")
       .insert({
         style_id: styleId,
+        company_id: style?.company_id || null,
+        brand_id: style?.brand_id || null,
+        season_id: style?.season_id || null,
+        order_no: orderNo,
         sale_date: saleDate,
-        quantity: Number(quantity),
-        amount: Number(amount),
+        quantity: qty,
+        unit_price: computedUnitPrice,
+        total_amount: amt,
+        color: color || null,
+        size: size || null,
         channel: channel || null,
-        customer_info: customerInfo || null,
       })
       .select()
       .single();

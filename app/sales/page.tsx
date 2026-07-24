@@ -37,6 +37,9 @@ export default function SalesPage() {
     saleDate: new Date().toISOString().split("T")[0],
     quantity: "",
     amount: "",
+    unitPrice: "",
+    color: "",
+    size: "",
     channel: "",
     customerInfo: "",
   });
@@ -84,6 +87,9 @@ export default function SalesPage() {
           saleDate: form.saleDate,
           quantity: Number(form.quantity),
           amount: Number(form.amount),
+          unitPrice: form.unitPrice ? Number(form.unitPrice) : undefined,
+          color: form.color || null,
+          size: form.size || null,
           channel: form.channel || null,
           customerInfo: form.customerInfo || null,
         }),
@@ -96,6 +102,9 @@ export default function SalesPage() {
         saleDate: new Date().toISOString().split("T")[0],
         quantity: "",
         amount: "",
+        unitPrice: "",
+        color: "",
+        size: "",
         channel: "",
         customerInfo: "",
       });
@@ -194,6 +203,7 @@ export default function SalesPage() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(sale.saleDate).toLocaleDateString("zh-CN")}
                         {sale.channel && ` · ${sale.channel}`}
+                        {(sale.color || sale.size) && ` · ${[sale.color, sale.size].filter(Boolean).join(" / ")}`}
                       </p>
                     </div>
                   </div>
@@ -237,14 +247,28 @@ export default function SalesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">数量 *</Label>
                   <Input type="number" placeholder="件数" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs">单价</Label>
+                  <Input type="number" placeholder="¥" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs">金额 *</Label>
                   <Input type="number" placeholder="¥" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">颜色</Label>
+                  <Input placeholder="如：黑色" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">尺码</Label>
+                  <Input placeholder="如：M" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-1">

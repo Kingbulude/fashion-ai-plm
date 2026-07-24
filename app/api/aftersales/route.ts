@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     }
 
     const { data, error } = await supabase
-      .from("aftersales")
+      .from("aftersales_records")
       .select("*, styles:style_id(name, style_no)")
       .in("style_id", styleIds)
       .order("created_at", { ascending: false });
@@ -58,21 +58,31 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { styleId, type, reason, amount, resolution, customerInfo } = body;
+    const { styleId, type, reason, quantity, amount, status, solution } = body;
 
     if (!styleId || !type || !reason) {
       return NextResponse.json({ error: "必填字段不能为空" }, { status: 400 });
     }
 
+    // 从款式自动继承租户字段
+    const { data: style } = await supabase
+      .from("styles")
+      .select("company_id, brand_id")
+      .eq("id", styleId)
+      .single();
+
     const { data, error } = await supabase
-      .from("aftersales")
+      .from("aftersales_records")
       .insert({
         style_id: styleId,
+        company_id: style?.company_id || null,
+        brand_id: style?.brand_id || null,
         type,
         reason,
-        amount: Number(amount) || null,
-        resolution: resolution || null,
-        customer_info: customerInfo || null,
+        quantity: quantity ? Number(quantity) : 1,
+        amount: amount ? Number(amount) : null,
+        status: status || "pending",
+        solution: solution || null,
       })
       .select()
       .single();
