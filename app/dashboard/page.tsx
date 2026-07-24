@@ -6,8 +6,9 @@ import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useTenant } from "@/lib/auth/tenant-context";
+import { useTenant, AISkill } from "@/lib/auth/tenant-context";
 import { useApi } from "@/lib/api/use-api";
+import { AIChatDialog } from "@/components/ai/ai-chat-dialog";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -35,6 +36,7 @@ import {
   BarChart3,
   Wand2,
   Bot,
+  MessageSquare,
 } from "lucide-react";
 
 const PIPELINE_STAGES = [
@@ -76,6 +78,19 @@ export default function DashboardPage() {
   const api = useApi();
 
   const aiSkills = accessibleAISkills.slice(0, 8);
+
+  const [chatSkill, setChatSkill] = useState<AISkill | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  const openChat = (skill: AISkill) => {
+    setChatSkill(skill);
+    setChatOpen(true);
+  };
+
+  const closeChat = () => {
+    setChatOpen(false);
+    setChatSkill(null);
+  };
 
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -522,13 +537,10 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {aiSkills.map((skill) => {
-                      const Icon = skill.entry_route ? Wand2 : Sparkles;
-                      return (
-                        <Link
-                          key={skill.id}
-                          href={skill.entry_route || "/ai-workspace"}
-                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group"
-                        >
+                      const hasEntry = !!skill.entry_route;
+                      const Icon = hasEntry ? Wand2 : MessageSquare;
+                      const cardContent = (
+                        <>
                           <div className="p-2.5 rounded-xl bg-navy-100 text-navy-600 group-hover:bg-navy-200 transition-colors flex-shrink-0">
                             <Icon className="h-5 w-5" />
                           </div>
@@ -538,7 +550,25 @@ export default function DashboardPage() {
                               {skill.description || "AI 智能体"}
                             </p>
                           </div>
+                        </>
+                      );
+
+                      return hasEntry ? (
+                        <Link
+                          key={skill.id}
+                          href={skill.entry_route!}
+                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group"
+                        >
+                          {cardContent}
                         </Link>
+                      ) : (
+                        <button
+                          key={skill.id}
+                          onClick={() => openChat(skill)}
+                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group text-left w-full"
+                        >
+                          {cardContent}
+                        </button>
                       );
                     })}
                   </div>
@@ -555,6 +585,8 @@ export default function DashboardPage() {
             </div>
           </>
         )}
+
+        <AIChatDialog open={chatOpen} onClose={closeChat} skill={chatSkill} />
       </div>
     </SidebarLayout>
   );
