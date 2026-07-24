@@ -53,20 +53,20 @@ export async function GET(request: Request) {
 
     // 2. 销售数据
     const { data: salesData } = await supabase
-      .from("sales")
+      .from("sales_records")
       .select("*")
       .in("style_id", styleIds);
     const sales = (toCamelCase(salesData) || []) as any[];
 
     // 3. 售后数据
     const { data: aftersalesData } = await supabase
-      .from("aftersales")
+      .from("aftersales_records")
       .select("*")
       .in("style_id", styleIds);
     const aftersales = (toCamelCase(aftersalesData) || []) as any[];
 
     // 4. KPI 计算
-    const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+    const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0);
     const totalQuantity = sales.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
     const totalOrders = sales.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       if (!s.saleDate) continue;
       const day = s.saleDate.split("T")[0];
       if (dailyMap[day]) {
-        dailyMap[day].revenue += s.amount || 0;
+        dailyMap[day].revenue += s.totalAmount || 0;
         dailyMap[day].quantity += s.quantity || 0;
         dailyMap[day].orders += 1;
       }
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
       if (!style) continue;
       const cat = style.category || "未分类";
       if (!categoryMap[cat]) categoryMap[cat] = { revenue: 0, quantity: 0 };
-      categoryMap[cat].revenue += s.amount || 0;
+      categoryMap[cat].revenue += s.totalAmount || 0;
       categoryMap[cat].quantity += s.quantity || 0;
     }
     const categoryBreakdown = Object.entries(categoryMap)
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
       if (!styleRevenue[s.styleId]) {
         styleRevenue[s.styleId] = { revenue: 0, quantity: 0, orders: 0 };
       }
-      styleRevenue[s.styleId].revenue += s.amount || 0;
+      styleRevenue[s.styleId].revenue += s.totalAmount || 0;
       styleRevenue[s.styleId].quantity += s.quantity || 0;
       styleRevenue[s.styleId].orders += 1;
     }
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
     const channelMap: Record<string, number> = {};
     for (const s of sales) {
       const ch = s.channel || "其他";
-      channelMap[ch] = (channelMap[ch] || 0) + (s.amount || 0);
+      channelMap[ch] = (channelMap[ch] || 0) + (s.totalAmount || 0);
     }
     const channelBreakdown = Object.entries(channelMap)
       .map(([channel, revenue]) => ({ channel, revenue }))

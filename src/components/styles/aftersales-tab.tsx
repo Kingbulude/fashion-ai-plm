@@ -36,9 +36,10 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
   const [form, setForm] = useState({
     type: "return",
     reason: "",
+    quantity: "1",
     amount: "",
-    resolution: "",
-    customerInfo: "",
+    status: "pending",
+    solution: "",
   });
 
   useEffect(() => {
@@ -74,14 +75,15 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
           styleId,
           type: form.type,
           reason: form.reason,
+          quantity: form.quantity ? Number(form.quantity) : 1,
           amount: form.amount ? Number(form.amount) : null,
-          resolution: form.resolution || null,
-          customerInfo: form.customerInfo || null,
+          status: form.status || "pending",
+          solution: form.solution || null,
         }),
       });
       if (!res.ok) throw new Error("创建失败");
       setShowAdd(false);
-      setForm({ type: "return", reason: "", amount: "", resolution: "", customerInfo: "" });
+      setForm({ type: "return", reason: "", quantity: "1", amount: "", status: "pending", solution: "" });
       fetchRecords();
     } catch (err: any) {
       alert(err.message || "创建失败");
@@ -196,9 +198,12 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
                               -¥{r.amount.toLocaleString("zh-CN")}
                             </span>
                           )}
-                          {r.customerInfo && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {r.quantity || 1} 件
+                          </Badge>
+                          {r.status && (
                             <Badge variant="outline" className="text-[10px]">
-                              {r.customerInfo}
+                              {r.status === "pending" ? "待处理" : r.status === "processing" ? "处理中" : r.status === "resolved" ? "已解决" : r.status === "closed" ? "已关闭" : r.status}
                             </Badge>
                           )}
                         </div>
@@ -208,10 +213,10 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
                             <Calendar className="h-3 w-3" />
                             {r.createdAt?.split("T")[0] || "-"}
                           </span>
-                          {r.resolution && (
+                          {r.solution && (
                             <>
                               <span>·</span>
-                              <span>处理：{r.resolution}</span>
+                              <span>处理：{r.solution}</span>
                             </>
                           )}
                         </div>
@@ -268,6 +273,16 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <Label className="text-xs">数量 *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.quantity}
+                    onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                    placeholder="件数"
+                  />
+                </div>
+                <div>
                   <Label className="text-xs">金额（可选）</Label>
                   <Input
                     type="number"
@@ -277,22 +292,29 @@ export function StyleAfterSalesTab({ styleId, styleName }: { styleId: string; st
                     placeholder="元"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">客户信息</Label>
+                  <Label className="text-xs">状态</Label>
+                  <select
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  >
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="resolved">已解决</option>
+                    <option value="closed">已关闭</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">处理方案</Label>
                   <Input
-                    value={form.customerInfo}
-                    onChange={(e) => setForm({ ...form, customerInfo: e.target.value })}
-                    placeholder="可选"
+                    value={form.solution}
+                    onChange={(e) => setForm({ ...form, solution: e.target.value })}
+                    placeholder="如：已退款、已换货"
                   />
                 </div>
-              </div>
-              <div>
-                <Label className="text-xs">处理方案</Label>
-                <Input
-                  value={form.resolution}
-                  onChange={(e) => setForm({ ...form, resolution: e.target.value })}
-                  placeholder="如：已退款、已换货"
-                />
               </div>
               <div className="flex justify-end gap-2 pt-3">
                 <Button variant="outline" onClick={() => setShowAdd(false)}>取消</Button>

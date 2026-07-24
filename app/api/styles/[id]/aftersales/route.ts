@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     const { data, error } = await supabase
-      .from("aftersales")
+      .from("aftersales_records")
       .select("*")
       .eq("style_id", id)
       .order("created_at", { ascending: false });

@@ -104,8 +104,8 @@ export function StyleSalesTab({ styleId, styleName }: { styleId: string; styleNa
   const stats = {
     total: sales.length,
     quantity: sales.reduce((s, r) => s + (r.quantity || 0), 0),
-    revenue: sales.reduce((s, r) => s + (r.amount || 0), 0),
-    avgPrice: sales.length > 0 ? sales.reduce((s, r) => s + (r.amount || 0), 0) / sales.reduce((s, r) => s + (r.quantity || 0), 0) : 0,
+    revenue: sales.reduce((s, r) => s + (r.totalAmount || 0), 0),
+    avgPrice: sales.length > 0 ? sales.reduce((s, r) => s + (r.totalAmount || 0), 0) / sales.reduce((s, r) => s + (r.quantity || 0), 0) : 0,
   };
 
   // 按渠道分组
@@ -114,7 +114,7 @@ export function StyleSalesTab({ styleId, styleName }: { styleId: string; styleNa
     const ch = s.channel || "其他";
     if (!channelStats[ch]) channelStats[ch] = { quantity: 0, revenue: 0, orders: 0 };
     channelStats[ch].quantity += s.quantity || 0;
-    channelStats[ch].revenue += s.amount || 0;
+    channelStats[ch].revenue += s.totalAmount || 0;
     channelStats[ch].orders += 1;
   }
   const channelList = Object.entries(channelStats).sort((a, b) => b[1].revenue - a[1].revenue);
@@ -217,7 +217,7 @@ export function StyleSalesTab({ styleId, styleName }: { styleId: string; styleNa
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-medium text-slate-800 text-sm">
-                              ¥{s.amount?.toLocaleString("zh-CN")}
+                              ¥{s.totalAmount?.toLocaleString("zh-CN")}
                             </span>
                             <span className="text-xs text-slate-400">×</span>
                             <span className="text-sm text-slate-700">{s.quantity}件</span>
@@ -234,7 +234,7 @@ export function StyleSalesTab({ styleId, styleName }: { styleId: string; styleNa
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold text-slate-700">
-                            ¥{s.quantity > 0 ? (s.amount / s.quantity).toFixed(0) : 0}
+                            ¥{s.quantity > 0 ? (s.totalAmount / s.quantity).toFixed(0) : 0}
                           </p>
                           <p className="text-[10px] text-slate-400">件单价</p>
                         </div>
