@@ -30,6 +30,7 @@ import {
   User,
   AlertTriangle,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 
 const SUPPLIER_TYPES: Record<string, { label: string; color: string }> = {
@@ -61,6 +62,13 @@ export default function SuppliersPage() {
     priceLevel: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showAIMatch, setShowAIMatch] = useState(false);
+  const [aiMatchLoading, setAiMatchLoading] = useState(false);
+  const [aiMatchResults, setAiMatchResults] = useState<any[]>([]);
+  const [matchForm, setMatchForm] = useState({
+    materialType: "fabric",
+    minRating: "3",
+  });
 
   useEffect(() => {
     fetchSuppliers();
@@ -84,6 +92,33 @@ export default function SuppliersPage() {
       setSuppliers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAIMatch = async () => {
+    setAiMatchLoading(true);
+    try {
+      const typeMap: Record<string, string> = {
+        fabric: "fabric_supplier",
+        accessory: "accessory_supplier",
+        factory: "factory",
+      };
+      const res = await fetch("/api/suppliers/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materialType: typeMap[matchForm.materialType] || matchForm.materialType,
+          minRating: Number(matchForm.minRating),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiMatchResults(data.suppliers || []);
+      }
+    } catch (err) {
+      console.error("AI匹配失败:", err);
+    } finally {
+      setAiMatchLoading(false);
     }
   };
 
@@ -146,10 +181,16 @@ export default function SuppliersPage() {
             </div>
             <p className="text-sm text-muted-foreground ml-10">管理面料、辅料、加工厂等供应链资源</p>
           </div>
-          <Button onClick={() => setShowAdd(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
-            <Plus className="h-4 w-4 mr-1.5" />
-            新增供应商
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowAIMatch(true)}>
+              <Sparkles className="h-4 w-4 mr-1.5" />
+              AI智能匹配
+            </Button>
+            <Button onClick={() => setShowAdd(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
+              <Plus className="h-4 w-4 mr-1.5" />
+              新增供应商
+            </Button>
+          </div>
         </div>
 
         {/* 类型统计条 */}
@@ -405,6 +446,91 @@ export default function SuppliersPage() {
                     创建
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* AI智能匹配弹窗 */}
+        {showAIMatch && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+              <CardHeader className="flex items-center justify-between flex-shrink-0">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-600" />
+                    AI 智能匹配供应商
+                  </CardTitle>
+                  <CardDescription>根据您的需求匹配最合适的供应商</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowAIMatch(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 mb-1.5 block">物料类型</label>
+                    <select
+                      value={matchForm.materialType}
+                      onChange={(e) => setMatchForm({ ...matchForm, materialType: e.target.value })}
+                      className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                    >
+                      <option value="fabric">面料</option>
+                      <option value="accessory">辅料</option>
+                      <option value="factory">加工厂</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 mb-1.5 block">最低评分</label>
+                    <select
+                      value={matchForm.minRating}
+                      onChange={(e) => setMatchForm({ ...matchForm, minRating: e.target.value })}
+                      className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                    >
+                      <option value="0">不限</option>
+                      <option value="3">3分以上</option>
+                      <option value="4">4分以上</option>
+                      <option value="4.5">4.5分以上</option>
+                    </select>
+                  </div>
+                </div>
+                <Button onClick={handleAIMatch} disabled={aiMatchLoading} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
+                  {aiMatchLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {aiMatchLoading ? "匹配中..." : "开始匹配"}
+                </Button>
+
+                {aiMatchResults.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-medium">匹配结果 ({aiMatchResults.length} 家)</p>
+                    {aiMatchResults.slice(0, 5).map((s: any) => (
+                      <div
+                        key={s.id}
+                        className="p-3 rounded-xl border border-border hover:border-purple-200 cursor-pointer transition-all"
+                        onClick={() => {
+                          setShowAIMatch(false);
+                          router.push(`/suppliers/${s.id}`);
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">{s.name}</span>
+                              <Badge variant="secondary" className="text-[10px]">
+                                匹配度 {s.matchScore}%
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{s.matchReason}</p>
+                          </div>
+                          <div className="flex items-center gap-0.5 text-amber-500">
+                            <Star className="h-3 w-3 fill-current" />
+                            <span className="text-xs font-medium">{s.overallRating || s.overall_rating || "0"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

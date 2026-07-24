@@ -24,6 +24,9 @@ import {
   RotateCcw,
   MessageSquareWarning,
   ShieldAlert,
+  BarChart3,
+  Sparkles,
+  Send,
 } from "lucide-react";
 
 export default function AftersalesPage() {
@@ -34,6 +37,9 @@ export default function AftersalesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [analyzeData, setAnalyzeData] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const [form, setForm] = useState({
     styleId: "",
@@ -71,6 +77,58 @@ export default function AftersalesPage() {
       setError("网络异常，加载售后数据失败");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setShowAnalysis(true);
+    try {
+      const res = await fetch("/api/aftersales/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "analyze", days: 30 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalyzeData(data);
+      }
+    } catch (err) {
+      console.error("分析失败:", err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handlePushToDesign = async () => {
+    if (!analyzeData?.suggestions?.length) return;
+    try {
+      const items = analyzeData.suggestions.map((s: any) => ({
+        category: s.category,
+        title: `${s.label}优化建议`,
+        description: s.suggestion,
+        severity: s.severity,
+        count: analyzeData.categoryStats[s.category]?.count || 0,
+      }));
+
+      const topStyle = analyzeData.topStyles?.[0];
+      const res = await fetch("/api/aftersales/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "push_to_design",
+          styleId: topStyle?.styleId,
+          items,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        showToast("success", `已推送 ${data.createdCount} 条反馈到设计端`);
+      }
+    } catch (err) {
+      console.error("推送失败:", err);
+      showToast("error", "推送失败");
     }
   };
 
@@ -135,10 +193,16 @@ export default function AftersalesPage() {
             <h1 className="text-2xl font-bold mb-1">售后记录</h1>
             <p className="text-muted-foreground">退货、换货、投诉管理与复盘</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            录入售后
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleAnalyze} disabled={analyzing}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              {analyzing ? "分析中..." : "缺陷分析"}
+            </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              录入售后
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -167,6 +231,112 @@ export default function AftersalesPage() {
             </CardContent>
           </Card>
         </div>
+
+        {showAnalysis && (
+          <Card className="border-0 shadow-sm mb-8 bg-gradient-to-br from-amber-50 to-orange-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-amber-600" />
+                  <h3 className="font-semibold text-lg">售后缺陷分析</h3>
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+                    近30天
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  {analyzeData?.suggestions?.length > 0 && (
+                    <Button size="sm" onClick={handlePushToDesign} className="bg-amber-600 hover:bg-amber-700 text-white">
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      推送设计端
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setShowAnalysis(false)}>
+                    收起
+                  </Button>
+                </div>
+              </div>
+
+              {analyzing ? (
+                <div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  分析中...
+                </div>
+              ) : !analyzeData ? (
+                <div className="py-8 text-center text-muted-foreground text-sm">
+                  点击"开始分析"查看售后缺陷统计
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      缺陷分类统计
+                    </h4>
+                    <div className="space-y-2">
+                      {Object.entries(analyzeData.categoryStats || {})
+                        .filter(([, v]: any) => v.count > 0)
+                        .sort((a: any, b: any) => b[1].count - a[1].count)
+                        .map(([key, data]: any) => (
+                          <div key={key} className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground w-20 flex-shrink-0">
+                              {data.label}
+                            </span>
+                            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
+                                style={{
+                                  width: `${Math.min(100, (data.count / (analyzeData.totalRecords || 1)) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium w-8 text-right">{data.count}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-600" />
+                      改进建议
+                    </h4>
+                    <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                      {(analyzeData.suggestions || []).map((s: any, i: number) => (
+                        <div
+                          key={i}
+                          className={`p-3 rounded-lg border ${
+                            s.severity === "critical"
+                              ? "border-red-200 bg-red-50"
+                              : s.severity === "major"
+                              ? "border-amber-200 bg-amber-50"
+                              : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${
+                                s.severity === "critical"
+                                  ? "bg-red-100 text-red-700 border-red-200"
+                                  : s.severity === "major"
+                                  ? "bg-amber-100 text-amber-700 border-amber-200"
+                                  : "bg-slate-100 text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              {s.severity === "critical" ? "严重" : s.severity === "major" ? "重要" : "一般"}
+                            </Badge>
+                            <span className="text-sm font-medium">{s.label}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{s.suggestion}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">

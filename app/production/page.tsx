@@ -70,10 +70,13 @@ export default function ProductionPage() {
   });
   const [styles, setStyles] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [materialAlerts, setMaterialAlerts] = useState<any[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
     fetchStyles();
+    fetchMaterialAlerts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBrand?.id]);
 
@@ -103,11 +106,42 @@ export default function ProductionPage() {
       const res = await fetch("/api/styles");
       if (res.ok) {
         const data = await res.json();
-        setStyles(Array.isArray(data) ? data : data.data || []);
+        setStyles(data.styles || data || []);
       }
     } catch (err) {
-      console.error("获取款式失败:", err);
-      setStyles([]);
+      console.error("获取款式列表失败:", err);
+    }
+  };
+
+  const fetchMaterialAlerts = async () => {
+    setAlertsLoading(true);
+    try {
+      const res = await fetch("/api/production/material-alerts");
+      if (res.ok) {
+        const data = await res.json();
+        setMaterialAlerts(data.alerts || []);
+      }
+    } catch (err) {
+      console.error("获取物料预警失败:", err);
+    } finally {
+      setAlertsLoading(false);
+    }
+  };
+
+  const createMaterialAlert = async (styleId: string) => {
+    try {
+      const res = await fetch(`/api/styles/${styleId}/material-alerts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "check_and_alert" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message || "操作成功");
+        fetchMaterialAlerts();
+      }
+    } catch (err) {
+      console.error("创建预警失败:", err);
     }
   };
 
@@ -237,6 +271,108 @@ export default function ProductionPage() {
             color={summary.overdue > 0 ? "destructive" : "success"}
           />
         </div>
+
+        {/* 缺料预警看板 */}
+        <Card className="card-premium mb-6 border-amber-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center justify-between section-title !before:hidden">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                缺料预警看板
+                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700 hover:bg-amber-100">
+                  {materialAlerts.length} 款缺料
+                </Badge>
+              </div>
+              <Button variant="outline" size="xs" onClick={fetchMaterialAlerts} disabled={alertsLoading}>
+                <RefreshCw className={`h-3 w-3 mr-1 ${alertsLoading ? "animate-spin" : ""}`} />
+                刷新
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              物料未齐套的款式列表，带生产中的款式优先显示
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {alertsLoading ? (
+              <div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                加载中...
+              </div>
+            ) : materialAlerts.length === 0 ? (
+              <div className="py-8 text-center">
+                <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">所有款式物料齐套</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                {materialAlerts.map((alert: any) => (
+                  <div
+                    key={alert.styleId}
+                    className={`p-3 rounded-xl border ${
+                      alert.alertLevel === "urgent"
+                        ? "border-red-200 bg-red-50/50"
+                        : alert.alertLevel === "high"
+                        ? "border-amber-200 bg-amber-50/50"
+                        : "border-slate-200 bg-slate-50/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-sm font-medium truncate">
+                            {alert.styleNo || "款式"} {alert.styleName && `· ${alert.styleName}`}
+                          </span>
+                          {alert.hasActiveProduction && (
+                            <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200 text-[10px]">
+                              生产中
+                            </Badge>
+                          )}
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${
+                              alert.alertLevel === "urgent"
+                                ? "bg-red-100 text-red-700 border-red-200"
+                                : alert.alertLevel === "high"
+                                ? "bg-amber-100 text-amber-700 border-amber-200"
+                                : "bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
+                          >
+                            {alert.missingItems} 种缺料
+                          </Badge>
+                          {alert.delayedItems > 0 && (
+                            <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200 text-[10px]">
+                              {alert.delayedItems} 种延迟
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          缺料：{alert.missingMaterials.join("、")}
+                          {alert.missingItems > alert.missingMaterials.length &&
+                            ` 等 ${alert.missingItems} 种`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Link href={`/styles/${alert.styleId}?tab=procurement`}>
+                          <Button variant="outline" size="xs">
+                            查看
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                          onClick={() => createMaterialAlert(alert.styleId)}
+                        >
+                          预警
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 工厂分布 */}
         {factoryStats.length > 0 && (

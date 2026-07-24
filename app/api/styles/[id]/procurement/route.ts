@@ -27,6 +27,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     const fulfillment = bomItems.map((bom: any) => {
       const proc = procurement.find((p: any) => p.bomItemId === bom.id);
+      const isDelayed = proc?.isDelayed || false;
       return {
         bomId: bom.id,
         materialName: bom.materialName,
@@ -34,6 +35,10 @@ export async function GET(request: Request, { params }: RouteContext) {
         status: proc?.status || "pending",
         receivedDate: proc?.actualDate || null,
         isFulfilled: proc?.status === "fully_received",
+        isDelayed,
+        delayDays: proc?.delayDays || 0,
+        orderQuantity: proc?.orderQuantity || 0,
+        receivedQuantity: proc?.receivedQuantity || 0,
       };
     });
 

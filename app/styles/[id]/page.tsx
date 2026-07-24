@@ -41,6 +41,8 @@ import { StyleStateFlow } from "@/components/styles/style-state-flow";
 import { StyleSalesTab } from "@/components/styles/sales-tab";
 import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
+import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
+import { Layers } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -316,6 +318,10 @@ export default function StyleDetailPage() {
               </TabsTrigger>
               <TabsTrigger value="info" className="h-9 px-4">基本信息</TabsTrigger>
               <TabsTrigger value="assets" className="h-9 px-4">设计资产</TabsTrigger>
+              <TabsTrigger value="3d" className="h-9 px-4">
+                <Layers className="h-3.5 w-3.5 mr-1.5" />
+                3D样衣
+              </TabsTrigger>
               <TabsTrigger value="techpack" className="h-9 px-4">工艺包</TabsTrigger>
               <TabsTrigger value="bom" className="h-9 px-4">BOM清单</TabsTrigger>
               <TabsTrigger value="sampling" className="h-9 px-4">打样</TabsTrigger>
@@ -585,6 +591,10 @@ export default function StyleDetailPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="3d" className="mt-0">
+            <Sample3dViewer styleId={id} />
           </TabsContent>
 
           <TabsContent value="techpack" className="mt-0">

@@ -39,8 +39,11 @@ interface ProcurementRecord {
   orderDate: string | null;
   expectedDate: string | null;
   actualDate: string | null;
-  quantity: number;
+  orderQuantity: number;
+  receivedQuantity: number;
   unitPrice: number | null;
+  isDelayed?: boolean;
+  delayDays?: number;
   bomItems?: { materialName: string; specification: string };
   suppliers?: { name: string };
 }
@@ -77,7 +80,13 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
     expectedDate: "",
     quantity: "",
     unitPrice: "",
+    receivedQuantity: "",
   });
+
+  const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
+  const [receivingRecord, setReceivingRecord] = useState<ProcurementRecord | null>(null);
+  const [receiveQuantity, setReceiveQuantity] = useState("");
+  const [receiveDate, setReceiveDate] = useState(new Date().toISOString().split("T")[0]);
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
@@ -120,7 +129,7 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
 
   const openAdd = () => {
     setEditingRecord(null);
-    setForm({ bomItemId: "", supplierId: "", status: "pending", orderDate: "", expectedDate: "", quantity: "", unitPrice: "" });
+    setForm({ bomItemId: "", supplierId: "", status: "pending", orderDate: "", expectedDate: "", quantity: "", unitPrice: "", receivedQuantity: "" });
     setDialogOpen(true);
   };
 
@@ -132,10 +141,50 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
       status: record.status,
       orderDate: record.orderDate || "",
       expectedDate: record.expectedDate || "",
-      quantity: String(record.quantity),
+      quantity: String(record.orderQuantity),
       unitPrice: record.unitPrice ? String(record.unitPrice) : "",
+      receivedQuantity: String(record.receivedQuantity || 0),
     });
     setDialogOpen(true);
+  };
+
+  const openReceive = (record: ProcurementRecord) => {
+    setReceivingRecord(record);
+    const remaining = record.orderQuantity - (record.receivedQuantity || 0);
+    setReceiveQuantity(String(remaining > 0 ? remaining : 0));
+    setReceiveDate(new Date().toISOString().split("T")[0]);
+    setReceiveDialogOpen(true);
+  };
+
+  const handleReceive = async () => {
+    if (!receivingRecord || !receiveQuantity) return;
+    setSaving(true);
+    try {
+      const newReceived = (receivingRecord.receivedQuantity || 0) + Number(receiveQuantity);
+      const total = receivingRecord.orderQuantity;
+      const newStatus = newReceived >= total ? "fully_received" : "partial_received";
+
+      const res = await fetch(`/api/styles/${styleId}/procurement/${receivingRecord.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receivedQuantity: newReceived,
+          status: newStatus,
+          actualDate: newStatus === "fully_received" ? receiveDate : receivingRecord.actualDate,
+        }),
+      });
+
+      if (!res.ok) throw new Error("到货登记失败");
+
+      showToast("success", newStatus === "fully_received" ? "全部到货登记成功" : "部分到货登记成功");
+      setReceiveDialogOpen(false);
+      fetchData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "操作失败";
+      showToast("error", msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -161,6 +210,7 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
           expectedDate: form.expectedDate || null,
           quantity: Number(form.quantity),
           unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
+          receivedQuantity: form.receivedQuantity ? Number(form.receivedQuantity) : 0,
         }),
       });
 
@@ -248,11 +298,15 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
             const bom = bomItems.find((b) => b.id === record.bomItemId);
             const materialName = record.bomItems?.materialName || bom?.materialName || "未知物料";
             const supplier = supplierOptions.find((s) => s.id === record.supplierId);
+            const orderQty = record.orderQuantity || 0;
+            const receivedQty = record.receivedQuantity || 0;
+            const progress = orderQty > 0 ? Math.min(100, (receivedQty / orderQty) * 100) : 0;
+            const isDelayed = record.isDelayed;
             return (
-              <Card key={record.id} className="border-0 shadow-sm">
+              <Card key={record.id} className={`border-0 shadow-sm ${isDelayed ? "ring-1 ring-red-200" : ""}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge className={`${status.bg} ${status.color} border-0`}>
                           <span className="mr-1">{status.icon}</span>
@@ -260,18 +314,36 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
                         </Badge>
                         <span className="text-sm font-medium">{materialName}</span>
                         {supplier && <span className="text-xs text-muted-foreground">· {supplier.name}</span>}
+                        {isDelayed && (
+                          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">
+                            延迟 {record.delayDays} 天
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         {record.orderDate && <span>下单：{record.orderDate}</span>}
                         {record.expectedDate && <span>预计：{record.expectedDate}</span>}
                         {record.actualDate && <span>到货：{record.actualDate}</span>}
                       </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="text-muted-foreground">数量：{record.quantity}</span>
-                        {record.unitPrice && <span className="text-muted-foreground">单价：¥{record.unitPrice}</span>}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">到货进度</span>
+                          <span className="font-medium">{receivedQty} / {orderQty}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${progress >= 100 ? "bg-green-500" : progress > 0 ? "bg-blue-500" : "bg-slate-200"}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {record.status !== "fully_received" && (
+                        <Button variant="outline" size="xs" onClick={() => openReceive(record)} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                          到货
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon-xs" onClick={() => openEdit(record)} className="text-slate-500">
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -345,6 +417,50 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>登记到货</DialogTitle>
+          </DialogHeader>
+          {receivingRecord && (
+            <div className="space-y-4">
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm font-medium">{receivingRecord.bomItems?.materialName || "物料"}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  已到货 {receivingRecord.receivedQuantity || 0} / 共 {receivingRecord.orderQuantity}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">本次到货数量</Label>
+                  <Input
+                    type="number"
+                    placeholder="到货数量"
+                    value={receiveQuantity}
+                    onChange={(e) => setReceiveQuantity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">到货日期</Label>
+                  <Input
+                    type="date"
+                    value={receiveDate}
+                    onChange={(e) => setReceiveDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiveDialogOpen(false)}>取消</Button>
+            <Button onClick={handleReceive} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              确认到货
             </Button>
           </DialogFooter>
         </DialogContent>
