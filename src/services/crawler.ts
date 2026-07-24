@@ -1,4 +1,5 @@
 import { generateText } from "@/lib/ai/cloudflare-ai";
+import { extractJsonFromText } from "@/lib/ai/json-generation";
 
 export interface CrawlerResult {
   platform: string;
@@ -171,11 +172,15 @@ async function generateXiaohongshuData(query: string) {
 }`;
 
   const text = await generateText(prompt, "你是服装行业社交媒体趋势分析专家，熟悉小红书平台的内容特征和时尚趋势。");
-  const parsed = safeJsonParse(text, {
+  const parsed = extractJsonFromText<{
+    trendingKeywords?: string[];
+    hotPosts?: any[];
+    trends?: any[];
+  }>(text) || {
     trendingKeywords: TREND_KEYWORDS.slice(0, 5),
     hotPosts: MOCK_XHS_DATA.slice(0, 3),
     trends: MARKET_TRENDS.slice(0, 3),
-  });
+  };
 
   return {
     trendingKeywords: Array.isArray(parsed.trendingKeywords) ? parsed.trendingKeywords.slice(0, 5) : TREND_KEYWORDS.slice(0, 5),
@@ -259,7 +264,10 @@ async function generateTaobaoData(query: string) {
 }`;
 
   const text = await generateText(prompt, "你是服装电商数据分析专家，熟悉淘宝平台的爆款特征和品类趋势。");
-  const parsed = safeJsonParse(text, {
+  const parsed = extractJsonFromText<{
+    hotProducts?: any[];
+    categoryAnalysis?: any;
+  }>(text) || {
     hotProducts: MOCK_TB_DATA.slice(0, 3),
     categoryAnalysis: {
       tops: { ratio: 35, growth: "+23%" },
@@ -267,7 +275,7 @@ async function generateTaobaoData(query: string) {
       outerwear: { ratio: 22, growth: "+35%" },
       accessories: { ratio: 15, growth: "+42%" },
     },
-  });
+  };
 
   return {
     hotProducts: Array.isArray(parsed.hotProducts) ? parsed.hotProducts.slice(0, 5).map(normalizeTbProduct) : MOCK_TB_DATA.slice(0, 3),
@@ -335,10 +343,13 @@ async function generateDouyinData(query: string) {
 }`;
 
   const text = await generateText(prompt, "你是服装行业短视频趋势分析专家，熟悉抖音平台的内容热点和时尚传播规律。");
-  const parsed = safeJsonParse(text, {
+  const parsed = extractJsonFromText<{
+    viralVideos?: any[];
+    trendingTopics?: string[];
+  }>(text) || {
     viralVideos: MOCK_DY_DATA.slice(0, 3),
     trendingTopics: ["#职场穿搭", "#秋冬穿搭", "#极简风"],
-  });
+  };
 
   return {
     viralVideos: Array.isArray(parsed.viralVideos) ? parsed.viralVideos.slice(0, 5).map(normalizeDyVideo) : MOCK_DY_DATA.slice(0, 3),
@@ -387,15 +398,6 @@ export interface FabricDetail {
   supplier: string;
   characteristics: string[];
   usage: string[];
-}
-
-function safeJsonParse<T>(text: string, fallback: T): T {
-  try {
-    const normalized = text.replace(/^[\s\S]*?```json\s*([\s\S]*?)\s*```[\s\S]*$/, "$1").trim();
-    return JSON.parse(normalized || text) as T;
-  } catch {
-    return fallback;
-  }
 }
 
 const FABRIC_SUPPLIERS: FabricSupplier[] = [
