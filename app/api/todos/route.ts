@@ -20,6 +20,7 @@ export async function GET(request: Request) {
     const targetTable = url.searchParams.get("targetTable");
     const targetId = url.searchParams.get("targetId");
     const assignedTo = url.searchParams.get("assignedTo");
+    const unreadOnly = url.searchParams.get("unreadOnly") === "true";
 
     let query = supabase
       .from("todos")
@@ -41,6 +42,9 @@ export async function GET(request: Request) {
     }
     if (assignedTo) {
       query = query.eq("assigned_to", assignedTo);
+    }
+    if (unreadOnly) {
+      query = query.eq("is_read", false);
     }
 
     const { data, error } = await query;

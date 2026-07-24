@@ -23,6 +23,7 @@ export interface StateTransition {
   autoCreateTodo?: string;
   checkGuard?: string; // 检查函数名
   responsibleNode?: string; // 负责该转换的工序节点，默认取 to 状态对应节点
+  linkType?: "critical" | "parallel" | "feedback"; // 连线类型，反馈流程取 from 节点负责人
 }
 
 export const STYLE_TRANSITIONS: StateTransition[] = [
@@ -109,7 +110,7 @@ export const STYLE_TRANSITIONS: StateTransition[] = [
     to: "planning",
     event: "back_to_planning",
     description: "返回企划",
-    responsibleNode: "design",
+    linkType: "feedback",
   },
   {
     from: "sampling",
@@ -117,7 +118,16 @@ export const STYLE_TRANSITIONS: StateTransition[] = [
     event: "design_revision",
     description: "设计修改",
     autoCreateTodo: "上传修改后设计",
-    responsibleNode: "design",
+    linkType: "feedback",
+  },
+  // 售后反馈到企划
+  {
+    from: "reviewing",
+    to: "planning",
+    event: "aftersales_to_planning",
+    description: "售后反馈到企划",
+    autoCreateTodo: "处理售后反馈",
+    linkType: "feedback",
   },
 ];
 
@@ -154,7 +164,8 @@ export function statusToProcessNode(status: StyleStatus): string | null {
 // 获取某转换的负责工序节点
 export function getTransitionResponsibleNode(transition: StateTransition): string | null {
   if (transition.responsibleNode) return transition.responsibleNode;
-  return statusToProcessNode(transition.to);
+  const status = transition.linkType === "feedback" ? transition.from : transition.to;
+  return statusToProcessNode(status);
 }
 
 // 状态显示配置

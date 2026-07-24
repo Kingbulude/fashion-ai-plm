@@ -41,6 +41,7 @@ interface TodoDetail {
   targetId: string | null;
   assignedTo: string | null;
   createdBy: string | null;
+  isRead: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -125,6 +126,18 @@ export default function TodoDetailPage() {
       const data = await res.json();
       setTodo(data);
       fetchNames(data.assignedTo, data.createdBy);
+      if (data.isRead === false) {
+        await fetch(`/api/todos/${todoId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": currentCompany?.id || "",
+            "x-brand-id": currentBrand?.id || "",
+            "x-season-id": currentSeason?.id || "",
+          },
+          body: JSON.stringify({ isRead: true }),
+        });
+      }
     } catch (err: any) {
       setError(err?.message || "加载失败");
     } finally {

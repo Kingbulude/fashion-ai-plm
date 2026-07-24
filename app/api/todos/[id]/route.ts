@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
+    const { status, isRead } = body;
 
     const updateData: any = { updated_at: new Date().toISOString() };
     if (status === "completed") {
@@ -40,6 +40,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       updateData.completed_at = new Date().toISOString();
     } else if (status) {
       updateData.status = status;
+    }
+    if (isRead === true) {
+      updateData.is_read = true;
+      updateData.read_at = new Date().toISOString();
+    } else if (isRead === false) {
+      updateData.is_read = false;
+      updateData.read_at = null;
     }
 
     const { data, error } = await supabase

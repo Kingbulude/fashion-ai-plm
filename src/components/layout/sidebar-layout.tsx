@@ -73,6 +73,7 @@ interface TodoItem {
   createdAt: string;
   targetTable: string | null;
   targetId: string | null;
+  isRead: boolean;
 }
 
 function formatRelative(dateValue: string | Date | null): string {
@@ -128,6 +129,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [todoLoading, setTodoLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
@@ -191,6 +193,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             createdAt: String(t.createdAt || ""),
             targetTable: t.targetTable ? String(t.targetTable) : null,
             targetId: t.targetId ? String(t.targetId) : null,
+            isRead: t.isRead === true,
           }))
           .filter((t) => t.status === "pending" || t.status === "in_progress");
         setTodos(mapped);
@@ -201,9 +204,61 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       }
     };
     fetchTodos();
+    fetchUnreadCount();
   }, [currentBrand?.id, currentCompany?.id, currentSeason?.id]);
 
-  const unreadCount = todos.length;
+  const getTodoHeaders = () => ({
+    "x-company-id": currentCompany?.id || "",
+    "x-brand-id": currentBrand?.id || "",
+    "x-season-id": currentSeason?.id || "",
+  });
+
+  const fetchUnreadCount = async () => {
+    if (!currentBrand?.id) return;
+    try {
+      const res = await fetch("/api/todos?unreadOnly=true", { headers: getTodoHeaders() });
+      if (!res.ok) return;
+      const raw = await res.json();
+      const items: unknown[] = Array.isArray(raw) ? raw : [];
+      setUnreadCount(items.length);
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
+  };
+
+  const markTodoAsRead = async (todoId: string) => {
+    try {
+      await fetch(`/api/todos/${todoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getTodoHeaders() },
+        body: JSON.stringify({ isRead: true }),
+      });
+      setTodos((prev) => prev.map((t) => (t.id === todoId ? { ...t, isRead: true } : t)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (error) {
+      console.error("Failed to mark todo as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = todos.filter((t) => !t.isRead);
+    if (unread.length === 0) return;
+    try {
+      await Promise.all(
+        unread.map((t) =>
+          fetch(`/api/todos/${t.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...getTodoHeaders() },
+            body: JSON.stringify({ isRead: true }),
+          })
+        )
+      );
+      setTodos((prev) => prev.map((t) => ({ ...t, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -494,9 +549,16 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               <DropdownMenuContent align="end" className="w-80 p-0">
                 <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                   <h3 className="font-medium text-sm">最近待办</h3>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => router.push("/todos")}>
-                    查看全部
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-navy-600 hover:text-navy-700" onClick={markAllAsRead}>
+                        全部已读
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => router.push("/todos")}>
+                      查看全部
+                    </Button>
+                  </div>
                 </div>
                 {todoLoading ? (
                   <div className="p-4 space-y-3">
@@ -523,13 +585,18 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                       {todos.slice(0, 8).map((todo) => (
                         <button
                           key={todo.id}
-                          onClick={() => router.push(`/todos/${todo.id}`)}
+                          onClick={() => {
+                            if (!todo.isRead) markTodoAsRead(todo.id);
+                            router.push(`/todos/${todo.id}`);
+                          }}
                           className="w-full text-left p-3 rounded-lg transition-colors hover:bg-sand-50"
                         >
                           <div className="flex gap-3">
                             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getStatusColor(todo.status)}`} />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{todo.title}</p>
+                              <p className={`text-sm truncate ${todo.isRead ? "font-medium text-foreground" : "font-semibold text-foreground"}`}>
+                                {todo.title}
+                              </p>
                               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                                 <span>{formatRelative(todo.dueDate || todo.createdAt)}</span>
                                 {(todo.priority === "high" || todo.priority === "urgent") && (
@@ -539,6 +606,9 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                                 )}
                               </p>
                             </div>
+                            {!todo.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-terracotta-500 flex-shrink-0 mt-2" />
+                            )}
                           </div>
                         </button>
                       ))}
