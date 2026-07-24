@@ -122,7 +122,7 @@ export default function StylesPage() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
-        (s) => (s.name || "").toLowerCase().includes(q) || (s.style_no || "").toLowerCase().includes(q)
+        (s) => (s.name || "").toLowerCase().includes(q) || (s.styleNo || "").toLowerCase().includes(q)
       );
     }
     if (statusFilter) {
@@ -134,7 +134,7 @@ export default function StylesPage() {
     // 排序
     result = [...result].sort((a, b) => {
       if (sortBy === "style_no") {
-        return (a.style_no || "").localeCompare(b.style_no || "");
+        return (a.styleNo || "").localeCompare(b.styleNo || "");
       }
       const av = new Date(a[sortBy] || 0).getTime();
       const bv = new Date(b[sortBy] || 0).getTime();
