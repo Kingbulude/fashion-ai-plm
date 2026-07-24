@@ -106,6 +106,8 @@ export default function AnalyticsPage() {
   const kpiCards = useMemo(() => {
     if (!analytics) return [];
     const k = analytics.kpi;
+    const avgSt = analytics.sellthrough?.avgSellthroughRate || 0;
+    const activeRate = k.activeSellRate || 0;
     return [
       {
         title: "总销售额",
@@ -127,6 +129,23 @@ export default function AnalyticsPage() {
         icon: TrendingUp,
         color: "green",
         desc: `客单价 ${formatCurrency(k.avgOrderValue)}`,
+      },
+      {
+        title: "动销率",
+        value: `${activeRate}%`,
+        icon: Package,
+        color: activeRate < 50 ? "red" : "green",
+        desc: `有销售 ${activeRate > 0 ? Math.round((k.stylesOnSale * activeRate) / 100) : 0} 款`,
+      },
+      {
+        title: "平均售罄率",
+        value: `${avgSt}%`,
+        icon: avgSt >= 50 ? TrendingUp : TrendingDown,
+        color: avgSt >= 50 ? "green" : avgSt >= 30 ? "amber" : "red",
+        desc:
+          analytics.sellthrough?.distribution?.excellent > 0
+            ? `${analytics.sellthrough.distribution.excellent} 款售罄超 80%`
+            : "按目标产量计算",
       },
       {
         title: "退货率",
@@ -199,7 +218,7 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* 1. 4 大 KPI 卡片 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
               {kpiCards.map((card, i) => {
                 const colorMap: Record<string, { bg: string; text: string }> = {
                   blue: { bg: "bg-blue-50", text: "text-blue-600" },
@@ -293,6 +312,48 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <CategoryBreakdown data={analytics?.categoryBreakdown || []} formatCurrency={formatCurrency} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 售罄率分析 + 滞销款分析 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              {/* 售罄率分布 */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                    售罄率分布
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    平均售罄率 {analytics?.sellthrough?.avgSellthroughRate || 0}%
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SellthroughDistribution distribution={analytics?.sellthrough?.distribution} />
+                </CardContent>
+              </Card>
+
+              {/* 滞销款预警 */}
+              <Card className="lg:col-span-2 border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        滞销款预警
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        售罄率低于 10% 的在售款式
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary">
+                      {analytics?.sellthrough?.deadStockStyles?.length || 0} 款
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <DeadStockList styles={analytics?.sellthrough?.deadStockStyles || []} />
                 </CardContent>
               </Card>
             </div>
@@ -573,5 +634,99 @@ function StyleRanking({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function SellthroughDistribution({
+  distribution,
+}: {
+  distribution: { excellent: number; good: number; fair: number; low: number } | undefined;
+}) {
+  const tiers = [
+    { key: "excellent", label: "优秀 (≥80%)", color: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" },
+    { key: "good", label: "良好 (50-80%)", color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700" },
+    { key: "fair", label: "一般 (30-50%)", color: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700" },
+    { key: "low", label: "滞销 (<30%)", color: "bg-red-500", bg: "bg-red-50", text: "text-red-700" },
+  ];
+
+  const total = distribution
+    ? distribution.excellent + distribution.good + distribution.fair + distribution.low
+    : 0;
+
+  if (total === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-slate-400">
+        暂无目标产量数据，无法计算售罄率
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* 进度条堆叠 */}
+      <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+        {tiers.map((t) => {
+          const count = distribution?.[t.key as keyof typeof distribution] || 0;
+          const pct = total > 0 ? (count / total) * 100 : 0;
+          if (pct === 0) return null;
+          return <div key={t.key} className={`${t.color} transition-all`} style={{ width: `${pct}%` }} />;
+        })}
+      </div>
+      {/* 详情列表 */}
+      <div className="space-y-2 pt-1">
+        {tiers.map((t) => {
+          const count = distribution?.[t.key as keyof typeof distribution] || 0;
+          const pct = total > 0 ? ((count / total) * 100).toFixed(0) : "0";
+          return (
+            <div key={t.key} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${t.color}`} />
+                <span className="text-xs text-slate-600">{t.label}</span>
+              </div>
+              <span className="text-xs font-semibold text-slate-700">
+                {count} 款 <span className="text-slate-400 font-normal">({pct}%)</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DeadStockList({ styles }: { styles: any[] }) {
+  if (!styles || styles.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-slate-400">
+        暂无滞销款，所有在售款式均有销售
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-64 overflow-y-auto">
+      <div className="space-y-2">
+        {styles.slice(0, 8).map((style) => (
+          <Link
+            key={style.styleId}
+            href={`/styles/${style.styleId}`}
+            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-slate-800 truncate">{style.name}</p>
+                <Badge variant="outline" className="text-[10px] border-red-200 text-red-600 bg-red-50">
+                  {style.sellthroughRate}%
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {style.styleNo} · {style.category} · 目标 {style.targetQuantity} / 在售 {style.soldQuantity}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

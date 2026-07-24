@@ -40,6 +40,7 @@ export async function GET(request: Request) {
           avgSellingPrice: 0,
           returnRate: 0,
           stylesOnSale: 0,
+          activeSellRate: 0,
         },
         trend: [],
         categoryBreakdown: [],
@@ -47,6 +48,12 @@ export async function GET(request: Request) {
         topStylesByQuantity: [],
         channelBreakdown: [],
         aftersales: { total: 0, byType: {} },
+        sellthrough: {
+          styles: [],
+          distribution: { excellent: 0, good: 0, fair: 0, low: 0 },
+          deadStockStyles: [],
+          avgSellthroughRate: 0,
+        },
         insights: [],
       });
     }
@@ -155,7 +162,54 @@ export async function GET(request: Request) {
       aftersalesByType[a.type] = (aftersalesByType[a.type] || 0) + 1;
     }
 
-    // 10. 复盘建议（数据驱动）
+    // 10. 售罄率与动销分析（结构化数据）
+    const sellthroughStyles = styleList
+      .filter((s) => s.targetQuantity && s.targetQuantity > 0)
+      .map((s) => {
+        const sold = s.soldQuantity || 0;
+        const target = s.targetQuantity || 0;
+        const produced = s.producedQuantity || 0;
+        const sellthroughRate = target > 0 ? (sold / target) * 100 : 0;
+        const productionAchievement = target > 0 ? (produced / target) * 100 : 0;
+        let tier = "low";
+        if (sellthroughRate >= 80) tier = "excellent";
+        else if (sellthroughRate >= 50) tier = "good";
+        else if (sellthroughRate >= 30) tier = "fair";
+        return {
+          styleId: s.id,
+          styleNo: s.styleNo,
+          name: s.name,
+          category: s.category || "未分类",
+          status: s.status,
+          targetQuantity: target,
+          producedQuantity: produced,
+          soldQuantity: sold,
+          remainingQuantity: Math.max(0, produced - sold),
+          sellthroughRate: parseFloat(sellthroughRate.toFixed(1)),
+          productionAchievement: parseFloat(productionAchievement.toFixed(1)),
+          tier,
+        };
+      })
+      .sort((a, b) => b.sellthroughRate - a.sellthroughRate);
+
+    // 售罄率分层统计
+    const sellthroughDistribution = {
+      excellent: sellthroughStyles.filter((s) => s.tier === "excellent").length,
+      good: sellthroughStyles.filter((s) => s.tier === "good").length,
+      fair: sellthroughStyles.filter((s) => s.tier === "fair").length,
+      low: sellthroughStyles.filter((s) => s.tier === "low").length,
+    };
+
+    // 动销率：有销售记录的款式数 / 在售款式数
+    const stylesWithSales = new Set(sales.map((s: any) => s.styleId)).size;
+    const activeSellRate = stylesOnSale > 0 ? (stylesWithSales / stylesOnSale) * 100 : 0;
+
+    // 滞销款（在售但销量为0或极低）
+    const deadStockStyles = sellthroughStyles
+      .filter((s) => s.sellthroughRate < 10 && (s.status === "selling" || s.status === "reviewing"))
+      .sort((a, b) => a.sellthroughRate - b.sellthroughRate);
+
+    // 11. 复盘建议（数据驱动）
     const insights: { type: "warning" | "success" | "info"; title: string; description: string }[] = [];
 
     // 售罄率分析
@@ -225,6 +279,13 @@ export async function GET(request: Request) {
       });
     }
 
+    const avgSellthroughRate =
+      sellthroughStyles.length > 0
+        ? parseFloat(
+            (sellthroughStyles.reduce((sum, s) => sum + s.sellthroughRate, 0) / sellthroughStyles.length).toFixed(1)
+          )
+        : 0;
+
     return NextResponse.json({
       brand: { id: brandId, seasonId },
       kpi: {
@@ -235,6 +296,7 @@ export async function GET(request: Request) {
         avgSellingPrice,
         returnRate: parseFloat(returnRate.toFixed(2)),
         stylesOnSale,
+        activeSellRate: parseFloat(activeSellRate.toFixed(1)),
       },
       trend,
       categoryBreakdown,
@@ -244,6 +306,12 @@ export async function GET(request: Request) {
       aftersales: {
         total: aftersales.length,
         byType: aftersalesByType,
+      },
+      sellthrough: {
+        styles: sellthroughStyles,
+        distribution: sellthroughDistribution,
+        deadStockStyles,
+        avgSellthroughRate,
       },
       insights,
       period: { days, startDate: startDate.toISOString(), endDate: now.toISOString() },

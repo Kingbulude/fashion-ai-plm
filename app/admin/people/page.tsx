@@ -104,14 +104,20 @@ export default function AdminPeoplePage() {
   const [editProcessOwnerScopeId, setEditProcessOwnerScopeId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // 添加成员（从已注册用户中选择）
+  // 添加成员（从已注册用户中选择 / 邮箱邀请）
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteTab, setInviteTab] = useState<"select" | "email">("email");
   const [inviteUserId, setInviteUserId] = useState<string>("");
   const [inviteRoleLevel, setInviteRoleLevel] = useState<string>(RoleLevel.EXECUTOR);
   const [inviteBrandIds, setInviteBrandIds] = useState<string[]>([]);
   const [inviteProcessRoleIds, setInviteProcessRoleIds] = useState<string[]>([]);
   const [inviteProcessOwnerScopeId, setInviteProcessOwnerScopeId] = useState<string>("");
-  const [inviteResult, setInviteResult] = useState<{ name?: string; message?: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ name?: string; message?: string; tempPassword?: string } | null>(null);
+
+  // 邮箱邀请相关 state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmailError, setInviteEmailError] = useState("");
 
   useEffect(() => {
     fetchOrganization();
@@ -206,6 +212,9 @@ export default function AdminPeoplePage() {
     setInviteProcessRoleIds([]);
     setInviteProcessOwnerScopeId("");
     setInviteResult(null);
+    setInviteEmail("");
+    setInviteName("");
+    setInviteEmailError("");
   };
 
   const handleOpenInvite = () => {
@@ -268,6 +277,56 @@ export default function AdminPeoplePage() {
     } catch (error) {
       console.error("Failed to assign user:", error);
       alert("添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInviteByEmail = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      setInviteEmailError("请输入邮箱地址");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setInviteEmailError("请输入有效的邮箱地址");
+      return;
+    }
+    if (!inviteRoleLevel) {
+      alert("请选择角色层级");
+      return;
+    }
+
+    setInviteEmailError("");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/organization/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name: inviteName.trim() || undefined,
+          roleLevel: inviteRoleLevel,
+          brandIds: inviteBrandIds,
+          processRoleIds: inviteProcessRoleIds,
+          processOwnerScopeId: inviteProcessOwnerScopeId || undefined,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setInviteResult({
+          name: json.email || email,
+          message: json.message || "邀请成功",
+          tempPassword: json.tempPassword,
+        });
+        await fetchOrganization();
+      } else {
+        setInviteEmailError(json.error || "邀请失败");
+      }
+    } catch (error) {
+      console.error("Failed to invite by email:", error);
+      setInviteEmailError("邀请失败，请重试");
     } finally {
       setSaving(false);
     }
@@ -487,6 +546,8 @@ export default function AdminPeoplePage() {
               <DialogDescription>
                 {inviteResult
                   ? "成员已分配到公司"
+                  : inviteTab === "email"
+                  ? "通过邮箱邀请新成员加入公司"
                   : "从已注册用户中选择，并为其分配角色、品牌和权限"}
               </DialogDescription>
             </DialogHeader>
@@ -498,62 +559,137 @@ export default function AdminPeoplePage() {
                   <p className="text-xs text-green-700">
                     {inviteResult.name} 现在可以在公司下访问对应模块。
                   </p>
+                  {inviteResult.tempPassword && (
+                    <div className="mt-3 p-3 rounded-lg bg-white border border-green-300">
+                      <p className="text-xs text-green-600 mb-1">临时登录密码（请妥善保存）：</p>
+                      <p className="font-mono font-bold text-green-900 text-base">
+                        {inviteResult.tempPassword}
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        用户首次登录后建议立即修改密码
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="space-y-5 py-2">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    选择已注册用户
-                  </Label>
-                  {(data?.pendingProfiles || []).length === 0 ? (
-                    <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground text-center">
-                      暂无待分配的注册用户
-                      <br />
-                      请让对方先在登录页注册账号，完成邮箱验证后再来这里添加
-                    </div>
-                  ) : (
-                    <div className="max-h-48 overflow-y-auto rounded-xl border border-border divide-y divide-border">
-                      {(data?.pendingProfiles || []).map((profile) => {
-                        const selected = inviteUserId === profile.user_id;
-                        return (
-                          <button
-                            key={profile.user_id}
-                            type="button"
-                            onClick={() => setInviteUserId(profile.user_id)}
-                            className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                              selected ? "bg-navy-50" : "hover:bg-sand-50/50"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                  selected ? "bg-navy-600" : "bg-slate-300"
-                                }`}
-                              />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {profile.name || "未命名"}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {profile.email || profile.user_id.slice(0, 8) + "..."}
-                                </p>
-                              </div>
-                            </div>
-                            {selected && <span className="text-xs text-navy-700 font-medium">已选</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {selectedPendingUser && (
-                    <p className="text-xs text-muted-foreground">
-                      已选择：{selectedPendingUser.name || "未命名"}（
-                      {selectedPendingUser.email || selectedPendingUser.user_id.slice(0, 8) + "..."}）
-                    </p>
-                  )}
+                {/* 标签页切换 */}
+                <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setInviteTab("email")}
+                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      inviteTab === "email"
+                        ? "bg-white text-navy-700 shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    邮箱邀请
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInviteTab("select")}
+                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      inviteTab === "select"
+                        ? "bg-white text-navy-700 shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    从已有用户选择
+                  </button>
                 </div>
+
+                {/* 邮箱邀请表单 */}
+                {inviteTab === "email" && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-email">
+                        <Mail className="h-4 w-4 text-muted-foreground inline mr-1.5" />
+                        邮箱地址
+                      </Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => {
+                          setInviteEmail(e.target.value);
+                          if (inviteEmailError) setInviteEmailError("");
+                        }}
+                        className={inviteEmailError ? "border-red-400 focus:ring-red-200" : ""}
+                      />
+                      {inviteEmailError && (
+                        <p className="text-xs text-red-600">{inviteEmailError}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-name">姓名（可选）</Label>
+                      <Input
+                        id="invite-name"
+                        placeholder="成员姓名"
+                        value={inviteName}
+                        onChange={(e) => setInviteName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 从已有用户选择 */}
+                {inviteTab === "select" && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      选择已注册用户
+                    </Label>
+                    {(data?.pendingProfiles || []).length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground text-center">
+                        暂无待分配的注册用户
+                        <br />
+                        请使用「邮箱邀请」方式添加，或让对方先在登录页注册
+                      </div>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                        {(data?.pendingProfiles || []).map((profile) => {
+                          const selected = inviteUserId === profile.user_id;
+                          return (
+                            <button
+                              key={profile.user_id}
+                              type="button"
+                              onClick={() => setInviteUserId(profile.user_id)}
+                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                                selected ? "bg-navy-50" : "hover:bg-sand-50/50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    selected ? "bg-navy-600" : "bg-slate-300"
+                                  }`}
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {profile.name || "未命名"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {profile.email || profile.user_id.slice(0, 8) + "..."}
+                                  </p>
+                                </div>
+                              </div>
+                              {selected && <span className="text-xs text-navy-700 font-medium">已选</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {selectedPendingUser && inviteTab === "select" && (
+                      <p className="text-xs text-muted-foreground">
+                        已选择：{selectedPendingUser.name || "未命名"}（
+                        {selectedPendingUser.email || selectedPendingUser.user_id.slice(0, 8) + "..."}）
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>角色层级</Label>
@@ -670,12 +806,15 @@ export default function AdminPeoplePage() {
               </Button>
               {!inviteResult && (
                 <Button
-                  onClick={handleInvite}
-                  disabled={saving || !inviteUserId}
+                  onClick={inviteTab === "email" ? handleInviteByEmail : handleInvite}
+                  disabled={
+                    saving ||
+                    (inviteTab === "email" ? !inviteEmail.trim() : !inviteUserId)
+                  }
                   className="bg-navy-700 hover:bg-navy-800 text-white"
                 >
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  添加成员
+                  {inviteTab === "email" ? "发送邀请" : "添加成员"}
                 </Button>
               )}
             </DialogFooter>
