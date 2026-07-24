@@ -77,7 +77,7 @@ export default function StylesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"updated_at" | "created_at" | "style_no">("updated_at");
+  const [sortBy, setSortBy] = useState<"updatedAt" | "createdAt" | "styleNo">("updatedAt");
 
   // 加载款式数据
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function StylesPage() {
     }
     // 排序
     result = [...result].sort((a, b) => {
-      if (sortBy === "style_no") {
+      if (sortBy === "styleNo") {
         return (a.styleNo || "").localeCompare(b.styleNo || "");
       }
       const av = new Date(a[sortBy] || 0).getTime();
@@ -277,9 +277,9 @@ export default function StylesPage() {
             onChange={(e) => setSortBy(e.target.value as any)}
             className="h-9 px-3 rounded-lg border border-border text-sm bg-card hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="updated_at">按更新时间</option>
-            <option value="created_at">按创建时间</option>
-            <option value="style_no">按款号</option>
+            <option value="updatedAt">按更新时间</option>
+            <option value="createdAt">按创建时间</option>
+            <option value="styleNo">按款号</option>
           </select>
 
           {(statusFilter || categoryFilter || search) && (
@@ -409,10 +409,10 @@ function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) 
         <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-navy-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
       </div>
       <p className="text-xs text-muted-foreground mb-2.5">{style.styleNo}</p>
-      {style.coverImage || style.cover_image ? (
+      {style.coverImage ? (
         <div className="aspect-[4/3] bg-sand-100 rounded-lg mb-3 overflow-hidden">
           <img
-            src={style.coverImage || style.cover_image}
+            src={style.coverImage}
             alt={style.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -464,9 +464,9 @@ function StyleCardLarge({ style, onClick }: { style: any; onClick: () => void })
   return (
     <Card className="card-premium cursor-pointer hover:shadow-premium transition-all overflow-hidden group" onClick={onClick}>
       <div className="aspect-[3/4] bg-gradient-to-br from-sand-100 to-sand-200 flex items-center justify-center relative overflow-hidden">
-        {style.coverImage || style.cover_image ? (
+        {style.coverImage ? (
           <img
-            src={style.coverImage || style.cover_image}
+            src={style.coverImage}
             alt={style.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -542,9 +542,9 @@ function TableView({ styles, onStyleClick }: { styles: any[]; onStyleClick: (id:
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-lg bg-sand-100 flex-shrink-0 overflow-hidden">
-                        {style.coverImage || style.cover_image ? (
+                        {style.coverImage ? (
                           <img
-                            src={style.coverImage || style.cover_image}
+                            src={style.coverImage}
                             alt={style.name}
                             className="w-full h-full object-cover"
                           />

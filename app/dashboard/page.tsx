@@ -486,26 +486,26 @@ export default function DashboardPage() {
                             <p className="text-sm font-semibold text-foreground truncate">{style.name}</p>
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-terracotta-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                           </div>
-                          <p className="text-xs text-muted-foreground mb-3">款号: {style.style_no}</p>
+                          <p className="text-xs text-muted-foreground mb-3">款号: {style.styleNo}</p>
                           <div className="flex items-center justify-between">
                             <Badge className={`${colors.bg} ${colors.text} border-0`}>
                               {stageInfo?.label || style.status}
                             </Badge>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(style.updated_at).toLocaleDateString("zh-CN", {
+                              {style.updatedAt ? new Date(style.updatedAt).toLocaleDateString("zh-CN", {
                                 month: "numeric",
                                 day: "numeric",
-                              })}
+                              }) : "-"}
                             </p>
                           </div>
-                          {style.target_cost && (
+                          {style.targetCost && (
                             <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                              目标: <span className="font-medium text-foreground">¥{style.target_cost}</span>
-                              {style.actual_cost && (
+                              目标: <span className="font-medium text-foreground">¥{style.targetCost}</span>
+                              {style.actualCost && (
                                 <>
                                   {" / 实际: "}
-                                  <span className={`font-medium ${style.actual_cost > style.target_cost ? "text-destructive" : "text-foreground"}`}>
-                                    ¥{style.actual_cost}
+                                  <span className={`font-medium ${style.actualCost > style.targetCost ? "text-destructive" : "text-foreground"}`}>
+                                    ¥{style.actualCost}
                                   </span>
                                 </>
                               )}
