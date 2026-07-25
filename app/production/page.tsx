@@ -29,6 +29,11 @@ import {
   List,
   LayoutGrid,
   RefreshCw,
+  Info,
+  ChevronRight,
+  DollarSign,
+  Layers,
+  GanttChart,
 } from "lucide-react";
 import { useTenant } from "@/lib/auth/tenant-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
@@ -56,7 +61,7 @@ export default function ProductionPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"list" | "kanban">("list");
+  const [view, setView] = useState<"list" | "kanban" | "gantt">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -72,6 +77,8 @@ export default function ProductionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [materialAlerts, setMaterialAlerts] = useState<any[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -178,6 +185,29 @@ export default function ProductionPage() {
     }
   };
 
+  const handleViewDetail = (order: any) => {
+    setDetailOrder(order);
+    setDetailOpen(true);
+  };
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/production/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchData();
+        if (detailOrder?.id === orderId) {
+          setDetailOrder({ ...detailOrder, status: newStatus });
+        }
+      }
+    } catch (err) {
+      console.error("更新状态失败:", err);
+    }
+  };
+
   const filtered = (data?.orders || []).filter((o: any) => {
     if (statusFilter && o.status !== statusFilter) return false;
     if (search) {
@@ -228,6 +258,15 @@ export default function ProductionPage() {
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
                 看板
+              </button>
+              <button
+                onClick={() => setView("gantt")}
+                className={`px-3 h-8 text-xs font-medium flex items-center gap-1 rounded-lg transition-all ${
+                  view === "gantt" ? "bg-navy-700 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GanttChart className="h-3.5 w-3.5" />
+                甘特图
               </button>
             </div>
             <Button onClick={() => setShowAdd(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
@@ -515,9 +554,11 @@ export default function ProductionPage() {
             </CardContent>
           </Card>
         ) : view === "list" ? (
-          <ProductionList orders={filtered} />
+          <ProductionList orders={filtered} onViewDetail={handleViewDetail} />
+        ) : view === "kanban" ? (
+          <ProductionKanban orders={filtered} onViewDetail={handleViewDetail} />
         ) : (
-          <ProductionKanban orders={filtered} />
+          <ProductionGantt orders={filtered} onViewDetail={handleViewDetail} />
         )}
           </div>
 
@@ -616,6 +657,191 @@ export default function ProductionPage() {
           </Card>
         </div>
       )}
+
+      {/* 订单详情弹窗 */}
+      {detailOpen && detailOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDetailOpen(false)}>
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto card-premium" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">生产订单详情</CardTitle>
+                <CardDescription className="text-xs">{detailOrder.styleNo} · {detailOrder.styleName}</CardDescription>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setDetailOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* 基本信息 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-navy-100 flex-shrink-0">
+                    <Shirt className="h-4 w-4 text-navy-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">款式</p>
+                    <p className="text-sm font-medium">{detailOrder.styleName}</p>
+                    <p className="text-xs text-muted-foreground">{detailOrder.styleNo}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 flex-shrink-0">
+                    <Layers className="h-4 w-4 text-purple-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">状态</p>
+                    <p className="text-sm font-medium">
+                      {STATUS_CONFIG[detailOrder.status]?.label || detailOrder.status}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-amber-100 flex-shrink-0">
+                    <Factory className="h-4 w-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">加工厂</p>
+                    <p className="text-sm font-medium">{detailOrder.factoryName || "未指定"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 flex-shrink-0">
+                    <Package className="h-4 w-4 text-green-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">生产数量</p>
+                    <p className="text-sm font-medium">{detailOrder.quantity || 0} 件</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-terracotta-100 flex-shrink-0">
+                    <DollarSign className="h-4 w-4 text-terracotta-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">总成本</p>
+                    <p className="text-sm font-medium">
+                      {detailOrder.totalCost ? `¥${detailOrder.totalCost.toLocaleString("zh-CN")}` : "未设置"}
+                    </p>
+                    {detailOrder.totalCost && detailOrder.quantity > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        单件 ¥{(detailOrder.totalCost / detailOrder.quantity).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 flex-shrink-0">
+                    <Calendar className="h-4 w-4 text-blue-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">工期</p>
+                    <p className="text-sm font-medium">
+                      {detailOrder.startDate?.split("T")[0] || "-"} → {detailOrder.expectedDate?.split("T")[0] || "-"}
+                    </p>
+                    {detailOrder.startDate && detailOrder.expectedDate && (() => {
+                      const start = new Date(detailOrder.startDate);
+                      const end = new Date(detailOrder.expectedDate);
+                      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                      return <p className="text-xs text-muted-foreground">共 {days} 天</p>;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* 进度节点时间线 */}
+              <div>
+                <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-navy-700" />
+                  生产进度节点
+                </p>
+                <div className="relative">
+                  <div className="absolute left-[11px] top-3 bottom-3 w-0.5 bg-slate-200" />
+                  <div className="space-y-3">
+                    {STATUS_ORDER.map((s, idx) => {
+                      const config = STATUS_CONFIG[s];
+                      const currentIdx = STATUS_ORDER.indexOf(detailOrder.status);
+                      const isCompleted = idx <= currentIdx;
+                      const isCurrent = idx === currentIdx;
+                      return (
+                        <div key={s} className="flex items-center gap-3 relative">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
+                            isCompleted
+                              ? isCurrent
+                                ? "bg-navy-700 ring-4 ring-navy-100"
+                                : "bg-success"
+                              : "bg-slate-200"
+                          }`}>
+                            <config.icon className={`h-3 w-3 ${isCompleted ? "text-white" : "text-slate-400"}`} />
+                          </div>
+                          <div className="flex-1 flex items-center justify-between py-1">
+                            <div>
+                              <p className={`text-sm ${isCompleted ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                                {config.label}
+                              </p>
+                            </div>
+                            {isCurrent && detailOrder.status !== "completed" && (
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  const nextIdx = idx + 1;
+                                  if (nextIdx < STATUS_ORDER.length) {
+                                    handleUpdateStatus(detailOrder.id, STATUS_ORDER[nextIdx]);
+                                  }
+                                }}
+                              >
+                                推进到下一阶段
+                                <ChevronRight className="h-3 w-3 ml-1" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 逾期提醒 */}
+              {detailOrder.expectedDate && detailOrder.status !== "completed" && new Date(detailOrder.expectedDate) < new Date() && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-700">订单已逾期</p>
+                      <p className="text-xs text-red-600 mt-0.5">
+                        预计完成日期 {detailOrder.expectedDate.split("T")[0]}，请关注生产进度
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 备注 */}
+              {detailOrder.notes && (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-xs text-muted-foreground mb-1">备注</p>
+                  <p className="text-sm text-slate-700">{detailOrder.notes}</p>
+                </div>
+              )}
+
+              {/* 操作按钮 */}
+              <div className="flex items-center gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setDetailOpen(false)}>
+                  关闭
+                </Button>
+                <Link href={`/styles/${detailOrder.styleId}`} className="flex-1">
+                  <Button className="w-full bg-navy-700 hover:bg-navy-800">
+                    查看款式详情
+                    <ChevronRight className="h-4 w-4 ml-1.5" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </SidebarLayout>
   );
 }
@@ -641,7 +867,7 @@ function KpiCard({ title, value, sub, icon: Icon, color }: { title: string; valu
 }
 
 // 列表视图
-function ProductionList({ orders }: { orders: any[] }) {
+function ProductionList({ orders, onViewDetail }: { orders: any[]; onViewDetail: (o: any) => void }) {
   return (
     <Card className="card-premium overflow-hidden">
       <CardContent className="p-0">
@@ -656,6 +882,7 @@ function ProductionList({ orders }: { orders: any[] }) {
                 <th className="px-4 py-3 text-left font-medium">总成本</th>
                 <th className="px-4 py-3 text-left font-medium">预计完成</th>
                 <th className="px-4 py-3 text-left font-medium">进度</th>
+                <th className="px-4 py-3 text-left font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -717,6 +944,12 @@ function ProductionList({ orders }: { orders: any[] }) {
                         </span>
                       </div>
                     </td>
+                    <td className="px-4 py-3">
+                      <Button variant="ghost" size="xs" onClick={() => onViewDetail(o)}>
+                        <Info className="h-3.5 w-3.5 mr-1" />
+                        详情
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
@@ -728,8 +961,164 @@ function ProductionList({ orders }: { orders: any[] }) {
   );
 }
 
+// 甘特图视图
+function ProductionGantt({ orders, onViewDetail }: { orders: any[]; onViewDetail: (o: any) => void }) {
+  const validOrders = orders.filter((o) => o.startDate && o.expectedDate);
+
+  if (validOrders.length === 0) {
+    return (
+      <Card className="card-premium border-dashed">
+        <CardContent className="py-16 text-center">
+          <div className="w-16 h-16 rounded-full bg-sand-100 flex items-center justify-center mx-auto mb-4">
+            <GanttChart className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-foreground font-medium mb-2">暂无甘特图数据</p>
+          <p className="text-sm text-muted-foreground">
+            为生产订单设置开始日期和预计完成日期后即可查看甘特图
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const sortedOrders = [...validOrders].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
+
+  const allDates = sortedOrders.flatMap((o) => [new Date(o.startDate), new Date(o.expectedDate)]);
+  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+  const totalDays = Math.ceil(
+    (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+
+  const getBarPosition = (order: any) => {
+    const start = new Date(order.startDate);
+    const end = new Date(order.expectedDate);
+    const offset = Math.floor(
+      (start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const duration = Math.max(
+      1,
+      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    );
+    const leftPct = (offset / totalDays) * 100;
+    const widthPct = (duration / totalDays) * 100;
+    return { left: `${leftPct}%`, width: `${widthPct}%` };
+  };
+
+  const isOverdue = (order: any) => {
+    if (order.status === "completed") return false;
+    return new Date(order.expectedDate) < new Date();
+  };
+
+  const todayOffset = () => {
+    const today = new Date();
+    if (today < minDate) return 0;
+    if (today > maxDate) return 100;
+    return (
+      ((today.getTime() - minDate.getTime()) / (maxDate.getTime() - minDate.getTime())) *
+      100
+    );
+  };
+
+  return (
+    <Card className="card-premium overflow-hidden">
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <div className="min-w-[800px]">
+            {/* 时间轴头部 */}
+            <div className="flex border-b border-border">
+              <div className="w-48 flex-shrink-0 p-3 bg-sand-50 border-r border-border">
+                <p className="text-xs font-medium text-muted-foreground">款式</p>
+              </div>
+              <div className="flex-1 relative h-12 bg-sand-50">
+                <div className="absolute inset-0 flex">
+                  {Array.from({ length: Math.min(totalDays, 31) }).map((_, i) => {
+                    const date = new Date(minDate);
+                    date.setDate(date.getDate() + Math.floor((i * totalDays) / Math.min(totalDays, 31)));
+                    const isMonthStart = date.getDate() === 1 || i === 0;
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 border-r border-sand-200 last:border-r-0 flex items-end pb-1 px-1"
+                      >
+                        {isMonthStart && (
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {date.getMonth() + 1}/{date.getDate()}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* 今天标记线 */}
+                <div
+                  className="absolute top-0 bottom-0 w-px bg-red-400 z-10"
+                  style={{ left: `${todayOffset()}%` }}
+                >
+                  <div className="absolute -top-0.5 -left-1.5 w-3 h-3 rounded-full bg-red-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* 甘特图行 */}
+            <div className="divide-y divide-border">
+              {sortedOrders.map((order) => {
+                const pos = getBarPosition(order);
+                const overdue = isOverdue(order);
+                const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                const barColor =
+                  order.status === "completed"
+                    ? "bg-gradient-to-r from-emerald-500 to-green-600"
+                    : overdue
+                    ? "bg-gradient-to-r from-red-400 to-red-600"
+                    : "bg-gradient-to-r from-navy-600 to-terracotta-500";
+                return (
+                  <div
+                    key={order.id}
+                    className="flex hover:bg-sand-50/50 transition-colors cursor-pointer"
+                    onClick={() => onViewDetail(order)}
+                  >
+                    <div className="w-48 flex-shrink-0 p-3 border-r border-border">
+                      <p className="text-sm font-medium truncate">{order.styleName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.styleNo}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <status.icon className={`h-3 w-3 ${status.color}`} />
+                        <span className={`text-xs ${status.color}`}>{status.label}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 relative h-14">
+                      <div
+                        className={`absolute top-1/2 -translate-y-1/2 h-7 rounded-md ${barColor} shadow-sm flex items-center px-2 overflow-hidden cursor-pointer hover:shadow-md transition-shadow`}
+                        style={{ left: pos.left, width: pos.width, minWidth: "60px" }}
+                      >
+                        <span className="text-xs text-white font-medium truncate">
+                          {order.quantity}件
+                        </span>
+                      </div>
+                      {overdue && (
+                        <div
+                          className="absolute top-1 right-1 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ left: `calc(${pos.left} + ${pos.width} + 4px)` }}
+                        >
+                          逾期
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // 看板视图
-function ProductionKanban({ orders }: { orders: any[] }) {
+function ProductionKanban({ orders, onViewDetail }: { orders: any[]; onViewDetail: (o: any) => void }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {STATUS_ORDER.map((s) => {
@@ -751,10 +1140,10 @@ function ProductionKanban({ orders }: { orders: any[] }) {
                 <p className="text-xs text-muted-foreground text-center py-6">无</p>
               ) : (
                 stageOrders.map((o: any) => (
-                  <Link
+                  <div
                     key={o.id}
-                    href={`/styles/${o.styleId}`}
-                    className="block p-3 bg-card rounded-xl border border-border hover:border-navy-200 hover:shadow-md transition-all"
+                    onClick={() => onViewDetail(o)}
+                    className="block p-3 bg-card rounded-xl border border-border hover:border-navy-200 hover:shadow-md transition-all cursor-pointer"
                   >
                     <p className="text-sm font-medium text-foreground truncate">{o.styleName}</p>
                     <p className="text-xs text-muted-foreground mb-2">{o.styleNo}</p>
@@ -772,7 +1161,7 @@ function ProductionKanban({ orders }: { orders: any[] }) {
                         {o.expectedDate.split("T")[0]}
                       </p>
                     )}
-                  </Link>
+                  </div>
                 ))
               )}
             </div>
