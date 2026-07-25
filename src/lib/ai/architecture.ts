@@ -23,6 +23,8 @@ export enum AISpecialistType {
   SAMPLING_AI = "sampling_ai",         // 打样AI
   TESTING_AI = "testing_ai",           // 测款AI
   PROCUREMENT_AI = "procurement_ai",   // 采购AI
+  PRODUCTION_AI = "production_ai",     // 生产AI
+  QUALITY_AI = "quality_ai",           // 品控AI
   STOCKING_AI = "stocking_ai",         // 备货AI
   SALES_AI = "sales_ai",               // 销售AI
   AFTERSALES_AI = "aftersales_ai",     // 售后AI
@@ -35,6 +37,8 @@ export const AISpecialistLabels: Record<string, string> = {
   [AISpecialistType.SAMPLING_AI]: "打样AI专员",
   [AISpecialistType.TESTING_AI]: "测款AI专员",
   [AISpecialistType.PROCUREMENT_AI]: "采购AI专员",
+  [AISpecialistType.PRODUCTION_AI]: "生产AI专员",
+  [AISpecialistType.QUALITY_AI]: "品控AI专员",
   [AISpecialistType.STOCKING_AI]: "备货AI专员",
   [AISpecialistType.SALES_AI]: "销售AI专员",
   [AISpecialistType.AFTERSALES_AI]: "售后AI专员",
@@ -137,6 +141,8 @@ export function getSpecialistForProcess(processNode: string): AISpecialistType |
     sampling: AISpecialistType.SAMPLING_AI,
     testing: AISpecialistType.TESTING_AI,
     procurement: AISpecialistType.PROCUREMENT_AI,
+    production: AISpecialistType.PRODUCTION_AI,
+    quality: AISpecialistType.QUALITY_AI,
     stocking: AISpecialistType.STOCKING_AI,
     sales: AISpecialistType.SALES_AI,
     aftersales: AISpecialistType.AFTERSALES_AI,
