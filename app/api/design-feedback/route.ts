@@ -93,3 +93,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "创建设计反馈失败" }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const tenant = getTenantFromHeaders(request);
+    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    if (!companyId) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, status, priority, severity, description } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID不能为空" }, { status: 400 });
+    }
+
+    const updateData: Record<string, any> = {};
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+    if (severity) updateData.severity = severity;
+    if (description !== undefined) updateData.description = description;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "请提供更新字段" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("design_feedback_items")
+      .update(updateData)
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(toCamelCase(data));
+  } catch {
+    return NextResponse.json({ error: "更新设计反馈失败" }, { status: 500 });
+  }
+}

@@ -36,6 +36,7 @@ import {
   Search,
   Filter,
   TrendingUp,
+  TrendingDown,
   DollarSign,
   Package,
   Clock,
@@ -45,6 +46,8 @@ import {
   Factory,
   ShoppingBag,
   ShieldCheck,
+  FileDown,
+  ArrowRight,
 } from "lucide-react";
 
 const DEFECT_CATEGORIES = [
@@ -582,6 +585,11 @@ export default function AftersalesPage() {
                   {analyzing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   刷新分析
                 </Button>
+                <Button variant="outline" size="sm" onClick={handleBatchAICategorize} disabled={batchCategorizing || !records.length}>
+                  {batchCategorizing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Brain className="h-4 w-4 mr-1.5" />
+                  批量AI分类
+                </Button>
               </div>
             </div>
 
@@ -599,22 +607,113 @@ export default function AftersalesPage() {
               </Card>
             ) : (
               <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-lg bg-red-50">
+                          <ShieldAlert className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-red-600">{analyzeData.totalRecords || 0}</p>
+                          <p className="text-xs text-muted-foreground">售后记录</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-lg bg-amber-50">
+                          <DollarSign className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-amber-600">{formatCurrency(analyzeData.totalAmount || 0)}</p>
+                          <p className="text-xs text-muted-foreground">损失金额</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-lg bg-purple-50">
+                          <Brain className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-purple-600">{analyzeData.categorizedRecords || 0}</p>
+                          <p className="text-xs text-muted-foreground">已AI分类</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-lg bg-blue-50">
+                          <Sparkles className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-blue-600">{analyzeData.suggestions?.length || 0}</p>
+                          <p className="text-xs text-muted-foreground">改进建议</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="border-0 shadow-sm lg:col-span-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-amber-500" />
+                        售后趋势
+                      </CardTitle>
+                      <CardDescription className="text-xs">近{analyzeDays}天售后数量趋势</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-48 flex items-end gap-1">
+                        {(analyzeData.dailyTrend || []).map((day: any, i: number) => {
+                          const maxCount = Math.max(...(analyzeData.dailyTrend || []).map((d: any) => d.count));
+                          const height = maxCount > 0 ? (day.count / maxCount) * 100 : 0;
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                              <div
+                                className={`w-full rounded-t-md transition-all ${
+                                  day.count > (analyzeData.avgDaily || 0) ? "bg-red-400" : "bg-slate-300"
+                                }`}
+                                style={{ height: `${Math.max(height, 4)}%` }}
+                              />
+                              <span className="text-[10px] text-slate-500">{day.day}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>日均: {Math.round((analyzeData.avgDaily || 0) * 10) / 10} 条</span>
+                        <span className={`flex items-center gap-1 ${
+                          (analyzeData.trend || 0) >= 0 ? "text-red-500" : "text-green-500"
+                        }`}>
+                          {(analyzeData.trend || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {Math.abs(analyzeData.trend || 0).toFixed(1)}% 较上期
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                         缺陷分类统计
                       </CardTitle>
-                      <CardDescription className="text-xs">
-                        共 {analyzeData.totalRecords} 条售后记录，涉及金额 {formatCurrency(analyzeData.totalAmount || 0)}
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         {Object.entries(analyzeData.categoryStats || {})
                           .filter(([, v]: any) => v.count > 0)
                           .sort((a: any, b: any) => b[1].count - a[1].count)
+                          .slice(0, 5)
                           .map(([key, data]: any) => {
                             const catInfo = getCategoryInfo(key);
                             return (
@@ -625,10 +724,7 @@ export default function AftersalesPage() {
                                       {catInfo.label}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-3 text-xs">
-                                    <span className="text-muted-foreground">{formatCurrency(data.amount || 0)}</span>
-                                    <span className="font-semibold text-slate-700 w-8 text-right">{data.count}</span>
-                                  </div>
+                                  <span className="font-semibold text-slate-700 w-8 text-right">{data.count}</span>
                                 </div>
                                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                                   <div
@@ -644,7 +740,9 @@ export default function AftersalesPage() {
                       </div>
                     </CardContent>
                   </Card>
+                </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="border-0 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
@@ -698,6 +796,47 @@ export default function AftersalesPage() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="h-4 w-4 text-red-500" />
+                        风险款式排行
+                      </CardTitle>
+                      <CardDescription className="text-xs">售后问题最多的款式</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {!analyzeData.topStyles?.length ? (
+                        <p className="text-sm text-slate-400 py-4 text-center">暂无数据</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {analyzeData.topStyles.slice(0, 5).map((style: any, i: number) => (
+                            <div key={style.styleId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
+                              <div
+                                className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  i === 0
+                                    ? "bg-red-100 text-red-700"
+                                    : i === 1
+                                    ? "bg-orange-100 text-orange-700"
+                                    : i === 2
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {i + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-slate-800 truncate">{style.styleName}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-semibold text-red-600">{style.total} 条</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-slate-50 to-slate-100/50">
@@ -737,6 +876,15 @@ export default function AftersalesPage() {
                           </Button>
                         );
                       })}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        已推送 {analyzeData.suggestions?.filter((s: any) => s.pushed).length || 0}/{analyzeData.suggestions?.length || 0} 条建议
+                      </p>
+                      <Button variant="ghost" size="sm" className="h-8 text-xs">
+                        <FileDown className="h-3 w-3 mr-1.5" />
+                        导出分析报告
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

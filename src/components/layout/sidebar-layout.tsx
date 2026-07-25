@@ -42,6 +42,7 @@ import {
   Loader2,
   FileText,
   Target,
+  TrendingDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
@@ -353,6 +354,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { label: "设计资产", href: "/design", icon: Palette, keywords: ["design", "设计", "资产"] },
     { label: "生产管理", href: "/production", icon: Factory, keywords: ["production", "生产", "备货"] },
     { label: "经营反馈", href: "/analytics", icon: BarChart3, keywords: ["analytics", "经营", "数据", "分析"] },
+    { label: "设计反馈", href: "/design-feedback", icon: TrendingDown, keywords: ["feedback", "设计反馈", "售后反馈", "缺陷"] },
     { label: "每季复盘", href: "/season-review", icon: FileText, keywords: ["review", "复盘", "季度", "season"] },
     { label: "品牌管理", href: "/brands", icon: Building2, keywords: ["brand", "品牌"], admin: true },
     { label: "供应商", href: "/suppliers", icon: Store, keywords: ["supplier", "供应商", "工厂"], admin: true },
@@ -500,6 +502,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Palette, label: "设计资产", href: "/design", node: "design" },
     { icon: Factory, label: "生产管理", href: "/production", node: "stocking" },
     { icon: BarChart3, label: "经营反馈", href: "/analytics" },
+    { icon: TrendingDown, label: "设计反馈", href: "/design-feedback", node: "design" },
     { icon: FileText, label: "每季复盘", href: "/season-review" },
     { icon: Building2, label: "品牌管理", href: "/brands", admin: true },
     { icon: Store, label: "供应商", href: "/suppliers", admin: true },
