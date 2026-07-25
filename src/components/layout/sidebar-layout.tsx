@@ -41,6 +41,7 @@ import {
   ListTodo,
   Loader2,
   FileText,
+  Target,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
@@ -346,7 +347,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { label: "企划中心", href: "/planning", icon: Sparkles, keywords: ["planning", "企划", "规划"] },
     { label: "灵感白板", href: "/inspiration", icon: Palette, keywords: ["inspiration", "灵感", "白板", "素材"] },
     { label: "AI 智能体中心", href: "/ai-workspace", icon: Wand2, keywords: ["ai", "智能体", "agent"] },
-    { label: "AI 审核中心", href: "/ai-review", icon: Brain, keywords: ["审核", "review", "测款"] },
+    { label: "AI 审核中心", href: "/ai-review", icon: Brain, keywords: ["审核", "review"] },
+    { label: "测款中心", href: "/testing", icon: Target, keywords: ["testing", "测款", "测试", "评分"] },
     { label: "款式管理", href: "/styles", icon: Shirt, keywords: ["style", "款式", "服装"] },
     { label: "设计资产", href: "/design", icon: Palette, keywords: ["design", "设计", "资产"] },
     { label: "生产管理", href: "/production", icon: Factory, keywords: ["production", "生产", "备货"] },
@@ -493,6 +495,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: Palette, label: "灵感白板", href: "/inspiration" },
     { icon: Wand2, label: "AI智能体中心", href: "/ai-workspace" },
     { icon: Brain, label: "AI审核中心", href: "/ai-review", node: "testing" },
+    { icon: Target, label: "测款中心", href: "/testing", node: "testing" },
     { icon: Shirt, label: "款式管理", href: "/styles", node: "sampling" },
     { icon: Palette, label: "设计资产", href: "/design", node: "design" },
     { icon: Factory, label: "生产管理", href: "/production", node: "stocking" },
