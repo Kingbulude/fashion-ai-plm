@@ -76,6 +76,8 @@ export function BomItemForm({ styleId, targetCost, onCostUpdated }: BomItemFormP
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BomItem | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // 表单状态
@@ -197,6 +199,38 @@ export function BomItemForm({ styleId, targetCost, onCostUpdated }: BomItemFormP
     }
   };
 
+  // AI 一键生成 BOM 草稿
+  const handleGenerateBom = async () => {
+    if (items.length > 0) {
+      if (!confirm(`已存在 ${items.length} 条物料，AI 生成的物料将追加到列表中。是否继续？`)) return;
+    }
+    setGenerating(true);
+    setAiSummary(null);
+    try {
+      const res = await fetch(`/api/styles/${styleId}/bom-items/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "AI 生成失败");
+      }
+      const result = await res.json();
+      const count = result.insertedCount || 0;
+      if (result.summary) {
+        setAiSummary(result.summary);
+      }
+      showToast("success", `AI 已生成 ${count} 条 BOM 物料${result.totalEstimatedCost ? `，预估总成本 ¥${result.totalEstimatedCost}` : ""}`);
+      fetchItems();
+      onCostUpdated?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI 生成失败";
+      showToast("error", msg);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // 即时计算预览总成本
   const previewTotalCost = (() => {
     const uc = Number(form.unitConsumption) || 0;
@@ -289,11 +323,35 @@ export function BomItemForm({ styleId, targetCost, onCostUpdated }: BomItemFormP
               <CardTitle className="text-base">BOM 物料清单</CardTitle>
               <CardDescription>共 {summary.itemCount} 项物料</CardDescription>
             </div>
-            <Button size="sm" onClick={openAddDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              添加物料
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleGenerateBom}
+                disabled={generating}
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                {generating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                {generating ? "AI 生成中..." : "AI 生成 BOM"}
+              </Button>
+              <Button size="sm" onClick={openAddDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                添加物料
+              </Button>
+            </div>
           </div>
+          {aiSummary && (
+            <div className="mt-2 p-3 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-purple-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{aiSummary}</p>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (

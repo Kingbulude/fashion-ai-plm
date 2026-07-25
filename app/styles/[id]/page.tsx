@@ -77,6 +77,13 @@ export default function StyleDetailPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [salesPrediction, setSalesPrediction] = useState<string | null>(null);
   const [predicting, setPredicting] = useState(false);
+  const [costEstimate, setCostEstimate] = useState<{
+    estimatedCost: number;
+    costRange: { low: number; high: number };
+    breakdown: { fabricCost: number; accessoryCost: number; packagingCost: number; laborCost: number; overheadCost: number };
+    suggestions: string[];
+  } | null>(null);
+  const [estimating, setEstimating] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -239,6 +246,30 @@ export default function StyleDetailPage() {
       showToast("error", "销量预测请求失败");
     } finally {
       setPredicting(false);
+    }
+  };
+
+  // AI 成本估算
+  const handleEstimateCost = async () => {
+    setEstimating(true);
+    setCostEstimate(null);
+    try {
+      const res = await fetch(`/api/styles/${id}/estimate-cost`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("error", data.error || "成本估算失败");
+        return;
+      }
+      const data = await res.json();
+      setCostEstimate(data);
+      showToast("success", "AI成本估算已完成");
+    } catch (err) {
+      showToast("error", "成本估算请求失败");
+    } finally {
+      setEstimating(false);
     }
   };
 
@@ -729,11 +760,114 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="bom" className="mt-0">
-            <BomItemForm
-              styleId={id}
-              targetCost={style.targetCost}
-              onCostUpdated={handleCostUpdated}
-            />
+            <div className="space-y-4">
+              {/* AI 成本估算卡片 */}
+              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-purple-100">
+                        <DollarSign className="h-3.5 w-3.5 text-purple-700" />
+                      </div>
+                      AI 成本估算
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={handleEstimateCost}
+                      disabled={estimating}
+                      className="h-8 bg-purple-700 hover:bg-purple-800"
+                    >
+                      {estimating ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />估算中...</>
+                      ) : (
+                        <><Wand2 className="h-3.5 w-3.5 mr-1.5" />开始估算</>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {costEstimate && (
+                  <CardContent className="pt-0 space-y-3">
+                    {/* 主要数字 */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-purple-50 border border-purple-100">
+                        <p className="text-xs text-muted-foreground mb-1">估算成本</p>
+                        <p className="text-xl font-bold text-purple-700">¥{costEstimate.estimatedCost.toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">成本区间</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          ¥{costEstimate.costRange.low.toFixed(2)} ~ ¥{costEstimate.costRange.high.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">目标成本</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {style.targetCost ? `¥${Number(style.targetCost).toFixed(2)}` : "未设置"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 成本分解 */}
+                    <div className="p-3 rounded-xl bg-card border border-border">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">成本分解</p>
+                      <div className="grid grid-cols-5 gap-2 text-center">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">面料</p>
+                          <p className="text-xs font-semibold text-blue-700">¥{costEstimate.breakdown.fabricCost.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">辅料</p>
+                          <p className="text-xs font-semibold text-amber-700">¥{costEstimate.breakdown.accessoryCost.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">包装</p>
+                          <p className="text-xs font-semibold text-green-700">¥{costEstimate.breakdown.packagingCost.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">人工</p>
+                          <p className="text-xs font-semibold text-indigo-700">¥{costEstimate.breakdown.laborCost.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">制造费用</p>
+                          <p className="text-xs font-semibold text-slate-700">¥{costEstimate.breakdown.overheadCost.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 降本建议 */}
+                    {costEstimate.suggestions.length > 0 && (
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100">
+                        <p className="text-xs font-medium text-emerald-900 mb-2 flex items-center gap-1.5">
+                          <Sparkles className="h-3 w-3" />
+                          AI 降本建议
+                        </p>
+                        <ul className="space-y-1.5">
+                          {costEstimate.suggestions.map((s, i) => (
+                            <li key={i} className="text-xs text-foreground flex items-start gap-2">
+                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="flex-1">{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+                {!costEstimate && !estimating && (
+                  <CardContent className="pt-0">
+                    <p className="text-xs text-muted-foreground">
+                      基于款式品类、设计特点和目标人群，AI 估算生产成本区间并给出降本建议。BOM 未完成时也可使用。
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+
+              <BomItemForm
+                styleId={id}
+                targetCost={style.targetCost}
+                onCostUpdated={handleCostUpdated}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="sampling" className="mt-0">
