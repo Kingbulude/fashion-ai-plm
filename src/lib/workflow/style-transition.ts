@@ -12,6 +12,8 @@ import {
   getTransitionResponsibleNode,
 } from "./style-state-machine";
 import { resolveResponsibleUserByNode } from "./responsible-user";
+import { emit } from "@/lib/events/emitter";
+import { EventType } from "@/lib/events/types";
 
 interface TransitionInput {
   styleId: string;
@@ -113,6 +115,24 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
       .single();
     createdTodoId = todo?.id;
   }
+
+  // 6. 发射状态变更事件（跨工序信息流转的关键）
+  // 触发 AI Pipeline 联动和跨工序通知
+  const eventStyleTenant = await getStyleCompany(styleId);
+  const responsibleNode = transition
+    ? getTransitionResponsibleNode(transition)
+    : null;
+  emit(EventType.STYLE_STATUS_CHANGED, {
+    source: userId ? "user" : "system",
+    userId,
+    brandId: input.brandId || eventStyleTenant?.brand_id,
+    styleId,
+    fromStatus,
+    toStatus,
+    event,
+    comment,
+    responsibleNode,
+  });
 
   return { success: true, newStatus: toStatus, createdTodoId };
 }

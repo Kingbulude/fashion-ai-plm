@@ -18,6 +18,9 @@ export function useApi() {
           "x-company-id": tenant.currentCompany?.id || "",
           "x-brand-id": tenant.currentBrand?.id || "",
           "x-season-id": tenant.currentSeason?.id || "",
+          "x-user-role": tenant.userRole || "",
+          "x-process-nodes":
+            tenant.processRoles?.map((r: any) => r.process_node).join(",") || "",
         },
       });
       if (!res.ok) {
@@ -36,6 +39,9 @@ export function useApi() {
           "x-company-id": tenant.currentCompany?.id || "",
           "x-brand-id": tenant.currentBrand?.id || "",
           "x-season-id": tenant.currentSeason?.id || "",
+          "x-user-role": tenant.userRole || "",
+          "x-process-nodes":
+            tenant.processRoles?.map((r: any) => r.process_node).join(",") || "",
         },
         body: JSON.stringify(body),
       });
@@ -55,6 +61,9 @@ export function useApi() {
           "x-company-id": tenant.currentCompany?.id || "",
           "x-brand-id": tenant.currentBrand?.id || "",
           "x-season-id": tenant.currentSeason?.id || "",
+          "x-user-role": tenant.userRole || "",
+          "x-process-nodes":
+            tenant.processRoles?.map((r: any) => r.process_node).join(",") || "",
         },
         body: JSON.stringify(body),
       });
@@ -73,6 +82,9 @@ export function useApi() {
           "x-company-id": tenant.currentCompany?.id || "",
           "x-brand-id": tenant.currentBrand?.id || "",
           "x-season-id": tenant.currentSeason?.id || "",
+          "x-user-role": tenant.userRole || "",
+          "x-process-nodes":
+            tenant.processRoles?.map((r: any) => r.process_node).join(",") || "",
         },
       });
       if (!res.ok) {

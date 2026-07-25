@@ -1,93 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useTenant, AISkill } from "@/lib/auth/tenant-context";
+import { useTenant } from "@/lib/auth/tenant-context";
 import { useApi } from "@/lib/api/use-api";
-import { AIChatDialog } from "@/components/ai/ai-chat-dialog";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
-  Clock,
-  TrendingUp,
-  Sparkles,
-  Package,
-  Factory,
-  Palette,
-  ShoppingCart,
-  Wrench,
-  Box,
-  ArrowRight,
-  Check,
-  RefreshCw,
-  Loader2,
-  ChevronRight,
-  CircleDot,
-  ListTodo,
-  ShieldAlert,
-  Plus,
-  Wand2,
-  Bot,
-  MessageSquare,
-} from "lucide-react";
-
-const PIPELINE_STAGES = [
-  { key: "planning", label: "企划中", icon: Sparkles, color: "slate" },
-  { key: "designing", label: "设计中", icon: Palette, color: "blue" },
-  { key: "sampling", label: "打样中", icon: Wrench, color: "amber" },
-  { key: "sampled", label: "封样", icon: CheckCircle2, color: "yellow" },
-  { key: "producing", label: "生产中", icon: Factory, color: "green" },
-  { key: "produced", label: "已生产", icon: Package, color: "emerald" },
-  { key: "selling", label: "销售中", icon: ShoppingCart, color: "purple" },
-];
-
-const STAGE_COLOR_MAP: Record<string, { bg: string; text: string; bar: string }> = {
-  slate: { bg: "bg-slate-100", text: "text-slate-700", bar: "bg-slate-500" },
-  blue: { bg: "bg-blue-100", text: "text-blue-700", bar: "bg-blue-500" },
-  amber: { bg: "bg-amber-100", text: "text-amber-700", bar: "bg-amber-500" },
-  yellow: { bg: "bg-yellow-100", text: "text-yellow-700", bar: "bg-yellow-500" },
-  green: { bg: "bg-green-100", text: "text-green-700", bar: "bg-green-500" },
-  emerald: { bg: "bg-emerald-100", text: "text-emerald-700", bar: "bg-emerald-500" },
-  purple: { bg: "bg-purple-100", text: "text-purple-700", bar: "bg-purple-500" },
-};
-
-const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
-  urgent: { label: "紧急", className: "badge-destructive" },
-  high: { label: "高", className: "badge-warning" },
-  medium: { label: "中", className: "bg-navy-100 text-navy-700" },
-  low: { label: "低", className: "bg-sand-200 text-slate-600" },
-};
-
-const RISK_LEVEL_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
-  urgent: { label: "紧急", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
-  high: { label: "高", className: "bg-orange-50 text-orange-700 border-orange-200", icon: AlertTriangle },
-  medium: { label: "中", className: "bg-amber-50 text-amber-700 border-amber-200", icon: AlertCircle },
-  low: { label: "低", className: "bg-sand-100 text-slate-700 border-sand-200", icon: CircleDot },
-};
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Loader2, Plus } from "lucide-react";
+import { ManagerWorkspace } from "@/components/workspace/manager-workspace";
+import { DesignWorkspace } from "@/components/workspace/design-workspace";
+import { SamplingWorkspace } from "@/components/workspace/sampling-workspace";
+import { ProcurementWorkspace } from "@/components/workspace/procurement-workspace";
+import { ProductionWorkspace } from "@/components/workspace/production-workspace";
+import { SalesWorkspace } from "@/components/workspace/sales-workspace";
+import { AftersalesWorkspace } from "@/components/workspace/aftersales-workspace";
 
 export default function DashboardPage() {
-  const { currentBrand, currentSeason, currentCompany, accessibleAISkills } = useTenant();
+  const { currentBrand, currentSeason, currentCompany, userRole, processRoles } =
+    useTenant();
   const api = useApi();
-
-  const aiSkills = accessibleAISkills.slice(0, 8);
-
-  const [chatSkill, setChatSkill] = useState<AISkill | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-
-  const openChat = (skill: AISkill) => {
-    setChatSkill(skill);
-    setChatOpen(true);
-  };
-
-  const closeChat = () => {
-    setChatOpen(false);
-    setChatSkill(null);
-  };
 
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +31,6 @@ export default function DashboardPage() {
       if (showRefreshing) setRefreshing(true);
       else setLoading(true);
       setError(null);
-
       const data = await api.get<any>("/api/workspace");
       setWorkspace(data);
     } catch (err: any) {
@@ -138,23 +68,82 @@ export default function DashboardPage() {
     }
   };
 
-  const stageCounts = useMemo(() => {
-    if (!workspace?.stylesByStatus) {
-      return PIPELINE_STAGES.reduce((acc, s) => ({ ...acc, [s.key]: 0 }), {} as Record<string, number>);
+  // 根据角色决定渲染哪个工作台
+  const renderWorkspace = () => {
+    if (loading) return <LoadingState />;
+    if (error) return <ErrorState error={error} onRetry={() => loadWorkspace()} />;
+    if (!workspace) return <LoadingState />;
+
+    const isManager = ["boss", "admin", "brand_manager"].includes(userRole || "");
+    if (isManager) {
+      return (
+        <ManagerWorkspace
+          workspace={workspace}
+          onCompleteTodo={handleCompleteTodo}
+          completingTodoId={completingTodoId}
+        />
+      );
     }
-    return PIPELINE_STAGES.reduce((acc, s) => {
-      acc[s.key] = (workspace.stylesByStatus[s.key] || []).length;
-      return acc;
-    }, {} as Record<string, number>);
-  }, [workspace]);
 
-  const totalActive = useMemo(() => Object.values(stageCounts).reduce((sum, n) => sum + n, 0), [stageCounts]);
-
-  const summary = workspace?.summary || {
-    totalStyles: 0,
-    pendingTodos: 0,
-    overdueCount: 0,
-    highRiskCount: 0,
+    const processNode = processRoles[0]?.process_node;
+    switch (processNode) {
+      case "design":
+        return (
+          <DesignWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      case "sampling":
+        return (
+          <SamplingWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      case "procurement":
+        return (
+          <ProcurementWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      case "stocking":
+        return (
+          <ProductionWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      case "sales":
+        return (
+          <SalesWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      case "aftersales":
+        return (
+          <AftersalesWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+      default:
+        return (
+          <ManagerWorkspace
+            workspace={workspace}
+            onCompleteTodo={handleCompleteTodo}
+            completingTodoId={completingTodoId}
+          />
+        );
+    }
   };
 
   return (
@@ -163,15 +152,19 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">工作台</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              工作台
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {currentBrand ? (
                 <>
-                  <span className="font-medium text-foreground">{currentBrand.name}</span>
-                  {currentSeason && <span className="mx-2 text-border">·</span>}
+                  <span className="font-medium text-foreground">
+                    {currentBrand.name}
+                  </span>
+                  {currentSeason && (
+                    <span className="mx-2 text-border">·</span>
+                  )}
                   {currentSeason && <span>{currentSeason.name}</span>}
-                  <span className="mx-2 text-border">·</span>
-                  <span>今天该做什么</span>
                 </>
               ) : (
                 "加载品牌上下文中..."
@@ -179,11 +172,22 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => loadWorkspace(true)} disabled={refreshing}>
-              <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadWorkspace(true)}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
-            <Button size="sm" className="bg-gradient-to-r from-terracotta-500 to-terracotta-600 hover:from-terracotta-600 hover:to-terracotta-700 text-white shadow-terracotta/30" asChild>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-terracotta-500 to-terracotta-600 hover:from-terracotta-600 hover:to-terracotta-700 text-white"
+              asChild
+            >
               <Link href="/planning">
                 <Plus className="h-4 w-4 mr-1.5" />
                 新建企划
@@ -192,463 +196,37 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-terracotta-500" />
-            <p className="text-sm">加载工作台数据...</p>
-          </div>
-        ) : error ? (
-          <Card className="border-destructive/30 bg-destructive/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <div>
-                  <p className="font-medium text-destructive">加载失败</p>
-                  <p className="text-sm text-destructive/80 mt-0.5">{error}</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => loadWorkspace()} className="ml-auto">
-                  重试
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* KPI Metrics - 三宫格 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* 款式概览：合并款式总数 + 活跃款式 + 迷你进度条 */}
-              <Link href="/styles" className="block">
-                <Card className="card-premium transition-all hover:shadow-lg cursor-pointer h-full">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-navy-100">
-                          <TrendingUp className="h-5 w-5 text-navy-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">款式概览</p>
-                          <p className="text-xs text-muted-foreground">本品牌在开发中款式</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="data-value !text-2xl">{summary.totalStyles}</p>
-                        <p className="text-xs text-muted-foreground">总款式</p>
-                      </div>
-                    </div>
-                    {/* 迷你进度条：7阶段分布 */}
-                    <div className="flex items-stretch h-3 rounded-full overflow-hidden bg-sand-100 gap-px">
-                      {PIPELINE_STAGES.map((stage) => {
-                        const count = stageCounts[stage.key] || 0;
-                        const pct = totalActive > 0 ? (count / totalActive) * 100 : 0;
-                        const colors = STAGE_COLOR_MAP[stage.color];
-                        return (
-                          <div
-                            key={stage.key}
-                            className={`${colors.bar} transition-all duration-500`}
-                            style={{ width: `${pct}%` }}
-                            title={`${stage.label}: ${count}款 (${pct.toFixed(0)}%)`}
-                          />
-                        );
-                      })}
-                    </div>
-                    <div className="flex items-center justify-between mt-2.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {PIPELINE_STAGES.slice(0, 4).map((stage) => {
-                          const colors = STAGE_COLOR_MAP[stage.color];
-                          return (
-                            <div key={stage.key} className="flex items-center gap-1">
-                              <div className={`w-2 h-2 rounded-full ${colors.bar}`} />
-                              <span className="text-[10px] text-muted-foreground">{stage.label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <span className="text-xs font-medium text-navy-600">{totalActive} 款在途 →</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              {/* 待办事项 */}
-              <Link href="/todos" className="block">
-                <Card className={`card-premium transition-all hover:shadow-lg cursor-pointer h-full ${summary.overdueCount > 0 ? "ring-2 ring-terracotta-200 bg-terracotta-50/40" : ""}`}>
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="p-2.5 rounded-xl bg-terracotta-100">
-                        <ListTodo className="h-5 w-5 text-terracotta-600" />
-                      </div>
-                      <div className="text-right">
-                        <p className="data-value">{summary.pendingTodos}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm font-semibold text-foreground">待办事项</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {summary.overdueCount > 0 ? (
-                        <span className="text-destructive font-medium">
-                          其中 {summary.overdueCount} 项已逾期
-                        </span>
-                      ) : (
-                        "暂无逾期"
-                      )}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              {/* 高风险 */}
-              <Card className={`card-premium transition-all h-full ${summary.highRiskCount > 0 ? "ring-2 ring-red-200 bg-red-50/40" : ""}`}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-red-50">
-                      <ShieldAlert className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div className="text-right">
-                      <p className="data-value">{summary.highRiskCount}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">高风险</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {summary.highRiskCount > 0 ? (
-                      <span className="text-destructive font-medium">需立即处理</span>
-                    ) : (
-                      "当前无高风险"
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Risk Alert - 上移到 KPI 下方最显眼位置 */}
-            {workspace?.risks && workspace.risks.length > 0 && (
-              <Card className="card-premium border-terracotta-200 bg-gradient-to-br from-terracotta-50/50 to-orange-50/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                      <ShieldAlert className="h-4 w-4 text-terracotta-500" />
-                      风险预警
-                      <Badge className="ml-1 bg-terracotta-500 text-white hover:bg-terracotta-600">
-                        {workspace.risks.length}
-                      </Badge>
-                    </CardTitle>
-                    <span className="text-xs text-muted-foreground">实时检测 · 需要关注</span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {workspace.risks.slice(0, 4).map((risk: any, i: number) => {
-                      const config = RISK_LEVEL_CONFIG[risk.level] || RISK_LEVEL_CONFIG.low;
-                      const Icon = config.icon;
-                      return (
-                        <Link
-                          key={i}
-                          href={risk.styleId ? `/styles/${risk.styleId}` : "#"}
-                          className={`flex items-center gap-3 p-3 rounded-xl border ${config.className} hover:shadow-md transition-all`}
-                        >
-                          <div className={`p-1.5 rounded-lg bg-white/60`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold truncate">{risk.title}</p>
-                              <Badge variant="outline" className={`text-[10px] h-4 border-current/30 flex-shrink-0`}>
-                                {config.label}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-foreground/70 mt-0.5 truncate">{risk.message}</p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 opacity-50 flex-shrink-0" />
-                        </Link>
-                      );
-                    })}
-                  </div>
-                  {workspace.risks.length > 4 && (
-                    <div className="text-center pt-3 mt-1 border-t border-terracotta-100">
-                      <Button variant="link" size="sm" asChild>
-                        <Link href="/todos">查看全部 {workspace.risks.length} 个风险</Link>
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Main Bento Grid - 双列 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Todos */}
-              <Card className="card-premium">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                        <ListTodo className="h-4 w-4 text-terracotta-500" />
-                        今日待办
-                        {summary.overdueCount > 0 && (
-                          <Badge className="ml-1 bg-destructive/10 text-destructive hover:bg-destructive/10">
-                            {summary.overdueCount} 逾期
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-1">按优先级排序，点击完成快速处理</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/todos">查看全部</Link>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {!workspace?.todos || workspace.todos.length === 0 ? (
-                    <div className="py-14 text-center">
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-3">
-                        <CheckCircle2 className="h-7 w-7 text-emerald-500" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">今日没有待办</p>
-                      <p className="text-xs text-muted-foreground mt-1">所有事情都处理完了，享受片刻宁静</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {workspace.todos.slice(0, 8).map((todo: any) => {
-                        const priorityConfig = PRIORITY_CONFIG[todo.priority] || PRIORITY_CONFIG.medium;
-                        const isOverdue = todo.due_date && new Date(todo.due_date) < new Date();
-                        return (
-                          <div
-                            key={todo.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                              isOverdue
-                                ? "border-destructive/20 bg-destructive/5"
-                                : "border-border hover:border-terracotta-100 hover:bg-sand-50"
-                            }`}
-                          >
-                            <button
-                              onClick={() => handleCompleteTodo(todo.id)}
-                              disabled={completingTodoId === todo.id}
-                              className="flex-shrink-0 h-5 w-5 rounded-md border-2 border-border hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex items-center justify-center group disabled:opacity-50"
-                              title="标记完成"
-                            >
-                              {completingTodoId === todo.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                              ) : (
-                                <Check className="h-3 w-3 text-transparent group-hover:text-emerald-600" />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium text-foreground truncate">{todo.title}</p>
-                                <Badge variant="outline" className={`text-[10px] h-5 ${priorityConfig.className}`}>
-                                  {priorityConfig.label}
-                                </Badge>
-                                {isOverdue && <Badge className="text-[10px] h-5 badge-destructive">逾期</Badge>}
-                              </div>
-                              {todo.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{todo.description}</p>
-                              )}
-                              {todo.due_date && (
-                                <p className={`text-xs mt-1 flex items-center gap-0.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(todo.due_date).toLocaleString("zh-CN", {
-                                    month: "numeric",
-                                    day: "numeric",
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                  })}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* 款式流水线 - 横向进度条紧凑版 */}
-              <Card className="card-premium">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                        <TrendingUp className="h-4 w-4 text-navy-500" />
-                        款式流水线
-                      </CardTitle>
-                      <CardDescription className="text-xs">7 大阶段款式分布</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/styles">查看全部</Link>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {PIPELINE_STAGES.map((stage) => {
-                    const count = stageCounts[stage.key] || 0;
-                    const colors = STAGE_COLOR_MAP[stage.color];
-                    const Icon = stage.icon;
-                    const pct = totalActive > 0 ? (count / totalActive) * 100 : 0;
-                    return (
-                      <div key={stage.key} className="group">
-                        <div className="flex items-center gap-3 mb-1.5">
-                          <div className={`p-1.5 rounded-lg ${colors.bg} flex-shrink-0`}>
-                            <Icon className={`h-3.5 w-3.5 ${colors.text}`} />
-                          </div>
-                          <span className="text-sm font-medium text-foreground flex-shrink-0 w-16">{stage.label}</span>
-                          <div className="flex-1 h-2 bg-sand-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0 w-16 justify-end">
-                            <span className={`text-sm font-bold ${colors.text}`}>{count}</span>
-                            <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Styles */}
-            <Card className="card-premium">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                      <Sparkles className="h-4 w-4 text-navy-500" />
-                      最近款式
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-1">最近更新的 6 个款式</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/styles">查看全部</Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {!workspace?.recentStyles || workspace.recentStyles.length === 0 ? (
-                  <div className="py-14 text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-sand-100 flex items-center justify-center mx-auto mb-3">
-                      <Box className="h-7 w-7 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground">还没有款式</p>
-                    <Button variant="outline" size="sm" className="mt-3" asChild>
-                      <Link href="/styles">
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        创建第一个款式
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {workspace.recentStyles.map((style: any) => {
-                      const stageInfo = PIPELINE_STAGES.find((s) => s.key === style.status);
-                      const colors = stageInfo ? STAGE_COLOR_MAP[stageInfo.color] : STAGE_COLOR_MAP.slate;
-                      return (
-                        <Link
-                          key={style.id}
-                          href={`/styles/${style.id}`}
-                          className="block p-4 rounded-xl border border-border bg-card hover:border-terracotta-200 hover:shadow-md transition-all group"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-semibold text-foreground truncate">{style.name}</p>
-                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-terracotta-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3">款号: {style.styleNo}</p>
-                          <div className="flex items-center justify-between">
-                            <Badge className={`${colors.bg} ${colors.text} border-0`}>
-                              {stageInfo?.label || style.status}
-                            </Badge>
-                            <p className="text-xs text-muted-foreground">
-                              {style.updatedAt ? new Date(style.updatedAt).toLocaleDateString("zh-CN", {
-                                month: "numeric",
-                                day: "numeric",
-                              }) : "-"}
-                            </p>
-                          </div>
-                          {style.targetCost && (
-                            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                              目标: <span className="font-medium text-foreground">¥{style.targetCost}</span>
-                              {style.actualCost && (
-                                <>
-                                  {" / 实际: "}
-                                  <span className={`font-medium ${style.actualCost > style.targetCost ? "text-destructive" : "text-foreground"}`}>
-                                    ¥{style.actualCost}
-                                  </span>
-                                </>
-                              )}
-                            </p>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* My AI Skills */}
-            {aiSkills.length > 0 && (
-              <Card className="card-premium">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                        <Bot className="h-4 w-4 text-navy-500" />
-                        我的 AI 工具
-                      </CardTitle>
-                      <CardDescription className="text-xs">根据当前角色和工序自动分配的 AI 智能体</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/ai-workspace">查看全部</Link>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {aiSkills.map((skill) => {
-                      const hasEntry = !!skill.entry_route;
-                      const Icon = hasEntry ? Wand2 : MessageSquare;
-                      const cardContent = (
-                        <>
-                          <div className="p-2.5 rounded-xl bg-navy-100 text-navy-600 group-hover:bg-navy-200 transition-colors flex-shrink-0">
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate">{skill.name}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {skill.description || "AI 智能体"}
-                            </p>
-                          </div>
-                        </>
-                      );
-
-                      return hasEntry ? (
-                        <Link
-                          key={skill.id}
-                          href={skill.entry_route!}
-                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group"
-                        >
-                          {cardContent}
-                        </Link>
-                      ) : (
-                        <button
-                          key={skill.id}
-                          onClick={() => openChat(skill)}
-                          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-navy-200 hover:shadow-md transition-all group text-left w-full"
-                        >
-                          {cardContent}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-
-        <AIChatDialog open={chatOpen} onClose={closeChat} skill={chatSkill} />
+        {renderWorkspace()}
       </div>
     </SidebarLayout>
+  );
+}
+
+// 加载状态
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <span className="ml-3 text-muted-foreground">加载工作台...</span>
+    </div>
+  );
+}
+
+// 错误状态
+function ErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <p className="text-destructive mb-4">{error}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <RefreshCw className="h-4 w-4 mr-1.5" />
+        重试
+      </Button>
+    </div>
   );
 }

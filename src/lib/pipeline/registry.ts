@@ -7,6 +7,7 @@ import { registerPipeline, triggerFromEvent } from "./runner";
 import { testingDecisionOrderingPipeline } from "./pipelines/testing-decision-ordering";
 import { procurementAutomationPipeline } from "./pipelines/procurement-automation";
 import { dailyCheckinPipeline } from "./pipelines/daily-checkin";
+import { registerEventHandlers } from "../events/handlers";
 
 let initialized = false;
 
@@ -33,6 +34,9 @@ export function registerAll(): void {
   for (const type of triggerTypes) {
     on(type, triggerFromEvent, { id: "pipeline-dispatcher", priority: 10 });
   }
+
+  // 注册业务事件处理器（跨工序信息流转等）
+  registerEventHandlers();
 
   console.log(
     `[pipeline] initialized: ${triggerTypes.size} event types → pipelines`

@@ -1,9 +1,15 @@
 // 工作台首页聚合 API
 // 一次返回：今日待办、逾期风险、款式进度、最近款式
+// 根据用户角色和工序返回差异化数据
 
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import {
+  getWorkspaceConfig,
+  filterStylesByProcess,
+  filterRisksByProcess,
+} from "@/lib/workspace/workspace-config";
 
 export const runtime = "edge";
 
@@ -15,6 +21,14 @@ export async function GET(request: Request) {
     const headerTenant = getTenantFromHeaders(request);
     const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id || DEFAULT_BRAND;
     const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+
+    // 角色感知：从请求头读取用户角色和工序
+    const headerRole = request.headers.get("x-user-role") || "";
+    const headerProcessNodes = request.headers.get("x-process-nodes") || "";
+    const processNodes = headerProcessNodes
+      ? headerProcessNodes.split(",").filter(Boolean)
+      : [];
+    const isManager = ["boss", "admin", "brand_manager"].includes(headerRole);
 
     // 1. 今日待办
     const { data: todos } = await supabase
@@ -145,8 +159,15 @@ export async function GET(request: Request) {
       })),
     };
 
-    // 6. 最近款式
-    const recentStyles = (allStyles || []).slice(0, 6);
+    // 6. 最近款式（根据角色过滤）
+    const allRecentStyles = (allStyles || []).slice(0, 20);
+    const recentStyles = filterStylesByProcess(allRecentStyles, isManager, processNodes).slice(0, 6);
+
+    // 7. 根据角色过滤风险
+    const filteredRisks = filterRisksByProcess(risks, isManager, processNodes);
+
+    // 8. 获取工作台配置
+    const workspaceConfig = getWorkspaceConfig(headerRole, processNodes);
 
     return NextResponse.json({
       brand: { id: brandId, seasonId },
@@ -158,10 +179,15 @@ export async function GET(request: Request) {
       },
       todos: todos || [],
       overdueTodos: overdueTodos || [],
-      risks,
+      risks: filteredRisks,
       stageStats,
       recentStyles,
       stylesByStatus,
+      // 角色感知新增字段
+      workspaceConfig,
+      userRole: headerRole,
+      processNodes,
+      isManager,
     });
   } catch (error) {
     console.error("工作台API失败:", error);
