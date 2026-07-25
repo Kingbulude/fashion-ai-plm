@@ -15,6 +15,9 @@ import { SamplingForm } from "@/components/styles/sampling-form";
 import { QcRecordForm } from "@/components/styles/qc-record-form";
 import { ProcurementForm } from "@/components/styles/procurement-form";
 import { ProductionForm } from "@/components/styles/production-form";
+import { ColorSizeSimulator } from "@/components/styles/color-size-simulator";
+import { ReorderSimulationCard } from "@/components/styles/reorder-simulation-card";
+import { MarketingImagesDialog } from "@/components/styles/marketing-images-dialog";
 import { InventoryForm } from "@/components/styles/inventory-form";
 import {
   ArrowLeft,
@@ -43,7 +46,7 @@ import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
 import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
 import { ImageRedesignDialog } from "@/components/styles/image-redesign-dialog";
-import { Layers, Wand2 } from "lucide-react";
+import { Layers, Wand2, Images } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -57,6 +60,7 @@ export default function StyleDetailPage() {
   const [analyzingAssetId, setAnalyzingAssetId] = useState<string | null>(null);
   const [globalAnalyzing, setGlobalAnalyzing] = useState(false);
   const [redesignOpen, setRedesignOpen] = useState(false);
+  const [marketingOpen, setMarketingOpen] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   
   const router = useRouter();
@@ -524,6 +528,15 @@ export default function StyleDetailPage() {
                       <Wand2 className="h-4 w-4 mr-2" />
                       AI 改款
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMarketingOpen(true)}
+                      className="border-navy-200 text-navy-700 hover:bg-navy-50 hover:text-navy-800"
+                    >
+                      <Images className="h-4 w-4 mr-2" />
+                      AI 营销图
+                    </Button>
                     <Button size="sm" onClick={() => openUpload()} className="bg-navy-700 hover:bg-navy-800 text-white">
                       <Upload className="h-4 w-4 mr-2" />
                       上传资产
@@ -640,7 +653,15 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="production" className="mt-0">
-            <ProductionForm styleId={id} />
+            <div className="space-y-4">
+              <ColorSizeSimulator
+                styleId={id}
+                styleName={style.name}
+                unitCost={Number(style.actualCost || style.targetCost || 0)}
+                unitPrice={Number(style.retailPrice || 0)}
+              />
+              <ProductionForm styleId={id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="inventory" className="mt-0">
@@ -648,7 +669,10 @@ export default function StyleDetailPage() {
           </TabsContent>
 
           <TabsContent value="sales" className="mt-0">
-            <StyleSalesTab styleId={id} styleName={style.name} />
+            <div className="space-y-4">
+              <ReorderSimulationCard styleId={id} styleName={style.name} />
+              <StyleSalesTab styleId={id} styleName={style.name} />
+            </div>
           </TabsContent>
 
           <TabsContent value="aftersales" className="mt-0">
@@ -721,6 +745,18 @@ export default function StyleDetailPage() {
         onGenerated={() => {
           fetchAssets();
           showToast("success", "AI 改款已生成，已保存到设计资产");
+        }}
+      />
+
+      {/* AI 营销场景图生成对话框 */}
+      <MarketingImagesDialog
+        open={marketingOpen}
+        onOpenChange={setMarketingOpen}
+        styleId={id}
+        styleName={style.name}
+        onGenerated={() => {
+          fetchAssets();
+          showToast("success", "AI 营销图已生成，已保存到设计资产");
         }}
       />
     </SidebarLayout>
