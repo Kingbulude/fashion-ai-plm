@@ -46,7 +46,7 @@ import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
 import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
 import { ImageRedesignDialog } from "@/components/styles/image-redesign-dialog";
-import { Layers, Wand2, Images, X, TrendingUp } from "lucide-react";
+import { Layers, Wand2, Images, X, TrendingUp, Wind } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -92,6 +92,16 @@ export default function StyleDetailPage() {
     pricingRecommendations: { strategy: string; price: number; rationale: string; risk: string }[];
   } | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [colorRecommendation, setColorRecommendation] = useState<{
+    colorRecommendations: { name: string; hex: string; trendLevel: string; usage: string; description: string; combinations: string[] }[];
+    confidence: number;
+  } | null>(null);
+  const [colorLoading, setColorLoading] = useState(false);
+  const [fabricRecommendation, setFabricRecommendation] = useState<{
+    fabricRecommendations: { name: string; category: string; trendLevel: string; price: string; description: string; properties: { weight: string; width: string; composition: string }; applications: string[] }[];
+    confidence: number;
+  } | null>(null);
+  const [fabricLoading, setFabricLoading] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -307,6 +317,62 @@ export default function StyleDetailPage() {
       showToast("error", "定价策略请求失败");
     } finally {
       setPricingLoading(false);
+    }
+  };
+
+  // AI 色彩推荐
+  const handleGetColorRecommendation = async () => {
+    setColorLoading(true);
+    setColorRecommendation(null);
+    try {
+      const res = await fetch("/api/planning/ai/color-recommendation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          season: style?.season,
+          category: style?.category,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("error", data.error || "色彩推荐失败");
+        return;
+      }
+      const data = await res.json();
+      setColorRecommendation(data);
+      showToast("success", "AI 色彩推荐已完成");
+    } catch (err) {
+      showToast("error", "色彩推荐请求失败");
+    } finally {
+      setColorLoading(false);
+    }
+  };
+
+  // AI 面料推荐
+  const handleGetFabricRecommendation = async () => {
+    setFabricLoading(true);
+    setFabricRecommendation(null);
+    try {
+      const res = await fetch("/api/planning/ai/fabric-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: style?.category,
+          season: style?.season,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("error", data.error || "面料推荐失败");
+        return;
+      }
+      const data = await res.json();
+      setFabricRecommendation(data);
+      showToast("success", "AI 面料推荐已完成");
+    } catch (err) {
+      showToast("error", "面料推荐请求失败");
+    } finally {
+      setFabricLoading(false);
     }
   };
 
@@ -781,6 +847,86 @@ export default function StyleDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* AI 色彩推荐 */}
+            <Card className="border-2 border-pink-200 bg-gradient-to-br from-pink-50/50 to-transparent">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-pink-100">
+                      <Palette className="h-3.5 w-3.5 text-pink-700" />
+                    </div>
+                    AI 色彩方案推荐
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={handleGetColorRecommendation}
+                    disabled={colorLoading}
+                    className="h-8 bg-pink-700 hover:bg-pink-800"
+                  >
+                    {colorLoading ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />生成中...</>
+                    ) : (
+                      <><Wand2 className="h-3.5 w-3.5 mr-1.5" />生成方案</>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {colorRecommendation && colorRecommendation.colorRecommendations.length > 0 && (
+                <CardContent className="pt-0 space-y-3">
+                  {/* 色彩色板 */}
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {colorRecommendation.colorRecommendations.slice(0, 6).map((c, i) => (
+                      <div key={i} className="text-center">
+                        <div
+                          className="w-full aspect-square rounded-xl border border-border shadow-sm mb-1.5"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        <p className="text-xs font-medium text-foreground truncate">{c.name}</p>
+                        <Badge variant="secondary" className="text-[9px] mt-0.5">
+                          {c.trendLevel}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 色彩详情列表 */}
+                  <div className="space-y-2">
+                    {colorRecommendation.colorRecommendations.slice(0, 4).map((c, i) => (
+                      <div key={i} className="p-2.5 rounded-lg bg-white/80 border border-pink-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c.hex }} />
+                          <span className="text-xs font-semibold text-foreground">{c.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto">{c.usage}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-1">{c.description}</p>
+                        {c.combinations && c.combinations.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] text-muted-foreground">搭配：</span>
+                            {c.combinations.slice(0, 3).map((combo, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 border border-pink-100">
+                                {combo}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] text-right text-muted-foreground">
+                    置信度：{colorRecommendation.confidence}%
+                  </p>
+                </CardContent>
+              )}
+              {!colorRecommendation && !colorLoading && (
+                <CardContent className="pt-0">
+                  <p className="text-xs text-muted-foreground">
+                    基于款式品类和季节，AI 推荐本季流行色彩方案，包括主色、辅助色、点缀色及搭配建议。
+                  </p>
+                </CardContent>
+              )}
+            </Card>
           </TabsContent>
 
           <TabsContent value="3d" className="mt-0">
@@ -894,6 +1040,93 @@ export default function StyleDetailPage() {
                   <CardContent className="pt-0">
                     <p className="text-xs text-muted-foreground">
                       基于款式品类、设计特点和目标人群，AI 估算生产成本区间并给出降本建议。BOM 未完成时也可使用。
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* AI 面料推荐 */}
+              <Card className="border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-indigo-100">
+                        <Wind className="h-3.5 w-3.5 text-indigo-700" />
+                      </div>
+                      AI 面料推荐
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={handleGetFabricRecommendation}
+                      disabled={fabricLoading}
+                      className="h-8 bg-indigo-700 hover:bg-indigo-800"
+                    >
+                      {fabricLoading ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />分析中...</>
+                      ) : (
+                        <><Wand2 className="h-3.5 w-3.5 mr-1.5" />推荐面料</>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {fabricRecommendation && fabricRecommendation.fabricRecommendations.length > 0 && (
+                  <CardContent className="pt-0 space-y-2.5">
+                    {fabricRecommendation.fabricRecommendations.slice(0, 5).map((f, i) => (
+                      <div key={i} className="p-3 rounded-xl bg-white/80 border border-indigo-100">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                              <Wind className="h-4 w-4 text-indigo-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{f.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{f.category}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-indigo-700">{f.price}</p>
+                            <Badge variant="secondary" className="text-[9px] mt-0.5">
+                              {f.trendLevel}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mb-2">{f.description}</p>
+                        {f.properties && (
+                          <div className="grid grid-cols-3 gap-1 mb-2">
+                            <div className="text-center p-1.5 rounded-md bg-indigo-50/50">
+                              <p className="text-[9px] text-muted-foreground">克重</p>
+                              <p className="text-[10px] font-medium text-foreground">{f.properties.weight || "-"}</p>
+                            </div>
+                            <div className="text-center p-1.5 rounded-md bg-indigo-50/50">
+                              <p className="text-[9px] text-muted-foreground">幅宽</p>
+                              <p className="text-[10px] font-medium text-foreground">{f.properties.width || "-"}</p>
+                            </div>
+                            <div className="text-center p-1.5 rounded-md bg-indigo-50/50">
+                              <p className="text-[9px] text-muted-foreground">成分</p>
+                              <p className="text-[10px] font-medium text-foreground truncate">{f.properties.composition || "-"}</p>
+                            </div>
+                          </div>
+                        )}
+                        {f.applications && f.applications.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {f.applications.slice(0, 3).map((app, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                {app}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-right text-muted-foreground">
+                      置信度：{fabricRecommendation.confidence}%
+                    </p>
+                  </CardContent>
+                )}
+                {!fabricRecommendation && !fabricLoading && (
+                  <CardContent className="pt-0">
+                    <p className="text-xs text-muted-foreground">
+                      基于款式品类和季节，AI 推荐合适的面料供应商及面料趋势，包含克重、幅宽、成分等规格参数。
                     </p>
                   </CardContent>
                 )}
