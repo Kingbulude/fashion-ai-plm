@@ -7,11 +7,11 @@ export const runtime = "edge";
 
 const DEFAULT_COMPANY = "00000000-0000-0000-0000-000000000010";
 
-type RouteContext = { params: Promise<{ supplierId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
-    const { supplierId } = await params;
+    const { id: supplierId } = await params;
     const tenant = getTenantFromHeaders(request);
     const companyId = tenant?.company_id || DEFAULT_COMPANY;
     if (!companyId) {
@@ -58,7 +58,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
-    const { supplierId } = await params;
+    const { id: supplierId } = await params;
     const tenant = getTenantFromHeaders(request);
     const companyId = tenant?.company_id || DEFAULT_COMPANY;
     if (!companyId) {

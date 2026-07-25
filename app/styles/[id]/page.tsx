@@ -42,7 +42,8 @@ import { StyleSalesTab } from "@/components/styles/sales-tab";
 import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
 import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
-import { Layers } from "lucide-react";
+import { ImageRedesignDialog } from "@/components/styles/image-redesign-dialog";
+import { Layers, Wand2 } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -55,6 +56,7 @@ export default function StyleDetailPage() {
   const [uploadDefaultType, setUploadDefaultType] = useState<"inspiration" | "design" | "ai_derivative" | "3d_sample">("design");
   const [analyzingAssetId, setAnalyzingAssetId] = useState<string | null>(null);
   const [globalAnalyzing, setGlobalAnalyzing] = useState(false);
+  const [redesignOpen, setRedesignOpen] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   
   const router = useRouter();
@@ -512,10 +514,21 @@ export default function StyleDetailPage() {
                     </CardTitle>
                     <CardDescription>款式相关的设计稿、灵感图等资产</CardDescription>
                   </div>
-                  <Button size="sm" onClick={() => openUpload()} className="bg-navy-700 hover:bg-navy-800 text-white w-full sm:w-auto">
-                    <Upload className="h-4 w-4 mr-2" />
-                    上传资产
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setRedesignOpen(true)}
+                      className="border-navy-200 text-navy-700 hover:bg-navy-50 hover:text-navy-800"
+                    >
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      AI 改款
+                    </Button>
+                    <Button size="sm" onClick={() => openUpload()} className="bg-navy-700 hover:bg-navy-800 text-white">
+                      <Upload className="h-4 w-4 mr-2" />
+                      上传资产
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -690,6 +703,25 @@ export default function StyleDetailPage() {
         defaultType={uploadDefaultType}
         onUploaded={handleUploaded}
         onAnalyzed={handleAnalyzed}
+      />
+
+      {/* AI 图生图改款对话框 */}
+      <ImageRedesignDialog
+        open={redesignOpen}
+        onOpenChange={setRedesignOpen}
+        styleId={id}
+        styleName={style.name}
+        assets={assets.map((a: any) => ({
+          id: a.id,
+          fileName: a.fileName,
+          fileUrl: a.fileUrl,
+          thumbnailUrl: a.thumbnailUrl,
+          type: a.type,
+        }))}
+        onGenerated={() => {
+          fetchAssets();
+          showToast("success", "AI 改款已生成，已保存到设计资产");
+        }}
       />
     </SidebarLayout>
   );
