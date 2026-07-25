@@ -8,6 +8,35 @@ import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { ids, status } = body as { ids: string[]; status: string };
+
+    if (!ids || ids.length === 0) {
+      return NextResponse.json({ error: "请选择审核项" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("ai_review_records")
+      .upsert(
+        ids.map((id) => ({
+          review_item_id: id,
+          status,
+          processed_at: new Date().toISOString(),
+        })),
+        { onConflict: "review_item_id" }
+      )
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, updated: (toCamelCase(data) as any[]).length });
+  } catch {
+    return NextResponse.json({ error: "更新审核状态失败" }, { status: 500 });
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -235,9 +264,68 @@ export async function GET(request: Request) {
       high: reviewItems.filter((r) => r.priority === "high").length,
     };
 
+    // 获取审核历史记录（用于趋势统计）
+    const { data: reviewHistoryData } = await supabase
+      .from("ai_review_records")
+      .select("status, processed_at")
+      .order("processed_at", { ascending: false })
+      .limit(100);
+    const rawHistory = toCamelCase(reviewHistoryData);
+    const history: any[] = Array.isArray(rawHistory) ? rawHistory : [];
+
+    // 按日期统计审核趋势（最近7天）
+    const trendDays: Record<string, { total: number; resolved: number; rejected: number }> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      trendDays[key] = { total: 0, resolved: 0, rejected: 0 };
+    }
+
+    for (const record of history) {
+      if (!record.processedAt) continue;
+      const day = record.processedAt.split("T")[0];
+      if (trendDays[day]) {
+        trendDays[day].total++;
+        if (record.status === "resolved") trendDays[day].resolved++;
+        if (record.status === "rejected") trendDays[day].rejected++;
+      }
+    }
+
+    const dailyTrend = Object.entries(trendDays)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, v]) => ({
+        date,
+        ...v,
+        dateLabel: date.split("-").slice(1).join("/"),
+      }));
+
+    // 审核历史记录（最近20条）
+    const recentHistory = history.slice(0, 20).map((record) => ({
+      id: record.id,
+      reviewItemId: record.reviewItemId,
+      status: record.status,
+      processedAt: record.processedAt,
+    }));
+
+    // 总体统计
+    const totalReviewed = history.length;
+    const resolvedCount = history.filter((h) => h.status === "resolved").length;
+    const rejectedCount = history.filter((h) => h.status === "rejected").length;
+    const pendingCount = reviewItems.length;
+
     return NextResponse.json({
       reviewItems,
       stats,
+      dailyTrend,
+      recentHistory,
+      overallStats: {
+        totalReviewed,
+        resolvedCount,
+        rejectedCount,
+        pendingCount,
+        resolvedRate: totalReviewed > 0 ? (resolvedCount / totalReviewed) * 100 : 0,
+      },
     });
   } catch {
     return NextResponse.json({ error: "获取审核数据失败" }, { status: 500 });

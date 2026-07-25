@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,13 @@ import {
   Lightbulb,
   AlertCircle,
   ChevronRight,
+  TrendingUp,
+  Clock,
+  History,
+  CheckSquare,
+  Square,
+  Trash2,
+  Calendar,
 } from "lucide-react";
 
 const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string; border: string }> = {
@@ -52,6 +59,8 @@ export default function AIReviewPage() {
   const [error, setError] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -74,6 +83,44 @@ export default function AIReviewPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const filtered = items;
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((i: any) => i.id)));
+    }
+  };
+
+  const handleBatchAction = async (status: string) => {
+    if (selectedIds.size === 0) return;
+    setBatchProcessing(true);
+    try {
+      const res = await fetch("/api/ai-review", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds), status }),
+      });
+      if (res.ok) {
+        setSelectedIds(new Set());
+        await fetchReviews(true);
+      }
+    } catch (err) {
+      console.error("批量操作失败:", err);
+    } finally {
+      setBatchProcessing(false);
+    }
+  };
+
   const items = (data?.reviewItems || []).filter((item: any) => {
     if (typeFilter && item.type !== typeFilter) return false;
     if (priorityFilter && item.priority !== priorityFilter) return false;
@@ -81,6 +128,7 @@ export default function AIReviewPage() {
   });
 
   const stats = data?.stats || {};
+  const overallStats = data?.overallStats || {};
 
   return (
     <SidebarLayout>
@@ -102,14 +150,21 @@ export default function AIReviewPage() {
           </Button>
         </div>
 
-        {/* 4 大统计卡 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+        {/* 6 大统计卡 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <StatCard
             title="待审核项"
             value={(data?.reviewItems || []).length}
             sub={`${stats.urgent || 0} 项紧急`}
             icon={Brain}
             color="navy"
+          />
+          <StatCard
+            title="已审核"
+            value={overallStats.totalReviewed || 0}
+            sub={`解决率 ${(overallStats.resolvedRate || 0).toFixed(0)}%`}
+            icon={CheckCircle}
+            color="blue"
           />
           <StatCard
             title="设计稿"
@@ -124,6 +179,13 @@ export default function AIReviewPage() {
             sub="成本/缺漏检测"
             icon={Package}
             color="terracotta"
+          />
+          <StatCard
+            title="工艺包"
+            value={stats.techpack || 0}
+            sub="参数完整性检测"
+            icon={FileText}
+            color="amber"
           />
           <StatCard
             title="高优先级"
@@ -190,6 +252,107 @@ export default function AIReviewPage() {
           })}
         </div>
 
+        {/* 批量操作栏 */}
+        {selectedIds.size > 0 && (
+          <div className="mb-4 p-3 rounded-lg bg-navy-50 border border-navy-200 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-navy-700">已选择 {selectedIds.size} 项</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBatchAction("resolved")}
+                disabled={batchProcessing}
+                className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50"
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                批量通过
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBatchAction("rejected")}
+                disabled={batchProcessing}
+                className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                批量驳回
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+                className="h-7 text-xs text-slate-600"
+              >
+                取消选择
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* 审核趋势图表 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <Card className="card-premium lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-navy-600" />
+                审核趋势（近 7 天）
+              </CardTitle>
+              <CardDescription className="text-xs">每日审核处理量统计</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReviewTrendChart trend={data?.dailyTrend || []} />
+            </CardContent>
+          </Card>
+
+          <Card className="card-premium">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-600" />
+                审核概览
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    <span className="text-sm text-emerald-700">已解决</span>
+                  </div>
+                  <span className="text-xl font-bold text-emerald-700">{overallStats.resolvedCount || 0}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm text-red-700">已驳回</span>
+                  </div>
+                  <span className="text-xl font-bold text-red-700">{overallStats.rejectedCount || 0}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm text-amber-700">待审核</span>
+                  </div>
+                  <span className="text-xl font-bold text-amber-700">{overallStats.pendingCount || 0}</span>
+                </div>
+                <div className="pt-3 border-t border-border">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">解决率</span>
+                    <span className="font-medium text-foreground">{(overallStats.resolvedRate || 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"
+                      style={{ width: `${overallStats.resolvedRate || 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* 审核项列表 */}
         {loading ? (
           <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2 card-premium">
@@ -223,11 +386,59 @@ export default function AIReviewPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {items.map((item: any) => (
-              <ReviewCard key={item.id} item={item} />
-            ))}
-          </div>
+          <>
+            {/* 全选按钮 */}
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-slate-50">
+              <button
+                onClick={selectAll}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
+              >
+                {selectedIds.size === items.length && items.length > 0 ? (
+                  <CheckSquare className="h-4 w-4 text-navy-600" />
+                ) : (
+                  <Square className="h-4 w-4 text-slate-400" />
+                )}
+                全选 ({items.length})
+              </button>
+            </div>
+            <div className="space-y-3">
+              {items.map((item: any) => (
+                <ReviewCard key={item.id} item={item} selected={selectedIds.has(item.id)} onToggle={() => toggleSelect(item.id)} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* 审核历史记录 */}
+        {data?.recentHistory?.length > 0 && (
+          <Card className="card-premium mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4 text-slate-600" />
+                审核历史
+              </CardTitle>
+              <CardDescription className="text-xs">最近处理的审核记录</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {data.recentHistory.slice(0, 10).map((record: any) => (
+                  <div key={record.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${record.status === "resolved" ? "bg-emerald-500" : "bg-red-500"}`} />
+                      <span className="text-sm text-slate-700">审核项 #{record.reviewItemId?.slice(-8) || record.id}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {record.status === "resolved" ? "已解决" : "已驳回"}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {record.processedAt ? new Date(record.processedAt).toLocaleDateString("zh-CN") : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </SidebarLayout>
@@ -255,7 +466,7 @@ function StatCard({ title, value, sub, icon: Icon, color }: { title: string; val
 }
 
 // 审核卡片
-function ReviewCard({ item }: { item: any }) {
+function ReviewCard({ item, selected, onToggle }: { item: any; selected?: boolean; onToggle?: () => void }) {
   const typeConfig = TYPE_CONFIG[item.type] || TYPE_CONFIG.design;
   const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.medium;
   const TypeIcon = typeConfig.icon;
@@ -284,12 +495,25 @@ function ReviewCard({ item }: { item: any }) {
   };
 
   return (
-    <Card className="card-premium hover:shadow-lg transition-all overflow-hidden">
+    <Card className={`card-premium hover:shadow-lg transition-all overflow-hidden ${selected ? "ring-2 ring-navy-500" : ""}`}>
       <div className="flex">
         {/* 左侧类型条 */}
         <div className={`w-1 ${typeConfig.bg} bg-gradient-to-b`} />
         <div className="flex-1 p-4">
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3">
+            {/* 选择框 */}
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                className="mt-2 flex-shrink-0"
+              >
+                {selected ? (
+                  <CheckSquare className="h-4 w-4 text-navy-600" />
+                ) : (
+                  <Square className="h-4 w-4 text-slate-300 hover:text-slate-500" />
+                )}
+              </button>
+            )}
             <div className={`p-2.5 rounded-xl ${typeConfig.bg} flex-shrink-0 border ${typeConfig.border}`}>
               <TypeIcon className={`h-5 w-5 ${typeConfig.color}`} />
             </div>
@@ -420,5 +644,65 @@ function ReviewCard({ item }: { item: any }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+// 审核趋势图表组件
+function ReviewTrendChart({ trend }: { trend: any[] }) {
+  if (!trend || trend.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-sm text-slate-400">
+        暂无审核趋势数据
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...trend.map((d) => d.total), 1);
+
+  return (
+    <div className="h-48">
+      <div className="flex items-end gap-1 h-full px-2">
+        {trend.map((day, idx) => {
+          const totalHeight = (day.total / maxValue) * 100;
+          const resolvedHeight = day.total > 0 ? (day.resolved / day.total) * 100 : 0;
+          return (
+            <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group relative" style={{ minWidth: "20px" }}>
+              <div className="w-full h-[85%] flex flex-col-reverse rounded-t-md overflow-hidden">
+                {day.resolved > 0 && (
+                  <div
+                    className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 transition-all"
+                    style={{ height: `${resolvedHeight}%` }}
+                  />
+                )}
+                {day.rejected > 0 && (
+                  <div
+                    className="w-full bg-gradient-to-t from-red-500 to-red-400 transition-all"
+                    style={{ height: `${day.total > 0 ? ((day.rejected / day.total) * 100) : 0}%` }}
+                  />
+                )}
+              </div>
+              <span className="text-[10px] text-slate-500">{day.dateLabel}</span>
+              {/* Tooltip */}
+              <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none transition-opacity">
+                <div className="font-semibold">{day.dateLabel}</div>
+                <div className="text-emerald-400">通过 {day.resolved}</div>
+                <div className="text-red-400">驳回 {day.rejected}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* 图例 */}
+      <div className="flex items-center justify-center gap-4 mt-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-gradient-to-t from-emerald-500 to-emerald-400" />
+          <span className="text-xs text-slate-500">通过</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-gradient-to-t from-red-500 to-red-400" />
+          <span className="text-xs text-slate-500">驳回</span>
+        </div>
+      </div>
+    </div>
   );
 }
