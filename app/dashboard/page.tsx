@@ -186,7 +186,7 @@ export default function DashboardPage() {
               <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
               刷新
             </Button>
-            <Button size="sm" className="bg-primary hover:bg-navy-800 shadow-premium" asChild>
+            <Button size="sm" className="bg-gradient-to-r from-terracotta-500 to-terracotta-600 hover:from-terracotta-600 hover:to-terracotta-700 text-white shadow-terracotta/30" asChild>
               <Link href="/planning">
                 <Plus className="h-4 w-4 mr-1.5" />
                 新建企划
