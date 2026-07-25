@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("qc_records")
       .select("*")
       .order("created_at", { ascending: false });
@@ -22,13 +22,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { styleId, process, result, defects, batch } = body;
     
-    const { data: styleData } = await supabase
+    const { data: styleData } = await dbAdmin
       .from("styles")
       .select("name")
       .eq("id", styleId)
       .single();
     
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("qc_records")
       .insert([{
         style_id: styleId || null,

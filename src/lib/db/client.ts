@@ -91,3 +91,7 @@ export const supabase = new Proxy({} as SupabaseClient, {
 });
 
 export const db = supabase;
+
+// 管理员客户端（使用 service role key，绕过 RLS）
+// 与 supabase 共用同一个客户端实例，因为 getSupabaseClient 已优先使用 service role key
+export const dbAdmin = supabase;

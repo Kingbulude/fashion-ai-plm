@@ -31,7 +31,7 @@ function buildImagePrompt(params: {
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("ai_images")
       .select("*")
       .order("created_at", { ascending: false });
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     const imageUrl = `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${size}`;
 
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("ai_images")
       .insert([{
         style_id: styleId || null,

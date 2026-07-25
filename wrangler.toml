@@ -2,11 +2,3 @@ name = "styleforge"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
-
-# ─── Cron Triggers ───
-# 每天 9 点（北京时间 17:00 UTC+8）触发每日巡检
-# 每周一 9 点触发周报生成
-# 注意：Cloudflare Pages 不直接支持 cron，需要在 Cloudflare Dashboard 配置
-# 或部署为独立的 Worker 处理定时任务
-[triggers]
-crons = ["0 9 * * *", "0 9 * * 1"]

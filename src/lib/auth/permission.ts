@@ -5,6 +5,11 @@ import { RoleLevel, Permission, hasPermission } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
+// 验证 API 请求认证，返回用户上下文或 null
+export async function requireApiAuth(request: Request) {
+  return getCurrentUserRole(request);
+}
+
 // 获取当前用户的完整角色信息
 export async function getCurrentUserRole(request: Request) {
   const session = await getSession(request as any);

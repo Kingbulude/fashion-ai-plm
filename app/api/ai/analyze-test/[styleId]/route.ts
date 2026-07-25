@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { styleId } = await params;
     
-    const { data: testData } = await supabase
+    const { data: testData } = await dbAdmin
       .from("test_results")
       .select("*")
       .eq("style_id", styleId)

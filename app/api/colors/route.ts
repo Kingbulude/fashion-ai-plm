@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("colors")
       .select("*")
       .order("created_at", { ascending: false });
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, hex, usage, season } = body;
     
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("colors")
       .insert([{
         name,

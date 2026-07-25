@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("test_results")
       .select("*")
       .order("created_at", { ascending: false });
@@ -22,13 +22,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { imageId, targetAudience, testDuration } = body;
     
-    const { data: imageData } = await supabase
+    const { data: imageData } = await dbAdmin
       .from("ai_images")
       .select("style_name")
       .eq("id", imageId)
       .single();
     
-    const { data, error } = await supabase
+    const { data, error } = await dbAdmin
       .from("test_results")
       .insert([{
         image_id: imageId,
