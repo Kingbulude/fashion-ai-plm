@@ -3,6 +3,7 @@
 // 工作台共享模块组件
 // 提供可复用的 KPI 卡片、待办列表、款式列表等组件
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -25,6 +26,12 @@ import {
   ShieldAlert,
   ChevronRight,
   Sparkles,
+  Lightbulb,
+  X as XIcon,
+  AlertTriangle,
+  Zap,
+  Eye,
+  ThumbsUp,
 } from "lucide-react";
 
 // KPI 卡片颜色配置
@@ -428,6 +435,225 @@ export function RiskAlertCard({ risks }: { risks: any[] }) {
             <Button variant="link" size="sm" asChild>
               <Link href="/todos">查看全部 {risks.length} 个风险</Link>
             </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// AI 智能建议横幅组件
+// 设计理念：AI 主动告诉用户"现在该做什么"，从被动工具升级为主动助手
+export function AISuggestionBanner({
+  suggestions,
+  onApprove,
+  onReject,
+  onDismiss,
+}: {
+  suggestions: Array<{
+    id: string;
+    title: string;
+    content: string;
+    type: string;
+    priority: string;
+    process_node: string | null;
+    target_table: string | null;
+    target_id: string | null;
+    created_at: string;
+  }>;
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onDismiss?: (id: string) => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  if (!suggestions || suggestions.length === 0) return null;
+
+  const visibleSuggestions = suggestions.filter((s) => !dismissedIds.has(s.id));
+  if (visibleSuggestions.length === 0) return null;
+
+  const current = visibleSuggestions[currentIndex] || visibleSuggestions[0];
+  if (!current) return null;
+
+  // 优先级颜色映射
+  const PRIORITY_CONFIG: Record<string, { bg: string; border: string; badge: string; iconBg: string; iconColor: string; icon: any }> = {
+    high: {
+      bg: "bg-gradient-to-r from-red-50 to-orange-50",
+      border: "border-red-200",
+      badge: "bg-red-100 text-red-700",
+      iconBg: "bg-red-100",
+      iconColor: "text-red-600",
+      icon: Zap,
+    },
+    medium: {
+      bg: "bg-gradient-to-r from-purple-50 to-pink-50",
+      border: "border-purple-200",
+      badge: "bg-purple-100 text-purple-700",
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+      icon: Lightbulb,
+    },
+    low: {
+      bg: "bg-gradient-to-r from-blue-50 to-cyan-50",
+      border: "border-blue-200",
+      badge: "bg-blue-100 text-blue-700",
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      icon: Sparkles,
+    },
+  };
+
+  const config = PRIORITY_CONFIG[current.priority] || PRIORITY_CONFIG.medium;
+  const PriorityIcon = config.icon;
+
+  const handlePrev = () => {
+    setCurrentIndex((prev: number) => (prev - 1 + visibleSuggestions.length) % visibleSuggestions.length);
+  };
+  const handleNext = () => {
+    setCurrentIndex((prev: number) => (prev + 1) % visibleSuggestions.length);
+  };
+
+  const handleApprove = async () => {
+    if (onApprove) {
+      setProcessingId(current.id);
+      onApprove(current.id);
+      handleDismiss();
+      setProcessingId(null);
+    }
+  };
+  const handleReject = async () => {
+    if (onReject) {
+      setProcessingId(current.id);
+      onReject(current.id);
+      handleDismiss();
+      setProcessingId(null);
+    }
+  };
+  const handleDismiss = () => {
+    setDismissedIds((prev: Set<string>) => new Set(prev).add(current.id));
+    if (currentIndex >= visibleSuggestions.length - 1) {
+      setCurrentIndex(Math.max(0, visibleSuggestions.length - 2));
+    }
+    if (onDismiss) onDismiss(current.id);
+  };
+
+  // 类型标签映射
+  const typeLabelMap: Record<string, string> = {
+    prediction: "预测",
+    optimization: "优化建议",
+    automation: "自动化",
+    risk: "风险预警",
+    reminder: "提醒",
+    recommendation: "推荐",
+  };
+  const typeLabel = typeLabelMap[current.type] || current.type;
+
+  return (
+    <Card className={`${config.bg} ${config.border} card-premium overflow-hidden`}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          {/* 左侧图标 */}
+          <div className={`p-2.5 rounded-xl ${config.iconBg} flex-shrink-0 shadow-sm`}>
+            <PriorityIcon className={`h-5 w-5 ${config.iconColor}`} />
+          </div>
+
+          {/* 中间内容 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <Badge className={`${config.badge} border-0 text-[10px] h-5`}>
+                <Sparkles className="h-2.5 w-2.5 mr-1" />
+                AI {typeLabel}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] h-5">
+                {current.priority === "high" ? "高优先级" : current.priority === "medium" ? "中优先级" : "低优先级"}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {currentIndex + 1} / {visibleSuggestions.length}
+              </span>
+            </div>
+            <h4 className="text-sm font-semibold text-foreground mb-1 line-clamp-1">
+              {current.title}
+            </h4>
+            <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed">
+              {current.content}
+            </p>
+
+            {/* 操作按钮 */}
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                disabled={processingId === current.id}
+                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {processingId === current.id ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <ThumbsUp className="h-3 w-3 mr-1" />
+                )}
+                采纳建议
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReject}
+                disabled={processingId === current.id}
+                className="h-7 text-xs border-destructive/20 text-destructive hover:bg-destructive/5"
+              >
+                {processingId === current.id ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <XIcon className="h-3 w-3 mr-1" />
+                )}
+                不采纳
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDismiss}
+                className="h-7 text-xs ml-auto text-muted-foreground hover:text-foreground"
+              >
+                稍后再说
+              </Button>
+            </div>
+          </div>
+
+          {/* 右侧翻页 */}
+          {visibleSuggestions.length > 1 && (
+            <div className="flex flex-col gap-1 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrev}
+                className="h-7 w-7 -mt-1"
+              >
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNext}
+                className="h-7 w-7"
+              >
+                <ChevronRight className="h-4 w-4 -rotate-90" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* 进度条（多条建议时显示） */}
+        {visibleSuggestions.length > 1 && (
+          <div className="flex gap-1 mt-3 px-1">
+            {visibleSuggestions.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-all ${
+                  i === currentIndex ? "bg-current opacity-40" : "bg-foreground/10"
+                }`}
+              />
+            ))}
           </div>
         )}
       </CardContent>

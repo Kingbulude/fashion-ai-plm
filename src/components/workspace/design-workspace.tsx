@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Palette, CheckCircle2, AlertCircle } from "lucide-react";
-import { KpiCard, TodoListCard, StyleListCard, AIToolsGrid } from "./shared-modules";
+import { KpiCard, TodoListCard, StyleListCard, AIToolsGrid, AISuggestionBanner } from "./shared-modules";
 import { useTenant } from "@/lib/auth/tenant-context";
 
 export function DesignWorkspace({
@@ -36,8 +36,34 @@ export function DesignWorkspace({
     t.title?.includes("修改")
   ).length;
 
+  const handleApproveSuggestion = async (id: string) => {
+    try {
+      await fetch("/api/ai-suggestions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "approved", reviewComment: "已采纳" }),
+      });
+    } catch {}
+  };
+  const handleRejectSuggestion = async (id: string) => {
+    try {
+      await fetch("/api/ai-suggestions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "rejected", reviewComment: "不采纳" }),
+      });
+    } catch {}
+  };
+
   return (
     <div className="space-y-6">
+      {/* AI 智能建议横幅 */}
+      <AISuggestionBanner
+        suggestions={workspace?.aiSuggestions || []}
+        onApprove={handleApproveSuggestion}
+        onReject={handleRejectSuggestion}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <KpiCard
           title="待设计"

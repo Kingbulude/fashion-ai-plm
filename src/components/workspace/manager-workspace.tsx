@@ -44,7 +44,7 @@ import {
   Check,
   FileText,
 } from "lucide-react";
-import { RiskAlertCard } from "./shared-modules";
+import { RiskAlertCard, AISuggestionBanner } from "./shared-modules";
 
 const PIPELINE_STAGES = [
   { key: "planning", label: "企划中", icon: Sparkles, color: "slate" },
@@ -130,6 +130,32 @@ export function ManagerWorkspace({
       alert(msg);
     } finally {
       setProcessingApprovalId(null);
+    }
+  };
+
+  // AI 建议审核
+  const handleApproveSuggestion = async (suggestionId: string) => {
+    try {
+      const res = await fetch("/api/ai-suggestions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: suggestionId, status: "approved", reviewComment: "已采纳" }),
+      });
+      if (!res.ok) throw new Error("采纳失败");
+    } catch {
+      // 忽略错误
+    }
+  };
+  const handleRejectSuggestion = async (suggestionId: string) => {
+    try {
+      const res = await fetch("/api/ai-suggestions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: suggestionId, status: "rejected", reviewComment: "不采纳" }),
+      });
+      if (!res.ok) throw new Error("驳回失败");
+    } catch {
+      // 忽略错误
     }
   };
 
@@ -245,6 +271,13 @@ export function ManagerWorkspace({
 
   return (
     <div className="space-y-6">
+      {/* AI 智能建议横幅 */}
+      <AISuggestionBanner
+        suggestions={workspace?.aiSuggestions || []}
+        onApprove={handleApproveSuggestion}
+        onReject={handleRejectSuggestion}
+      />
+
       {/* === 第一区：全局 KPI 总览 === */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* 款式概览（合并卡 + 迷你进度条） */}

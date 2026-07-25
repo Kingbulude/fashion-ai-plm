@@ -191,6 +191,22 @@ export async function GET(request: Request) {
       recentLogs = logsData || [];
     }
 
+    // 10. AI 智能建议（按品牌过滤，pending 状态，按优先级排序）
+    let aiSuggestions: any[] = [];
+    try {
+      const { data: suggestionsData } = await supabase
+        .from("ai_suggestions")
+        .select("id, title, content, type, priority, process_node, ai_role_level, target_table, target_id, created_at")
+        .eq("brand_id", brandId)
+        .in("status", ["pending", "approved"])
+        .order("priority", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(5);
+      aiSuggestions = suggestionsData || [];
+    } catch {
+      // AI 建议查询失败不影响主流程
+    }
+
     return NextResponse.json({
       brand: { id: brandId, seasonId },
       summary: {
@@ -214,6 +230,8 @@ export async function GET(request: Request) {
       // 管理层新增：审批流 + 操作日志
       pendingApprovals,
       recentLogs,
+      // AI 智能建议
+      aiSuggestions,
     });
   } catch (error) {
     console.error("工作台API失败:", error);
