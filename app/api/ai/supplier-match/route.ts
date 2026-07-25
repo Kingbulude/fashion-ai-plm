@@ -2,26 +2,44 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { toCamelCase } from "@/lib/db/mappers";
+import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
+
+interface SupplierBrief {
+  id: string;
+  name: string;
+  type: string;
+  location: string | null;
+  specialties: string[] | null;
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { styleName, category, material, processRequirements, location, budget } = body;
 
-    const { data: suppliers, error } = await supabase.from("suppliers").select("*");
+    // 多租户隔离：按 company_id 过滤
+    const tenant = getTenantFromHeaders(request);
+    const companyId = tenant?.company_id || "";
+
+    let query = supabase.from("suppliers").select("id, name, type, location, specialties, quality_score, delivery_score, price_level");
+    if (companyId) {
+      query = query.eq("company_id", companyId);
+    }
+
+    const { data: suppliers, error } = await query.limit(100);
     if (error) {
       return NextResponse.json({ error: "获取供应商列表失败" }, { status: 500 });
     }
 
-    const supplierList = suppliers?.map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      type: s.type,
-      location: s.location,
-      specialties: s.specialties,
-    })) || [];
+    const supplierList: SupplierBrief[] = (suppliers || []).map((s: Record<string, unknown>) => ({
+      id: s.id as string,
+      name: s.name as string,
+      type: s.type as string,
+      location: (s.location as string) || null,
+      specialties: (s.specialties as string[]) || null,
+    }));
 
     const prompt = `你是一位资深的服装供应链专家。请根据以下款式需求，从供应商列表中智能匹配最合适的供应商：
 
@@ -41,7 +59,7 @@ ${JSON.stringify(supplierList)}
 
     const result = await generateText(prompt);
 
-    return NextResponse.json({ recommendation: result, suppliers: toCamelCase(supplierList) });
+    return NextResponse.json({ recommendation: result, suppliers: toCamelCase(suppliers) });
   } catch {
     return NextResponse.json({ error: "供应商匹配失败" }, { status: 500 });
   }

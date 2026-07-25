@@ -46,7 +46,7 @@ import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
 import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
 import { ImageRedesignDialog } from "@/components/styles/image-redesign-dialog";
-import { Layers, Wand2, Images, X } from "lucide-react";
+import { Layers, Wand2, Images, X, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -75,6 +75,8 @@ export default function StyleDetailPage() {
     designFeatures: "",
   });
   const [editSaving, setEditSaving] = useState(false);
+  const [salesPrediction, setSalesPrediction] = useState<string | null>(null);
+  const [predicting, setPredicting] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -206,6 +208,37 @@ export default function StyleDetailPage() {
       showToast("error", "保存失败");
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handlePredictSales = async () => {
+    setPredicting(true);
+    setSalesPrediction(null);
+    try {
+      const res = await fetch("/api/ai/sales-prediction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          styleId: id,
+          styleName: style?.name,
+          category: style?.category,
+          price: style?.price,
+          season: style?.season,
+          targetAudience: style?.targetAudience,
+          initialStock: style?.totalStock,
+        }),
+      });
+      if (!res.ok) {
+        showToast("error", "销量预测失败");
+        return;
+      }
+      const data = await res.json();
+      setSalesPrediction(data.prediction);
+      showToast("success", "AI销量预测已完成");
+    } catch (err) {
+      showToast("error", "销量预测请求失败");
+    } finally {
+      setPredicting(false);
     }
   };
 
@@ -733,6 +766,46 @@ export default function StyleDetailPage() {
 
           <TabsContent value="sales" className="mt-0">
             <div className="space-y-4">
+              {/* AI销量预测 */}
+              <Card className="border-2 border-navy-200 bg-gradient-to-br from-navy-50/50 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-navy-100">
+                        <TrendingUp className="h-3.5 w-3.5 text-navy-700" />
+                      </div>
+                      AI销量预测
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={handlePredictSales}
+                      disabled={predicting}
+                      className="h-8 bg-navy-700 hover:bg-navy-800"
+                    >
+                      {predicting ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />预测中...</>
+                      ) : (
+                        <><Wand2 className="h-3.5 w-3.5 mr-1.5" />生成预测</>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {salesPrediction && (
+                  <CardContent className="pt-0">
+                    <div className="p-4 rounded-xl bg-card border border-border text-sm whitespace-pre-wrap leading-relaxed">
+                      {salesPrediction}
+                    </div>
+                  </CardContent>
+                )}
+                {!salesPrediction && !predicting && (
+                  <CardContent className="pt-0">
+                    <p className="text-xs text-muted-foreground">
+                      基于款式品类、价格、目标人群和历史销售数据，AI将预测本款式的销量趋势、首月销量和季末销量。
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+
               <ReorderSimulationCard styleId={id} styleName={style.name} />
               <StyleSalesTab styleId={id} styleName={style.name} />
             </div>
