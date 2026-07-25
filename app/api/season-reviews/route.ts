@@ -101,17 +101,19 @@ async function generateReview(companyId: string, brandId: string | undefined, se
     };
   }
 
-  const [{ data: salesData }, { data: aftersalesData }, { data: procurementData }, { data: productionData }] = await Promise.all([
+  const [{ data: salesData }, { data: aftersalesData }, { data: procurementData }, { data: productionData }, { data: feedbackData }] = await Promise.all([
     supabase.from("sales_records").select("*").in("style_id", styleIds),
     supabase.from("aftersales_records").select("*").in("style_id", styleIds),
     supabase.from("material_procurement").select("*").in("style_id", styleIds),
     supabase.from("production_orders").select("*").in("style_id", styleIds),
+    supabase.from("design_feedback_items").select("*").in("style_id", styleIds),
   ]);
 
   const sales = (toCamelCase(salesData) || []) as any[];
   const aftersales = (toCamelCase(aftersalesData) || []) as any[];
   const procurements = (toCamelCase(procurementData) || []) as any[];
   const production = (toCamelCase(productionData) || []) as any[];
+  const designFeedback = (toCamelCase(feedbackData) || []) as any[];
 
   const totalRevenue = sales.reduce((sum: number, s: any) => sum + (s.totalAmount || 0), 0);
   const totalQuantity = sales.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
@@ -286,6 +288,35 @@ async function generateReview(companyId: string, brandId: string | undefined, se
     });
   }
 
+  const feedbackByCategory: Record<string, number> = {};
+  const feedbackBySeverity: Record<string, number> = {};
+  const feedbackByStatus: Record<string, number> = {};
+  for (const fb of designFeedback) {
+    const cat = fb.defectCategory || "未分类";
+    feedbackByCategory[cat] = (feedbackByCategory[cat] || 0) + 1;
+    const sev = fb.severity || "minor";
+    feedbackBySeverity[sev] = (feedbackBySeverity[sev] || 0) + 1;
+    const stat = fb.status || "pending";
+    feedbackByStatus[stat] = (feedbackByStatus[stat] || 0) + 1;
+  }
+
+  if (designFeedback.length > 0) {
+    const criticalCount = feedbackBySeverity.critical || 0;
+    if (criticalCount > 0) {
+      issues.push({
+        title: `${criticalCount} 条严重设计反馈`,
+        description: "存在严重缺陷反馈，需立即处理并优化相关款式",
+        severity: "high",
+      });
+      actionItems.push({
+        title: "处理严重设计反馈",
+        description: "优先处理严重级别的设计反馈，确保产品质量",
+        priority: "high",
+        category: "品质",
+      });
+    }
+  }
+
   let overallScore = 60;
   if (sellthroughRate >= 70) overallScore += 15;
   else if (sellthroughRate >= 50) overallScore += 8;
@@ -299,6 +330,14 @@ async function generateReview(companyId: string, brandId: string | undefined, se
 
   if (costOverruns === 0) overallScore += 10;
   else if (costOverruns <= styles.length * 0.1) overallScore += 5;
+
+  if (designFeedback.length > 0) {
+    const resolvedRate = feedbackByStatus.resolved
+      ? (feedbackByStatus.resolved / designFeedback.length) * 100
+      : 0;
+    if (resolvedRate >= 80) overallScore += 5;
+    else if (resolvedRate < 50) overallScore -= 5;
+  }
 
   overallScore = Math.min(overallScore, 100);
 
@@ -346,6 +385,15 @@ ${issues.length > 0 ? `待改进：${issues.map((i) => i.title).join("、")}。`
       onTimeDelivery,
       onTimeRate: parseFloat(onTimeRate.toFixed(1)),
     },
-    designFeedbackCount: aftersales.length,
+    designFeedbackAnalysis: {
+        totalFeedbacks: designFeedback.length,
+        byCategory: feedbackByCategory,
+        bySeverity: feedbackBySeverity,
+        byStatus: feedbackByStatus,
+        resolvedRate: designFeedback.length > 0
+          ? (feedbackByStatus.resolved ? feedbackByStatus.resolved : 0) / designFeedback.length * 100
+          : 0,
+      },
+      designFeedbackCount: designFeedback.length,
   };
 }

@@ -19,6 +19,13 @@ import {
   FileText,
   Clock,
   Star,
+  ShieldAlert,
+  Palette,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  History,
+  ArrowRight,
 } from "lucide-react";
 
 interface SeasonReview {
@@ -415,31 +422,132 @@ export default function SeasonReviewPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>供应链表现</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-indigo-500" />
+                    设计反馈分析
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <div className="p-4 rounded-lg bg-slate-50">
-                      <div className="text-sm text-slate-500">采购单总数</div>
-                      <div className="text-xl font-bold text-slate-900 mt-1">{generatedResult.supplyChainAnalysis?.totalProcurements || 0}</div>
+                  <div className="grid md:grid-cols-3 gap-4 mb-6">
+                    <div className="p-4 rounded-lg bg-indigo-50">
+                      <div className="text-sm text-indigo-600">反馈总数</div>
+                      <div className="text-xl font-bold text-indigo-900 mt-1">{generatedResult.designFeedbackAnalysis?.totalFeedbacks || 0}</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-slate-50">
-                      <div className="text-sm text-slate-500">齐套率</div>
-                      <div className={`text-xl font-bold mt-1 ${(generatedResult.supplyChainAnalysis?.procurementRate || 0) >= 80 ? "text-emerald-600" : "text-amber-600"}`}>
-                        {generatedResult.supplyChainAnalysis?.procurementRate?.toFixed(1) || 0}%
+                    <div className="p-4 rounded-lg bg-indigo-50">
+                      <div className="text-sm text-indigo-600">已解决</div>
+                      <div className="text-xl font-bold text-indigo-900 mt-1">
+                        {(generatedResult.designFeedbackAnalysis?.byStatus?.resolved || 0)}/{generatedResult.designFeedbackAnalysis?.totalFeedbacks || 0}
                       </div>
                     </div>
-                    <div className="p-4 rounded-lg bg-slate-50">
-                      <div className="text-sm text-slate-500">生产单</div>
-                      <div className="text-xl font-bold text-slate-900 mt-1">{generatedResult.supplyChainAnalysis?.productionOrders || 0}</div>
-                    </div>
-                    <div className="p-4 rounded-lg bg-slate-50">
-                      <div className="text-sm text-slate-500">准交率</div>
-                      <div className={`text-xl font-bold mt-1 ${(generatedResult.supplyChainAnalysis?.onTimeRate || 0) >= 90 ? "text-emerald-600" : "text-amber-600"}`}>
-                        {generatedResult.supplyChainAnalysis?.onTimeRate?.toFixed(1) || 0}%
+                    <div className="p-4 rounded-lg bg-indigo-50">
+                      <div className="text-sm text-indigo-600">解决率</div>
+                      <div className={`text-xl font-bold mt-1 ${(generatedResult.designFeedbackAnalysis?.resolvedRate || 0) >= 80 ? "text-emerald-600" : "text-amber-600"}`}>
+                        {(generatedResult.designFeedbackAnalysis?.resolvedRate || 0).toFixed(1)}%
                       </div>
                     </div>
                   </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-sm font-medium text-slate-700 mb-3">缺陷分类分布</div>
+                      <div className="space-y-3">
+                        {Object.entries(generatedResult.designFeedbackAnalysis?.byCategory || {}).map(([cat, count]: [string, unknown]) => (
+                          <div key={cat}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <span className="text-slate-600">{cat}</span>
+                              <span className="font-medium text-slate-800">{count as React.ReactNode}</span>
+                            </div>
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-indigo-500 rounded-full transition-all"
+                                style={{ width: `${((count as number) / (generatedResult.designFeedbackAnalysis?.totalFeedbacks || 1)) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-700 mb-3">严重程度分布</div>
+                      <div className="space-y-3">
+                        {[
+                          { key: "critical", label: "严重", color: "bg-red-500" },
+                          { key: "major", label: "重要", color: "bg-amber-500" },
+                          { key: "minor", label: "一般", color: "bg-blue-500" },
+                        ].map((severity) => {
+                          const count = generatedResult.designFeedbackAnalysis?.bySeverity?.[severity.key] || 0;
+                          return (
+                            <div key={severity.key}>
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="text-slate-600">{severity.label}</span>
+                                <span className="font-medium text-slate-800">{count}</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${severity.color} rounded-full transition-all`}
+                                  style={{ width: `${(count / (generatedResult.designFeedbackAnalysis?.totalFeedbacks || 1)) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-violet-500" />
+                    历史对比
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-lg bg-violet-50">
+                          <div className="text-sm text-violet-600">历史最高评分</div>
+                          <div className="text-xl font-bold text-violet-900 mt-1">
+                            {Math.max(...reviews.map((r) => r.overallScore || 0))}
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-violet-50">
+                          <div className="text-sm text-violet-600">历史最低评分</div>
+                          <div className="text-xl font-bold text-violet-900 mt-1">
+                            {Math.min(...reviews.map((r) => r.overallScore || 0))}
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-violet-50">
+                          <div className="text-sm text-violet-600">平均评分</div>
+                          <div className="text-xl font-bold text-violet-900 mt-1">
+                            {Math.round(reviews.reduce((sum, r) => sum + (r.overallScore || 0), 0) / reviews.length)}
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-violet-50">
+                          <div className="text-sm text-violet-600">复盘次数</div>
+                          <div className="text-xl font-bold text-violet-900 mt-1">{reviews.length}</div>
+                        </div>
+                      </div>
+                      <div className="h-32 flex items-end gap-2">
+                        {[...reviews].reverse().slice(-6).map((r, i) => (
+                          <div key={r.id} className="flex-1 flex flex-col items-center gap-1">
+                            <div
+                              className={`w-full rounded-t-md ${getScoreBg(r.overallScore || 0).replace("border-", "bg-").replace("bg-red-50", "bg-red-400").replace("bg-amber-50", "bg-amber-400").replace("bg-emerald-50", "bg-emerald-400")}`}
+                              style={{ height: `${(r.overallScore || 0) * 0.3}px` }}
+                            />
+                            <span className="text-[10px] text-slate-500">{r.seasonName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-sm text-slate-500">
+                      暂无历史复盘数据，无法进行对比分析
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
