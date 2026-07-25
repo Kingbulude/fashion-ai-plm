@@ -18,6 +18,11 @@ import {
   Mail,
   Lock,
   Key,
+  Bell,
+  Palette,
+  Globe,
+  Info,
+  Shield,
 } from "lucide-react";
 import { supabase } from "@/lib/auth/supabase";
 
@@ -45,6 +50,14 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState({
+    todoReminder: true,
+    aiResult: true,
+    alerts: true,
+    weeklyReport: false,
+  });
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("light");
+  const [language, setLanguage] = useState("zh-CN");
 
   useEffect(() => {
     fetchProfile();
@@ -525,6 +538,162 @@ export default function SettingsPage() {
                   {passwordLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                   修改密码
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 通知偏好 */}
+          <Card className="overflow-hidden border-0 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-navy-50 to-transparent pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-navy-100">
+                  <Bell className="h-3.5 w-3.5 text-navy-700" />
+                </div>
+                通知偏好
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <div>
+                  <p className="text-sm font-medium">待办提醒</p>
+                  <p className="text-xs text-muted-foreground">接收新待办分配和截止提醒</p>
+                </div>
+                <button
+                  onClick={() => setNotifPrefs({ ...notifPrefs, todoReminder: !notifPrefs.todoReminder })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notifPrefs.todoReminder ? "bg-navy-700" : "bg-slate-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifPrefs.todoReminder ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <div>
+                  <p className="text-sm font-medium">AI 分析结果通知</p>
+                  <p className="text-xs text-muted-foreground">AI 测款、售后分析等结果推送</p>
+                </div>
+                <button
+                  onClick={() => setNotifPrefs({ ...notifPrefs, aiResult: !notifPrefs.aiResult })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notifPrefs.aiResult ? "bg-navy-700" : "bg-slate-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifPrefs.aiResult ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <div>
+                  <p className="text-sm font-medium">缺料/逾期预警</p>
+                  <p className="text-xs text-muted-foreground">物料缺料和生产订单逾期提醒</p>
+                </div>
+                <button
+                  onClick={() => setNotifPrefs({ ...notifPrefs, alerts: !notifPrefs.alerts })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notifPrefs.alerts ? "bg-navy-700" : "bg-slate-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifPrefs.alerts ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium">邮件周报</p>
+                  <p className="text-xs text-muted-foreground">每周一接收经营数据汇总邮件</p>
+                </div>
+                <button
+                  onClick={() => setNotifPrefs({ ...notifPrefs, weeklyReport: !notifPrefs.weeklyReport })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notifPrefs.weeklyReport ? "bg-navy-700" : "bg-slate-200"}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifPrefs.weeklyReport ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 外观与语言 */}
+          <Card className="overflow-hidden border-0 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-transparent pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-purple-100">
+                  <Palette className="h-3.5 w-3.5 text-purple-700" />
+                </div>
+                外观与语言
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <div>
+                  <p className="text-sm font-medium">主题模式</p>
+                  <p className="text-xs text-muted-foreground">选择界面显示风格</p>
+                </div>
+                <div className="flex rounded-lg border border-border bg-card p-0.5">
+                  <button
+                    onClick={() => setTheme("light")}
+                    className={`px-3 h-8 text-xs font-medium rounded-md transition-all ${theme === "light" ? "bg-navy-700 text-white" : "text-muted-foreground"}`}
+                  >
+                    浅色
+                  </button>
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={`px-3 h-8 text-xs font-medium rounded-md transition-all ${theme === "dark" ? "bg-navy-700 text-white" : "text-muted-foreground"}`}
+                  >
+                    深色
+                  </button>
+                  <button
+                    onClick={() => setTheme("system")}
+                    className={`px-3 h-8 text-xs font-medium rounded-md transition-all ${theme === "system" ? "bg-navy-700 text-white" : "text-muted-foreground"}`}
+                  >
+                    跟随系统
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">语言</p>
+                    <p className="text-xs text-muted-foreground">界面显示语言</p>
+                  </div>
+                </div>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="h-9 px-3 rounded-lg border border-input bg-card text-sm"
+                >
+                  <option value="zh-CN">简体中文</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 关于与版本 */}
+          <Card className="overflow-hidden border-0 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-transparent pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-100">
+                  <Info className="h-3.5 w-3.5 text-emerald-700" />
+                </div>
+                关于与版本
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">系统版本</span>
+                <span className="text-sm font-medium">StyleForge v1.0.0</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">部署环境</span>
+                <span className="text-sm font-medium">Cloudflare Pages (Edge)</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">技术架构</span>
+                <span className="text-sm font-medium">Next.js 15 + Supabase</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-sm text-muted-foreground">数据安全</span>
+                </div>
+                <span className="text-sm font-medium text-emerald-600">RLS 多租户隔离</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-muted-foreground">最后更新</span>
+                <span className="text-sm font-medium">2026-07-25</span>
               </div>
             </CardContent>
           </Card>

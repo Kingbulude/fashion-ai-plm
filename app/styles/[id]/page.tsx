@@ -46,7 +46,9 @@ import { StyleAfterSalesTab } from "@/components/styles/aftersales-tab";
 import { StyleTodos } from "@/components/styles/style-todos";
 import { Sample3dViewer } from "@/components/styles/sample-3d-viewer";
 import { ImageRedesignDialog } from "@/components/styles/image-redesign-dialog";
-import { Layers, Wand2, Images } from "lucide-react";
+import { Layers, Wand2, Images, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const runtime = "edge";
 
@@ -62,6 +64,17 @@ export default function StyleDetailPage() {
   const [redesignOpen, setRedesignOpen] = useState(false);
   const [marketingOpen, setMarketingOpen] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    styleNo: "",
+    category: "",
+    price: "",
+    description: "",
+    targetAudience: "",
+    designFeatures: "",
+  });
+  const [editSaving, setEditSaving] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -144,6 +157,56 @@ export default function StyleDetailPage() {
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const openEdit = () => {
+    if (style) {
+      setEditForm({
+        name: style.name || "",
+        styleNo: style.styleNo || "",
+        category: style.category || "",
+        price: style.price?.toString() || "",
+        description: style.description || "",
+        targetAudience: style.targetAudience || "",
+        designFeatures: style.designFeatures || "",
+      });
+    }
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.name.trim()) {
+      showToast("error", "款式名称不能为空");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/styles/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name,
+          style_no: editForm.styleNo,
+          category: editForm.category || null,
+          price: editForm.price ? Number(editForm.price) : null,
+          description: editForm.description || null,
+          target_audience: editForm.targetAudience || null,
+          design_features: editForm.designFeatures || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast("error", err.error || "保存失败");
+        return;
+      }
+      setEditOpen(false);
+      fetchStyle();
+      showToast("success", "款式信息已更新");
+    } catch (err) {
+      showToast("error", "保存失败");
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const openUpload = (type: "inspiration" | "design" | "ai_derivative" | "3d_sample" = "design") => {
@@ -289,7 +352,7 @@ export default function StyleDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 md:pl-4">
-            <Button variant="outline" size="sm" onClick={() => {}}>
+            <Button variant="outline" size="sm" onClick={openEdit}>
               <Edit className="h-4 w-4 mr-2" />
               编辑
             </Button>
@@ -680,6 +743,95 @@ export default function StyleDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* 编辑款式弹窗 */}
+      {editOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditOpen(false)}>
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">编辑款式信息</CardTitle>
+                <CardDescription className="text-xs">修改款式的基本资料和设计信息</CardDescription>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setEditOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">款式名称 *</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="请输入款式名称"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">款号</Label>
+                  <Input
+                    value={editForm.styleNo}
+                    onChange={(e) => setEditForm({ ...editForm, styleNo: e.target.value })}
+                    placeholder="如：A2024-001"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">品类</Label>
+                  <Input
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    placeholder="如：T恤/连衣裙/外套"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">吊牌价（元）</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    placeholder="199"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">目标人群</Label>
+                <Input
+                  value={editForm.targetAudience}
+                  onChange={(e) => setEditForm({ ...editForm, targetAudience: e.target.value })}
+                  placeholder="如：25-35岁都市女性"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">设计特点</Label>
+                <Input
+                  value={editForm.designFeatures}
+                  onChange={(e) => setEditForm({ ...editForm, designFeatures: e.target.value })}
+                  placeholder="如：宽松版型，落肩设计，纯棉面料"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">描述</Label>
+                <textarea
+                  className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="款式详细描述..."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <Button variant="outline" onClick={() => setEditOpen(false)}>取消</Button>
+                <Button onClick={handleSaveEdit} disabled={editSaving}>
+                  {editSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                  保存
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Toast 提示 */}
       {toast && (

@@ -259,7 +259,7 @@ export default function PlanningPage() {
     setMessages([welcomeMessage]);
   };
 
-  const PLANNING_SKILLS = SKILLS.slice(1);
+  const PLANNING_SKILLS = SKILLS;
 
   return (
     <SidebarLayout>
