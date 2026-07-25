@@ -17,6 +17,12 @@ import {
   CheckCircle2,
   Loader2,
   ChevronUp,
+  Wand2,
+  X,
+  TrendingUp,
+  ShoppingBag,
+  Shirt,
+  DollarSign,
 } from "lucide-react";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
@@ -110,6 +116,16 @@ export default function PlanningPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [skillConversations, setSkillConversations] = useState<Record<string, { messages: Message[]; conversationId: string | null; isCompleted: boolean }>>({});
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planGenerating, setPlanGenerating] = useState(false);
+  const [planForm, setPlanForm] = useState({
+    season: "",
+    theme: "",
+    category: "女装",
+    targetCost: "",
+  });
+  const [comprehensivePlan, setComprehensivePlan] = useState<any>(null);
+  const [planError, setPlanError] = useState("");
 
   const loadConversation = useCallback(async (skill: Skill) => {
     setActiveSkill(skill);
@@ -259,6 +275,40 @@ export default function PlanningPage() {
     setMessages([welcomeMessage]);
   };
 
+  // AI 一键生成综合企划
+  const handleGeneratePlan = async () => {
+    if (!planForm.theme.trim()) {
+      setPlanError("请输入企划主题");
+      return;
+    }
+    setPlanGenerating(true);
+    setPlanError("");
+    setComprehensivePlan(null);
+    try {
+      const res = await fetch("/api/planning/ai/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          season: planForm.season || undefined,
+          theme: planForm.theme,
+          category: planForm.category,
+          targetCost: planForm.targetCost ? Number(planForm.targetCost) : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "生成失败");
+      }
+      const data = await res.json();
+      setComprehensivePlan(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "生成失败";
+      setPlanError(msg);
+    } finally {
+      setPlanGenerating(false);
+    }
+  };
+
   const PLANNING_SKILLS = SKILLS;
 
   return (
@@ -287,6 +337,14 @@ export default function PlanningPage() {
                     已完成
                   </Badge>
                 )}
+                <Button
+                  size="sm"
+                  onClick={() => setPlanOpen(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  <Wand2 className="h-4 w-4 mr-1.5" />
+                  AI 一键生成企划
+                </Button>
                 {messages.length > 0 && (
                   <Button
                     variant="ghost"
@@ -383,6 +441,302 @@ export default function PlanningPage() {
           <AIAssistantPanel processNode="planning" title="企划 AI 助手" />
         </div>
       </div>
+
+      {/* AI 一键生成综合企划弹窗 */}
+      {planOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-pink-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-md">
+                  <Wand2 className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">AI 一键生成综合企划</h3>
+                  <p className="text-xs text-muted-foreground">并行调用趋势/爆款/色彩/面料/定价 5 大 AI 能力</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setPlanOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* 内容区 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* 输入表单（仅在未生成时显示） */}
+              {!comprehensivePlan && !planGenerating && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-700 mb-1.5 block">季节</label>
+                      <input
+                        type="text"
+                        value={planForm.season}
+                        onChange={(e) => setPlanForm({ ...planForm, season: e.target.value })}
+                        placeholder="如：2026SS"
+                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700 mb-1.5 block">品类</label>
+                      <select
+                        value={planForm.category}
+                        onChange={(e) => setPlanForm({ ...planForm, category: e.target.value })}
+                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                      >
+                        <option value="女装">女装</option>
+                        <option value="男装">男装</option>
+                        <option value="童装">童装</option>
+                        <option value="配饰">配饰</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-700 mb-1.5 block">企划主题 *</label>
+                      <input
+                        type="text"
+                        value={planForm.theme}
+                        onChange={(e) => setPlanForm({ ...planForm, theme: e.target.value })}
+                        placeholder="如：都市通勤·极简风"
+                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700 mb-1.5 block">目标成本（元）</label>
+                      <input
+                        type="number"
+                        value={planForm.targetCost}
+                        onChange={(e) => setPlanForm({ ...planForm, targetCost: e.target.value })}
+                        placeholder="如：100"
+                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
+                      />
+                    </div>
+                  </div>
+                  {planError && (
+                    <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                      {planError}
+                    </div>
+                  )}
+                  <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
+                    <p className="text-xs text-purple-700">
+                      AI 将基于品牌基因、季节趋势、市场爆款数据，并行调用 5 大 AI 能力（趋势预测、爆款识别、色彩推荐、面料分析、定价策略），生成完整的综合企划报告，并自动写入企划主表。
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 生成中 */}
+              {planGenerating && (
+                <div className="py-16 text-center">
+                  <Loader2 className="h-10 w-10 text-purple-600 animate-spin mx-auto mb-4" />
+                  <p className="text-sm font-medium text-foreground">AI 正在并行生成综合企划...</p>
+                  <p className="text-xs text-muted-foreground mt-1">趋势 · 爆款 · 色彩 · 面料 · 定价</p>
+                </div>
+              )}
+
+              {/* 综合企划结果 */}
+              {comprehensivePlan && !planGenerating && (
+                <div className="space-y-4">
+                  {/* 顶部概览 */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-base text-purple-900">
+                        {comprehensivePlan.theme || "综合企划"}
+                      </h4>
+                      <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+                        置信度 {comprehensivePlan.overallConfidence || 0}%
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-foreground mb-3">
+                      {comprehensivePlan.season} · {comprehensivePlan.category} · 目标成本 ¥{comprehensivePlan.targetCost || 0}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="p-2 rounded-lg bg-white/70">
+                        <p className="text-xs text-muted-foreground">建议零售价</p>
+                        <p className="font-bold text-purple-700">¥{comprehensivePlan.suggestedPrice?.toFixed(2) || "-"}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/70">
+                        <p className="text-xs text-muted-foreground">价格区间</p>
+                        <p className="font-semibold text-foreground">
+                          ¥{comprehensivePlan.priceRange?.min?.toFixed(2) || 0} ~ ¥{comprehensivePlan.priceRange?.max?.toFixed(2) || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 执行摘要 */}
+                  {comprehensivePlan.executiveSummary && (
+                    <div className="p-4 rounded-xl bg-card border border-border">
+                      <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                        执行摘要
+                      </p>
+                      <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                        {comprehensivePlan.executiveSummary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 5 大 AI 子能力结果 */}
+                  {comprehensivePlan.aiSkills && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* 趋势预测 */}
+                      {comprehensivePlan.aiSkills.trendPrediction?.items?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
+                            <p className="text-xs font-semibold text-blue-900">趋势预测</p>
+                            <Badge variant="secondary" className="text-[10px] ml-auto">
+                              {comprehensivePlan.aiSkills.trendPrediction.confidence}%
+                            </Badge>
+                          </div>
+                          <ul className="space-y-1">
+                            {comprehensivePlan.aiSkills.trendPrediction.items.slice(0, 3).map((t: any, i: number) => (
+                              <li key={i} className="text-xs text-foreground">
+                                <span className="font-medium">· {t.trend}</span>
+                                <span className="text-muted-foreground ml-1">- {t.description}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 爆款识别 */}
+                      {comprehensivePlan.aiSkills.hotProducts?.items?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <ShoppingBag className="h-3.5 w-3.5 text-amber-600" />
+                            <p className="text-xs font-semibold text-amber-900">爆款识别</p>
+                            <Badge variant="secondary" className="text-[10px] ml-auto">
+                              {comprehensivePlan.aiSkills.hotProducts.confidence}%
+                            </Badge>
+                          </div>
+                          <ul className="space-y-1">
+                            {comprehensivePlan.aiSkills.hotProducts.items.slice(0, 3).map((p: any, i: number) => (
+                              <li key={i} className="text-xs text-foreground">
+                                <span className="font-medium">· {p.name}</span>
+                                <span className="text-muted-foreground ml-1">¥{p.price} / 月销{p.salesVolume}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 色彩推荐 */}
+                      {comprehensivePlan.aiSkills.colorRecommendations?.items?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Palette className="h-3.5 w-3.5 text-pink-600" />
+                            <p className="text-xs font-semibold text-pink-900">色彩推荐</p>
+                            <Badge variant="secondary" className="text-[10px] ml-auto">
+                              {comprehensivePlan.aiSkills.colorRecommendations.confidence}%
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {comprehensivePlan.aiSkills.colorRecommendations.items.slice(0, 5).map((c: any, i: number) => (
+                              <div key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-pink-100">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.hex }} />
+                                <span className="text-[10px] font-medium">{c.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 面料推荐 */}
+                      {comprehensivePlan.aiSkills.fabricRecommendations?.items?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Wind className="h-3.5 w-3.5 text-indigo-600" />
+                            <p className="text-xs font-semibold text-indigo-900">面料推荐</p>
+                            <Badge variant="secondary" className="text-[10px] ml-auto">
+                              {comprehensivePlan.aiSkills.fabricRecommendations.confidence}%
+                            </Badge>
+                          </div>
+                          <ul className="space-y-1">
+                            {comprehensivePlan.aiSkills.fabricRecommendations.items.slice(0, 3).map((f: any, i: number) => (
+                              <li key={i} className="text-xs text-foreground">
+                                <span className="font-medium">· {f.name}</span>
+                                <span className="text-muted-foreground ml-1">- {f.price}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 定价策略 */}
+                      {comprehensivePlan.aiSkills.pricingStrategy && (
+                        <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 md:col-span-2">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                            <p className="text-xs font-semibold text-emerald-900">定价策略</p>
+                            <Badge variant="secondary" className="text-[10px] ml-auto">
+                              {comprehensivePlan.aiSkills.pricingStrategy.confidence}%
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-foreground">
+                            建议毛利：{comprehensivePlan.aiSkills.pricingStrategy.recommendedMargin}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 品牌对齐 */}
+                  {comprehensivePlan.brandAlignment && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-xs font-medium mb-1.5 flex items-center gap-1.5">
+                        <Shirt className="h-3.5 w-3.5 text-slate-600" />
+                        品牌对齐
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-foreground">
+                        <div>品牌：{comprehensivePlan.brandAlignment.brandName || "-"}</div>
+                        <div>目标人群：{comprehensivePlan.brandAlignment.targetAudience || "-"}</div>
+                        <div>风格方向：{comprehensivePlan.brandAlignment.styleDirection || "-"}</div>
+                        <div>价格定位：{comprehensivePlan.brandAlignment.pricePosition || "-"}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 底部操作 */}
+            <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {comprehensivePlan?.planId ? `已写入企划主表 · ID ${comprehensivePlan.planId.slice(0, 8)}...` : "生成后将自动写入企划主表"}
+              </p>
+              <div className="flex gap-2">
+                {!comprehensivePlan ? (
+                  <>
+                    <Button variant="outline" onClick={() => setPlanOpen(false)}>
+                      取消
+                    </Button>
+                    <Button
+                      onClick={handleGeneratePlan}
+                      disabled={planGenerating}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    >
+                      {planGenerating ? "生成中..." : "开始生成"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={() => { setComprehensivePlan(null); setPlanError(""); }}>
+                      重新生成
+                    </Button>
+                    <Button onClick={() => setPlanOpen(false)} className="bg-navy-700 hover:bg-navy-800">
+                      完成
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

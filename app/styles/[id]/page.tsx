@@ -84,6 +84,14 @@ export default function StyleDetailPage() {
     suggestions: string[];
   } | null>(null);
   const [estimating, setEstimating] = useState(false);
+  const [pricingStrategy, setPricingStrategy] = useState<{
+    suggestedPrice: number;
+    priceRange: { min: number; max: number };
+    recommendedMargin: string;
+    competitiveAnalysis: { brand: string; price: number; positioning: string }[];
+    pricingRecommendations: { strategy: string; price: number; rationale: string; risk: string }[];
+  } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -270,6 +278,35 @@ export default function StyleDetailPage() {
       showToast("error", "成本估算请求失败");
     } finally {
       setEstimating(false);
+    }
+  };
+
+  // AI 定价策略
+  const handleGetPricingStrategy = async () => {
+    setPricingLoading(true);
+    setPricingStrategy(null);
+    try {
+      const res = await fetch("/api/planning/ai/pricing-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cost: style?.actualCost || style?.targetCost || 100,
+          category: style?.category,
+          brandPosition: "中高端",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("error", data.error || "定价策略失败");
+        return;
+      }
+      const data = await res.json();
+      setPricingStrategy(data);
+      showToast("success", "AI 定价策略已完成");
+    } catch (err) {
+      showToast("error", "定价策略请求失败");
+    } finally {
+      setPricingLoading(false);
     }
   };
 
@@ -900,6 +937,100 @@ export default function StyleDetailPage() {
 
           <TabsContent value="sales" className="mt-0">
             <div className="space-y-4">
+              {/* AI 定价策略 */}
+              <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-emerald-100">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-700" />
+                      </div>
+                      AI 定价策略
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={handleGetPricingStrategy}
+                      disabled={pricingLoading}
+                      className="h-8 bg-emerald-700 hover:bg-emerald-800"
+                    >
+                      {pricingLoading ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />分析中...</>
+                      ) : (
+                        <><Wand2 className="h-3.5 w-3.5 mr-1.5" />生成策略</>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {pricingStrategy && (
+                  <CardContent className="pt-0 space-y-3">
+                    {/* 主建议 */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                        <p className="text-xs text-muted-foreground mb-1">建议零售价</p>
+                        <p className="text-xl font-bold text-emerald-700">¥{pricingStrategy.suggestedPrice.toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">价格区间</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          ¥{pricingStrategy.priceRange.min.toFixed(2)} ~ ¥{pricingStrategy.priceRange.max.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">建议毛利</p>
+                        <p className="text-sm font-semibold text-foreground">{pricingStrategy.recommendedMargin}</p>
+                      </div>
+                    </div>
+
+                    {/* 竞品分析 */}
+                    {pricingStrategy.competitiveAnalysis && pricingStrategy.competitiveAnalysis.length > 0 && (
+                      <div className="p-3 rounded-xl bg-card border border-border">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">竞品定价分析</p>
+                        <div className="space-y-1.5">
+                          {pricingStrategy.competitiveAnalysis.slice(0, 4).map((c, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="font-medium text-foreground">{c.brand}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{c.positioning}</span>
+                                <span className="font-semibold text-emerald-700">¥{c.price}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 定价策略建议 */}
+                    {pricingStrategy.pricingRecommendations && pricingStrategy.pricingRecommendations.length > 0 && (
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100">
+                        <p className="text-xs font-medium text-emerald-900 mb-2 flex items-center gap-1.5">
+                          <Sparkles className="h-3 w-3" />
+                          AI 定价策略建议
+                        </p>
+                        <div className="space-y-2">
+                          {pricingStrategy.pricingRecommendations.map((r, i) => (
+                            <div key={i} className="p-2 rounded-lg bg-white/70 border border-emerald-50">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-semibold text-foreground">{r.strategy}</span>
+                                <span className="text-xs font-bold text-emerald-700">¥{r.price}</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground mb-1">{r.rationale}</p>
+                              <p className="text-[10px] text-amber-600">⚠ 风险：{r.risk}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+                {!pricingStrategy && !pricingLoading && (
+                  <CardContent className="pt-0">
+                    <p className="text-xs text-muted-foreground">
+                      基于款式成本、品类和品牌定位，AI 分析竞品定价并给出建议零售价、毛利和定价策略。
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+
               {/* AI销量预测 */}
               <Card className="border-2 border-navy-200 bg-gradient-to-br from-navy-50/50 to-transparent">
                 <CardHeader className="pb-3">
