@@ -21,7 +21,6 @@ import {
   Palette,
   ShoppingCart,
   Wrench,
-  FileText,
   Box,
   ArrowRight,
   Check,
@@ -29,11 +28,9 @@ import {
   Loader2,
   ChevronRight,
   CircleDot,
-  Layers,
   ListTodo,
   ShieldAlert,
   Plus,
-  BarChart3,
   Wand2,
   Bot,
   MessageSquare,
@@ -162,7 +159,7 @@ export default function DashboardPage() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[1800px] mx-auto space-y-8 animate-fadeIn">
+      <div className="max-w-[1800px] mx-auto space-y-6 animate-fadeIn">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -217,61 +214,128 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
-            {/* KPI Metrics - Bento Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-              <SummaryCard
-                title="款式总数"
-                value={summary.totalStyles}
-                icon={BarChart3}
-                color="navy"
-                subtitle={`本品牌在开发中款式`}
-                href="/styles"
-              />
-              <SummaryCard
-                title="待办事项"
-                value={summary.pendingTodos}
-                icon={ListTodo}
-                color="terracotta"
-                subtitle={summary.overdueCount > 0 ? `其中 ${summary.overdueCount} 项已逾期` : "暂无逾期"}
-                highlight={summary.overdueCount > 0}
-                href="/todos"
-              />
-              <SummaryCard
-                title="高风险"
-                value={summary.highRiskCount}
-                icon={ShieldAlert}
-                color="red"
-                subtitle={summary.highRiskCount > 0 ? "需立即处理" : "当前无高风险"}
-                highlight={summary.highRiskCount > 0}
-              />
-              <SummaryCard
-                title="活跃款式"
-                value={totalActive}
-                icon={Layers}
-                color="green"
-                subtitle="7 大阶段款式分布"
-                href="/styles"
-              />
+            {/* KPI Metrics - 三宫格 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* 款式概览：合并款式总数 + 活跃款式 + 迷你进度条 */}
+              <Link href="/styles" className="block">
+                <Card className="card-premium transition-all hover:shadow-lg cursor-pointer h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-navy-100">
+                          <TrendingUp className="h-5 w-5 text-navy-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">款式概览</p>
+                          <p className="text-xs text-muted-foreground">本品牌在开发中款式</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="data-value !text-2xl">{summary.totalStyles}</p>
+                        <p className="text-xs text-muted-foreground">总款式</p>
+                      </div>
+                    </div>
+                    {/* 迷你进度条：7阶段分布 */}
+                    <div className="flex items-stretch h-3 rounded-full overflow-hidden bg-sand-100 gap-px">
+                      {PIPELINE_STAGES.map((stage) => {
+                        const count = stageCounts[stage.key] || 0;
+                        const pct = totalActive > 0 ? (count / totalActive) * 100 : 0;
+                        const colors = STAGE_COLOR_MAP[stage.color];
+                        return (
+                          <div
+                            key={stage.key}
+                            className={`${colors.bar} transition-all duration-500`}
+                            style={{ width: `${pct}%` }}
+                            title={`${stage.label}: ${count}款 (${pct.toFixed(0)}%)`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between mt-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {PIPELINE_STAGES.slice(0, 4).map((stage) => {
+                          const colors = STAGE_COLOR_MAP[stage.color];
+                          return (
+                            <div key={stage.key} className="flex items-center gap-1">
+                              <div className={`w-2 h-2 rounded-full ${colors.bar}`} />
+                              <span className="text-[10px] text-muted-foreground">{stage.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span className="text-xs font-medium text-navy-600">{totalActive} 款在途 →</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              {/* 待办事项 */}
+              <Link href="/todos" className="block">
+                <Card className={`card-premium transition-all hover:shadow-lg cursor-pointer h-full ${summary.overdueCount > 0 ? "ring-2 ring-terracotta-200 bg-terracotta-50/40" : ""}`}>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2.5 rounded-xl bg-terracotta-100">
+                        <ListTodo className="h-5 w-5 text-terracotta-600" />
+                      </div>
+                      <div className="text-right">
+                        <p className="data-value">{summary.pendingTodos}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">待办事项</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {summary.overdueCount > 0 ? (
+                        <span className="text-destructive font-medium">
+                          其中 {summary.overdueCount} 项已逾期
+                        </span>
+                      ) : (
+                        "暂无逾期"
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              {/* 高风险 */}
+              <Card className={`card-premium transition-all h-full ${summary.highRiskCount > 0 ? "ring-2 ring-red-200 bg-red-50/40" : ""}`}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-red-50">
+                      <ShieldAlert className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="text-right">
+                      <p className="data-value">{summary.highRiskCount}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">高风险</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {summary.highRiskCount > 0 ? (
+                      <span className="text-destructive font-medium">需立即处理</span>
+                    ) : (
+                      "当前无高风险"
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Risk Alert */}
+            {/* Risk Alert - 上移到 KPI 下方最显眼位置 */}
             {workspace?.risks && workspace.risks.length > 0 && (
-              <Card className="card-premium border-terracotta-100">
+              <Card className="card-premium border-terracotta-200 bg-gradient-to-br from-terracotta-50/50 to-orange-50/30">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
                       <ShieldAlert className="h-4 w-4 text-terracotta-500" />
                       风险预警
-                      <Badge className="ml-1 bg-terracotta-100 text-terracotta-600 hover:bg-terracotta-100">
+                      <Badge className="ml-1 bg-terracotta-500 text-white hover:bg-terracotta-600">
                         {workspace.risks.length}
                       </Badge>
                     </CardTitle>
-                    <span className="text-xs text-muted-foreground">实时检测</span>
+                    <span className="text-xs text-muted-foreground">实时检测 · 需要关注</span>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {workspace.risks.slice(0, 6).map((risk: any, i: number) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {workspace.risks.slice(0, 4).map((risk: any, i: number) => {
                       const config = RISK_LEVEL_CONFIG[risk.level] || RISK_LEVEL_CONFIG.low;
                       const Icon = config.icon;
                       return (
@@ -285,8 +349,8 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold">{risk.title}</p>
-                              <Badge variant="outline" className={`text-[10px] h-4 border-current/30`}>
+                              <p className="text-sm font-semibold truncate">{risk.title}</p>
+                              <Badge variant="outline" className={`text-[10px] h-4 border-current/30 flex-shrink-0`}>
                                 {config.label}
                               </Badge>
                             </div>
@@ -296,20 +360,20 @@ export default function DashboardPage() {
                         </Link>
                       );
                     })}
-                    {workspace.risks.length > 6 && (
-                      <div className="text-center pt-2">
-                        <Button variant="link" size="sm" asChild>
-                          <Link href="/todos">查看全部 {workspace.risks.length} 个风险</Link>
-                        </Button>
-                      </div>
-                    )}
                   </div>
+                  {workspace.risks.length > 4 && (
+                    <div className="text-center pt-3 mt-1 border-t border-terracotta-100">
+                      <Button variant="link" size="sm" asChild>
+                        <Link href="/todos">查看全部 {workspace.risks.length} 个风险</Link>
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Main Bento Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Main Bento Grid - 双列 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Todos */}
               <Card className="card-premium">
                 <CardHeader className="pb-3">
@@ -397,46 +461,49 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Pipeline */}
+              {/* 款式流水线 - 横向进度条紧凑版 */}
               <Card className="card-premium">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                    <TrendingUp className="h-4 w-4 text-navy-500" />
-                    款式流水线
-                  </CardTitle>
-                  <CardDescription className="text-xs">7 大阶段款式分布</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                        <TrendingUp className="h-4 w-4 text-navy-500" />
+                        款式流水线
+                      </CardTitle>
+                      <CardDescription className="text-xs">7 大阶段款式分布</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/styles">查看全部</Link>
+                    </Button>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    {PIPELINE_STAGES.map((stage) => {
-                      const count = stageCounts[stage.key] || 0;
-                      const colors = STAGE_COLOR_MAP[stage.color];
-                      const Icon = stage.icon;
-                      const max = Math.max(...Object.values(stageCounts), 1);
-                      const pct = max > 0 ? (count / max) * 100 : 0;
-                      return (
-                        <div
-                          key={stage.key}
-                          className="p-4 rounded-xl border border-border bg-sand-50/50 hover:bg-sand-50 hover:shadow-sm transition-all group cursor-pointer"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className={`p-2 rounded-xl ${colors.bg}`}>
-                              <Icon className={`h-4 w-4 ${colors.text}`} />
-                            </div>
-                            <span className={`text-lg font-bold ${colors.text}`}>{count}</span>
+                <CardContent className="space-y-3">
+                  {PIPELINE_STAGES.map((stage) => {
+                    const count = stageCounts[stage.key] || 0;
+                    const colors = STAGE_COLOR_MAP[stage.color];
+                    const Icon = stage.icon;
+                    const pct = totalActive > 0 ? (count / totalActive) * 100 : 0;
+                    return (
+                      <div key={stage.key} className="group">
+                        <div className="flex items-center gap-3 mb-1.5">
+                          <div className={`p-1.5 rounded-lg ${colors.bg} flex-shrink-0`}>
+                            <Icon className={`h-3.5 w-3.5 ${colors.text}`} />
                           </div>
-                          <p className="text-sm font-medium text-foreground mb-3">{stage.label}</p>
-                          <div className="h-2 bg-sand-200 rounded-full overflow-hidden">
+                          <span className="text-sm font-medium text-foreground flex-shrink-0 w-16">{stage.label}</span>
+                          <div className="flex-1 h-2 bg-sand-100 rounded-full overflow-hidden">
                             <div
                               className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">{pct.toFixed(0)}% 占比</p>
+                          <div className="flex items-center gap-1.5 flex-shrink-0 w-16 justify-end">
+                            <span className={`text-sm font-bold ${colors.text}`}>{count}</span>
+                            <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>
@@ -524,15 +591,17 @@ export default function DashboardPage() {
               <Card className="card-premium">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                      <Bot className="h-4 w-4 text-navy-500" />
-                      我的 AI 工具
-                    </CardTitle>
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                        <Bot className="h-4 w-4 text-navy-500" />
+                        我的 AI 工具
+                      </CardTitle>
+                      <CardDescription className="text-xs">根据当前角色和工序自动分配的 AI 智能体</CardDescription>
+                    </div>
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/ai-workspace">查看全部</Link>
                     </Button>
                   </div>
-                  <CardDescription className="text-xs">根据当前角色和工序自动分配的 AI 智能体</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -575,105 +644,11 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
-
-            {/* Quick Links */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <QuickLink href="/planning" icon={FileText} label="企划中心" desc="品牌季规划" color="navy" />
-              <QuickLink href="/styles" icon={Package} label="款式开发" desc="款式 BOM/打样" color="terracotta" />
-              <QuickLink href="/suppliers" icon={Factory} label="供应链" desc="供应商/采购" color="green" />
-              <QuickLink href="/analytics" icon={BarChart3} label="经营反馈" desc="销售/复盘数据" color="blue" />
-            </div>
           </>
         )}
 
         <AIChatDialog open={chatOpen} onClose={closeChat} skill={chatSkill} />
       </div>
     </SidebarLayout>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  icon: Icon,
-  color,
-  subtitle,
-  highlight,
-  href,
-}: {
-  title: string;
-  value: number;
-  icon: any;
-  color: "navy" | "terracotta" | "red" | "green" | "blue";
-  subtitle: string;
-  highlight?: boolean;
-  href?: string;
-}) {
-  const colorMap = {
-    navy: { iconBg: "bg-navy-100", iconText: "text-navy-600", highlight: "ring-navy-200 bg-navy-50/40" },
-    terracotta: { iconBg: "bg-terracotta-100", iconText: "text-terracotta-600", highlight: "ring-terracotta-200 bg-terracotta-50/40" },
-    red: { iconBg: "bg-red-50", iconText: "text-red-600", highlight: "ring-red-200 bg-red-50/40" },
-    green: { iconBg: "bg-emerald-50", iconText: "text-emerald-600", highlight: "ring-emerald-200 bg-emerald-50/40" },
-    blue: { iconBg: "bg-blue-50", iconText: "text-blue-600", highlight: "ring-blue-200 bg-blue-50/40" },
-  };
-  const c = colorMap[color];
-
-  const content = (
-    <Card
-      className={`card-premium transition-all ${highlight ? `ring-2 ${c.highlight}` : ""} ${href ? "hover:shadow-lg cursor-pointer" : ""}`}
-    >
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className={`p-2.5 rounded-xl ${c.iconBg}`}>
-            <Icon className={`h-5 w-5 ${c.iconText}`} />
-          </div>
-        </div>
-        <p className="data-value">{value}</p>
-        <p className="text-xs font-medium text-muted-foreground mt-1">{title}</p>
-        <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{subtitle}</p>
-      </CardContent>
-    </Card>
-  );
-
-  if (href) {
-    return <Link href={href}>{content}</Link>;
-  }
-  return content;
-}
-
-function QuickLink({
-  href,
-  icon: Icon,
-  label,
-  desc,
-  color,
-}: {
-  href: string;
-  icon: any;
-  label: string;
-  desc: string;
-  color: "navy" | "terracotta" | "green" | "blue";
-}) {
-  const colorMap = {
-    navy: "bg-navy-100 text-navy-600 group-hover:bg-navy-200",
-    terracotta: "bg-terracotta-100 text-terracotta-600 group-hover:bg-terracotta-200",
-    green: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100",
-    blue: "bg-blue-50 text-blue-600 group-hover:bg-blue-100",
-  };
-
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-terracotta-200 hover:shadow-md transition-all group"
-    >
-      <div className={`p-2.5 rounded-xl ${colorMap[color]} transition-colors`}>
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-terracotta-500 group-hover:translate-x-0.5 transition-all" />
-    </Link>
   );
 }
