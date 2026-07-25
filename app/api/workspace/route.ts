@@ -169,6 +169,28 @@ export async function GET(request: Request) {
     // 8. 获取工作台配置
     const workspaceConfig = getWorkspaceConfig(headerRole, processNodes);
 
+    // 9. 待审批流（仅管理层）+ 操作日志（最近10条）
+    let pendingApprovals: any[] = [];
+    let recentLogs: any[] = [];
+    if (isManager) {
+      const { data: approvalsData } = await supabase
+        .from("approval_flows")
+        .select("id, brand_id, table_name, record_id, action, status, submitted_by, created_at, proposed_data, review_comment")
+        .eq("brand_id", brandId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      pendingApprovals = approvalsData || [];
+
+      const { data: logsData } = await supabase
+        .from("operation_logs")
+        .select("id, user_id, brand_id, action, target_table, target_id, before_data, after_data, created_at")
+        .eq("brand_id", brandId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      recentLogs = logsData || [];
+    }
+
     return NextResponse.json({
       brand: { id: brandId, seasonId },
       summary: {
@@ -176,6 +198,7 @@ export async function GET(request: Request) {
         pendingTodos: todos?.length || 0,
         overdueCount: overdueTodos?.length || 0,
         highRiskCount: risks.filter((r) => r.level === "urgent" || r.level === "high").length,
+        pendingApprovals: pendingApprovals.length,
       },
       todos: todos || [],
       overdueTodos: overdueTodos || [],
@@ -188,6 +211,9 @@ export async function GET(request: Request) {
       userRole: headerRole,
       processNodes,
       isManager,
+      // 管理层新增：审批流 + 操作日志
+      pendingApprovals,
+      recentLogs,
     });
   } catch (error) {
     console.error("工作台API失败:", error);

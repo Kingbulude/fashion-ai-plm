@@ -3,6 +3,7 @@
 // 管理层统筹工作台组件（BOSS/品牌主理人/管理员）
 // 设计理念：统筹全局，一眼掌握每个工序环节的核心状态
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -38,6 +39,10 @@ import {
   Box,
   Layers,
   Truck,
+  History,
+  X as XIcon,
+  Check,
+  FileText,
 } from "lucide-react";
 import { RiskAlertCard } from "./shared-modules";
 
@@ -77,6 +82,132 @@ export function ManagerWorkspace({
     pendingTodos: 0,
     overdueCount: 0,
     highRiskCount: 0,
+    pendingApprovals: 0,
+  };
+
+  // 真实审批流数据 + 操作日志（来自 /api/workspace 聚合）
+  const pendingApprovals = (workspace?.pendingApprovals || []) as Array<{
+    id: string;
+    table_name: string;
+    record_id: string;
+    action: string;
+    proposed_data: any;
+    submitted_by: string;
+    created_at: string;
+  }>;
+  const recentLogs = (workspace?.recentLogs || []) as Array<{
+    id: string;
+    user_id: string;
+    action: string;
+    target_table: string;
+    target_id: string;
+    after_data: any;
+    created_at: string;
+  }>;
+  const [processingApprovalId, setProcessingApprovalId] = useState<string | null>(null);
+
+  // 处理审批（通过/驳回）
+  const handleProcessApproval = async (approvalId: string, status: "approved" | "rejected") => {
+    setProcessingApprovalId(approvalId);
+    try {
+      const res = await fetch("/api/approvals", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: approvalId,
+          status,
+          reviewComment: status === "approved" ? "通过" : "驳回",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "审批处理失败");
+      }
+      // 重新加载工作台数据
+      window.location.reload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "审批处理失败";
+      alert(msg);
+    } finally {
+      setProcessingApprovalId(null);
+    }
+  };
+
+  // 格式化操作日志描述
+  const formatLogAction = (log: typeof recentLogs[number]) => {
+    const actionMap: Record<string, string> = {
+      create: "创建",
+      update: "更新",
+      delete: "删除",
+      approval_approved: "审批通过",
+      approval_rejected: "审批驳回",
+    };
+    const actionLabel = actionMap[log.action] || log.action;
+    const tableMap: Record<string, string> = {
+      styles: "款式",
+      todos: "待办",
+      suppliers: "供应商",
+      brands: "品牌",
+      seasons: "季节",
+      approval_flows: "审批",
+      bom_items: "BOM",
+      sampling_records: "打样",
+      production_orders: "生产订单",
+      material_procurement: "采购",
+    };
+    const tableLabel = tableMap[log.target_table] || log.target_table;
+    let detail = "";
+    if (log.after_data) {
+      if (typeof log.after_data === "object" && log.after_data.name) {
+        detail = `「${log.after_data.name}」`;
+      } else if (typeof log.after_data === "object" && log.after_data.style_no) {
+        detail = `「${log.after_data.style_no}」`;
+      } else if (typeof log.after_data === "object" && log.after_data.title) {
+        detail = `「${log.after_data.title}」`;
+      }
+    }
+    return `${actionLabel} ${tableLabel}${detail}`;
+  };
+
+  // 格式化相对时间
+  const formatRelativeTime = (isoString: string) => {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    if (minutes < 1) return "刚刚";
+    if (minutes < 60) return `${minutes} 分钟前`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} 小时前`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} 天前`;
+    return new Date(isoString).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+  };
+
+  // 审批目标展示信息
+  const formatApprovalTarget = (approval: typeof pendingApprovals[number]) => {
+    const tableMap: Record<string, string> = {
+      styles: "款式",
+      suppliers: "供应商",
+      brands: "品牌",
+      seasons: "季节",
+      bom_items: "BOM",
+      production_orders: "生产订单",
+    };
+    const tableLabel = tableMap[approval.table_name] || approval.table_name;
+    const actionMap: Record<string, string> = {
+      create: "新建",
+      update: "修改",
+      delete: "删除",
+    };
+    const actionLabel = actionMap[approval.action] || approval.action;
+    let detail = "";
+    if (approval.proposed_data) {
+      if (typeof approval.proposed_data === "object") {
+        if (approval.proposed_data.name) detail = `「${approval.proposed_data.name}」`;
+        else if (approval.proposed_data.style_no) detail = `「${approval.proposed_data.style_no}」`;
+        else if (approval.proposed_data.title) detail = `「${approval.proposed_data.title}」`;
+      }
+    }
+    return `${actionLabel} ${tableLabel}${detail}`;
   };
 
   // 计算各阶段款式数
@@ -99,8 +230,9 @@ export function ManagerWorkspace({
     (stylesByStatus["sold"] || []).length;
   const aftersalesCount = (stylesByStatus["reviewing"] || []).length;
 
-  // 待审批 vs 普通待办
-  const approvalTodos = (workspace?.todos || []).filter(
+  // 旧逻辑（基于文本匹配）已弃用，改用真实审批流 pendingApprovals
+  // 仅保留 fallback：当无真实审批数据时，从 todos 文本匹配作为兜底
+  const approvalTodosFallback = (workspace?.todos || []).filter(
     (t: any) =>
       t.title?.includes("审批") ||
       t.title?.includes("审核") ||
@@ -182,9 +314,9 @@ export function ManagerWorkspace({
                 ) : (
                   "暂无逾期"
                 )}
-                {approvalTodos.length > 0 && (
+                {approvalTodosFallback.length > 0 && (
                   <span className="ml-2 text-navy-600">
-                    · {approvalTodos.length} 项待审批
+                    · {approvalTodosFallback.length} 项待审批
                   </span>
                 )}
               </p>
@@ -249,9 +381,9 @@ export function ManagerWorkspace({
         </CardContent>
       </Card>
 
-      {/* === 第四区：待审批 + 流水线 === */}
+      {/* === 第四区：待审批 + 款式流水线 === */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 待审批 */}
+        {/* 待我审批（真实审批流） */}
         <Card className="card-premium">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -259,73 +391,89 @@ export function ManagerWorkspace({
                 <CardTitle className="text-base flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-terracotta-500" />
                   待我审批
-                  {approvalTodos.length > 0 && (
+                  {pendingApprovals.length > 0 && (
                     <Badge className="ml-1 bg-terracotta-100 text-terracotta-600">
-                      {approvalTodos.length}
+                      {pendingApprovals.length}
                     </Badge>
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs mt-1">
-                  需要您决策的事项
+                  基于审批流的待处理事项
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/todos">查看全部</Link>
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {approvalTodos.length === 0 ? (
+            {pendingApprovals.length === 0 ? (
               <div className="py-10 text-center">
                 <CheckCircle2 className="h-8 w-8 text-emerald-300 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">暂无待审批事项</p>
+                {approvalTodosFallback.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    另有 {approvalTodosFallback.length} 项文本匹配的待办
+                  </p>
+                )}
               </div>
             ) : (
-              <div className="space-y-2">
-                {approvalTodos.slice(0, 6).map((todo: any) => {
-                  const isOverdue =
-                    todo.dueDate && new Date(todo.dueDate) < new Date();
+              <div className="space-y-2.5">
+                {pendingApprovals.slice(0, 5).map((approval) => {
+                  const target = formatApprovalTarget(approval);
+                  const submittedAt = formatRelativeTime(approval.created_at);
+                  const isProcessing = processingApprovalId === approval.id;
                   return (
                     <div
-                      key={todo.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                        isOverdue
-                          ? "border-destructive/20 bg-destructive/5"
-                          : "border-border hover:bg-sand-50"
-                      }`}
+                      key={approval.id}
+                      className="p-3 rounded-xl border border-border hover:bg-sand-50 transition-all"
                     >
-                      <button
-                        onClick={() => onCompleteTodo(todo.id)}
-                        disabled={completingTodoId === todo.id}
-                        className="flex-shrink-0 h-5 w-5 rounded-md border-2 border-border hover:border-emerald-500 transition-colors flex items-center justify-center"
-                      >
-                        {completingTodoId === todo.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                        ) : (
-                          <CheckCircle2 className="h-3 w-3 text-transparent" />
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{todo.title}</p>
-                        {todo.dueDate && (
-                          <p
-                            className={`text-xs mt-0.5 flex items-center gap-0.5 ${
-                              isOverdue
-                                ? "text-destructive"
-                                : "text-muted-foreground"
-                            }`}
-                          >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <FileText className="h-3.5 w-3.5 text-navy-600 flex-shrink-0" />
+                            <p className="text-sm font-medium truncate">{target}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {new Date(todo.dueDate).toLocaleDateString("zh-CN", {
-                              month: "numeric",
-                              day: "numeric",
-                            })}
+                            提交于 {submittedAt}
                           </p>
-                        )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleProcessApproval(approval.id, "approved")}
+                          disabled={isProcessing}
+                          className="h-7 flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Check className="h-3 w-3 mr-1" />
+                          )}
+                          通过
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleProcessApproval(approval.id, "rejected")}
+                          disabled={isProcessing}
+                          className="h-7 flex-1 border-destructive/30 text-destructive hover:bg-destructive/5"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <XIcon className="h-3 w-3 mr-1" />
+                          )}
+                          驳回
+                        </Button>
                       </div>
                     </div>
                   );
                 })}
+                {pendingApprovals.length > 5 && (
+                  <p className="text-xs text-center text-muted-foreground pt-1">
+                    还有 {pendingApprovals.length - 5} 项待审批...
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
@@ -380,7 +528,84 @@ export function ManagerWorkspace({
         </Card>
       </div>
 
-      {/* === 第五区：最近款式 === */}
+      {/* === 第五区：最近活动时间线 === */}
+      <Card className="card-premium">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4 text-navy-500" />
+                最近活动
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                团队最近 10 条操作记录
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recentLogs.length === 0 ? (
+            <div className="py-10 text-center">
+              <History className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">暂无活动记录</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentLogs.slice(0, 8).map((log, idx) => {
+                const action = formatLogAction(log);
+                const time = formatRelativeTime(log.created_at);
+                const isApprovalAction = log.action.startsWith("approval_");
+                const isCreateAction = log.action === "create";
+                const isUpdateAction = log.action === "update";
+                const isDeleteAction = log.action === "delete";
+
+                // 图标和颜色映射
+                let Icon = FileText;
+                let iconBg = "bg-slate-100";
+                let iconColor = "text-slate-600";
+                if (isApprovalAction) {
+                  Icon = log.action === "approval_approved" ? Check : XIcon;
+                  iconBg = log.action === "approval_approved" ? "bg-emerald-100" : "bg-red-100";
+                  iconColor = log.action === "approval_approved" ? "text-emerald-600" : "text-red-600";
+                } else if (isCreateAction) {
+                  Icon = Plus;
+                  iconBg = "bg-blue-100";
+                  iconColor = "text-blue-600";
+                } else if (isUpdateAction) {
+                  Icon = RefreshCw;
+                  iconBg = "bg-amber-100";
+                  iconColor = "text-amber-600";
+                } else if (isDeleteAction) {
+                  Icon = XIcon;
+                  iconBg = "bg-red-100";
+                  iconColor = "text-red-600";
+                }
+
+                return (
+                  <div key={log.id} className="flex items-start gap-3">
+                    {/* 时间线圆点 */}
+                    <div className="flex flex-col items-center">
+                      <div className={`p-1.5 rounded-full ${iconBg}`}>
+                        <Icon className={`h-3 w-3 ${iconColor}`} />
+                      </div>
+                      {idx < Math.min(recentLogs.length, 8) - 1 && (
+                        <div className="w-px h-6 bg-border mt-1" />
+                      )}
+                    </div>
+                    {/* 内容 */}
+                    <div className="flex-1 min-w-0 pb-1">
+                      <p className="text-sm text-foreground">{action}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{time}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* === 第六区：最近款式 === */}
       <Card className="card-premium">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
