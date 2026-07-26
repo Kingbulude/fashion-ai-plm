@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTenant } from "@/lib/auth/tenant-context";
@@ -31,6 +32,8 @@ import {
   TrendingUp,
   BarChart3,
   Zap,
+  Plus,
+  X,
 } from "lucide-react";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; order: number }> = {
@@ -59,6 +62,14 @@ export default function TodosPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    dueDate: "",
+  });
 
   // 获取当前用户 ID，用于「仅看我负责的」筛选
   useEffect(() => {
@@ -176,6 +187,47 @@ export default function TodosPage() {
     }
   };
 
+  // 操作：创建
+  const handleCreate = async () => {
+    if (!createForm.title.trim()) {
+      alert("请输入待办标题");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      const res = await fetch("/api/todos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": currentCompany?.id || "",
+          "x-brand-id": currentBrand?.id || "",
+          "x-season-id": currentSeason?.id || "",
+        },
+        body: JSON.stringify({
+          title: createForm.title.trim(),
+          description: createForm.description.trim() || null,
+          priority: createForm.priority,
+          dueDate: createForm.dueDate || null,
+          type: "task",
+        }),
+      });
+      if (res.ok) {
+        setShowCreate(false);
+        setCreateForm({ title: "", description: "", priority: "medium", dueDate: "" });
+        setStatusFilter("pending");
+        await fetchTodos();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "创建失败");
+      }
+    } catch (err) {
+      console.error("创建待办失败:", err);
+      alert("创建失败");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <SidebarLayout>
       <div className="p-6 lg:p-8 max-w-[1200px] mx-auto">
@@ -195,6 +247,10 @@ export default function TodosPage() {
               )}
             </p>
           </div>
+          <Button onClick={() => setShowCreate(true)} className="bg-navy-700 hover:bg-navy-800 text-white">
+            <Plus className="h-4 w-4 mr-1.5" />
+            新增待办
+          </Button>
         </div>
 
         {/* 统计卡片 */}
@@ -245,8 +301,8 @@ export default function TodosPage() {
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all"
-                    style={{ width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all min-w-[2px]"
+                    style={{ width: `${stats.total > 0 ? Math.max((stats.completed / stats.total) * 100, 0.5) : 0}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
@@ -347,33 +403,45 @@ export default function TodosPage() {
                 completed: { label: "已完成" },
                 all: { label: "全部" },
               };
+              const counts: Record<StatusFilter, number> = {
+                pending: stats.pending,
+                in_progress: stats.inProgress,
+                completed: stats.completed,
+                all: stats.total,
+              };
               return (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     statusFilter === s
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   {config[s].label}
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === s ? "bg-slate-100 text-slate-700" : "bg-slate-200/60 text-slate-500"}`}>
+                    {counts[s]}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <select
-            value={priorityFilter || ""}
-            onChange={(e) => setPriorityFilter(e.target.value || null)}
-            className="h-8 px-2.5 rounded-md border border-slate-200 text-xs bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
-          >
-            <option value="">全优先级</option>
-            <option value="urgent">紧急</option>
-            <option value="high">高</option>
-            <option value="medium">中</option>
-            <option value="low">低</option>
-          </select>
+          <div className="relative">
+            <select
+              value={priorityFilter || ""}
+              onChange={(e) => setPriorityFilter(e.target.value || null)}
+              className="h-8 w-full px-2.5 pr-8 rounded-md border border-slate-200 text-xs bg-white appearance-none hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="">全优先级</option>
+              <option value="urgent">紧急</option>
+              <option value="high">高</option>
+              <option value="medium">中</option>
+              <option value="low">低</option>
+            </select>
+            <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground rotate-90 pointer-events-none" />
+          </div>
 
           <button
             onClick={() => setShowMineOnly((v) => !v)}
@@ -534,6 +602,93 @@ export default function TodosPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* 新增待办弹窗 */}
+        {showCreate && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+            <Card className="w-full max-w-lg rounded-2xl shadow-2xl">
+              <CardHeader className="flex items-center justify-between pb-4">
+                <div>
+                  <CardTitle className="text-lg font-semibold">新增待办</CardTitle>
+                  <CardDescription className="text-sm">创建一个新的待办任务</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowCreate(false)} className="rounded-full hover:bg-slate-100">
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-5 px-6 pb-6">
+                <div>
+                  <label className="text-xs font-medium text-slate-700 mb-1.5 block">待办标题 *</label>
+                  <Input
+                    value={createForm.title}
+                    onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                    placeholder="例如：确认面料供应商报价"
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 mb-1.5 block">详细说明</label>
+                  <textarea
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                    rows={3}
+                    placeholder="补充说明、截止时间要求等"
+                    className="w-full px-3 py-2.5 rounded-md border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-200"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 mb-1.5 block">优先级</label>
+                    <div className="relative">
+                      <select
+                        value={createForm.priority}
+                        onChange={(e) => setCreateForm({ ...createForm, priority: e.target.value })}
+                        className="h-10 w-full px-3 pr-9 rounded-md border border-slate-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy-200"
+                      >
+                        {Object.entries(PRIORITY_CONFIG)
+                          .sort(([, a], [, b]) => b.order - a.order)
+                          .map(([key, cfg]) => (
+                            <option key={key} value={key}>
+                              {cfg.label}
+                            </option>
+                          ))}
+                      </select>
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 mb-1.5 block">截止时间</label>
+                    <Input
+                      type="datetime-local"
+                      value={createForm.dueDate}
+                      onChange={(e) => setCreateForm({ ...createForm, dueDate: e.target.value })}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200 mt-2">
+                  <Button variant="outline" onClick={() => setShowCreate(false)} className="h-10 px-5">
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleCreate}
+                    disabled={createLoading}
+                    className="h-10 px-6 bg-navy-700 hover:bg-navy-800 text-white"
+                  >
+                    {createLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        提交中
+                      </>
+                    ) : (
+                      "创建"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
