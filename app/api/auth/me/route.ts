@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
-import { RoleLevel, getAllowedBrandIds } from "@/lib/auth/rbac";
+import { RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 

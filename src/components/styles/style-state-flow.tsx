@@ -9,10 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
-  CircleDot,
   ChevronRight,
   Sparkles,
-  Lock,
   AlertCircle,
   Loader2,
   ArrowRight,
@@ -54,7 +52,7 @@ interface StyleStateFlowProps {
 }
 
 export function StyleStateFlow({
-  styleId,
+  styleId: _styleId,
   currentStatus,
   availableTransitions,
   completion,
@@ -115,7 +113,6 @@ export function StyleStateFlow({
             {STATE_NODES.map((node, idx) => {
               const isPast = idx < currentIndex;
               const isCurrent = idx === currentIndex;
-              const isFuture = idx > currentIndex;
               const isClickable = isCurrent && availableTransitions.length > 0;
 
               return (

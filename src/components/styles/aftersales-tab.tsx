@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertTriangle,
   Plus,
   Loader2,
   RotateCcw,
@@ -18,7 +17,6 @@ import {
   MessageSquareWarning,
   X,
   Calendar,
-  TrendingDown,
   ShieldAlert,
 } from "lucide-react";
 

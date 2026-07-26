@@ -88,7 +88,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function generateReview(supabase: SupabaseClient, companyId: string, brandId: string | undefined, seasonId: string | undefined, reviewType: string) {
+async function generateReview(supabase: SupabaseClient, _companyId: string, brandId: string | undefined, seasonId: string | undefined, _reviewType: string) {
   let styleQuery = supabase
     .from("styles")
     .select("id, style_no, name, category, status, target_cost, actual_cost, target_quantity, produced_quantity, sold_quantity, season_id");

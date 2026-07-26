@@ -13,7 +13,7 @@ export const isServiceRoleConfigured = Boolean(supabaseServiceRoleKey);
 // 创建一个安全的 Mock 客户端，避免在无 env 时出现 fetch 失败 / 白屏
 // 该客户端的 .from().select() 等查询会立即返回空数据，不发起任何网络请求
 function createMockClient(): SupabaseClient {
-  const mockResult = (table: string) => {
+  const mockResult = (_table: string) => {
     const builder: any = {
       select: () => builder,
       insert: () => builder,

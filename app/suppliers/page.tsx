@@ -4,7 +4,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
@@ -14,28 +13,21 @@ import { Badge } from "@/components/ui/badge";
 import {
   Search,
   Plus,
-  Building2,
   Phone,
   Mail,
   Star,
   Truck,
   DollarSign,
-  Filter,
   Loader2,
   ChevronRight,
   Factory,
-  Shirt,
-  Package,
   X,
   User,
   AlertTriangle,
   RefreshCw,
   Sparkles,
-  BarChart3,
   Award,
-  TrendingUp,
   ShieldCheck,
-  Target,
   Layers,
 } from "lucide-react";
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -63,7 +63,6 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
   const [records, setRecords] = useState<ProcurementRecord[]>([]);
   const [bomItems, setBomItems] = useState<BomItem[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [fulfillment, setFulfillment] = useState<any[]>([]);
   const [allFulfilled, setAllFulfilled] = useState(false);
   const [missingItems, setMissingItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -105,7 +104,6 @@ export function ProcurementForm({ styleId }: ProcurementFormProps) {
       if (procRes.ok) {
         const data = await procRes.json();
         setRecords(data.procurement || []);
-        setFulfillment(data.fulfillment || []);
         setAllFulfilled(data.allFulfilled || false);
         setMissingItems(data.missingItems || 0);
       }

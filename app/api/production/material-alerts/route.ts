@@ -52,14 +52,6 @@ export async function GET(request: Request) {
       const hasActiveProduction = activeStyleIds.includes(styleId);
 
       const totalItems = styleBoms.length;
-      const receivedItems = styleBoms.filter((b: any) => {
-        const p = styleProcs.find((pp: any) => pp.bomItemId === b.id);
-        return !p;
-      }).length;
-      const missingItems = totalItems - styleBoms.filter((b: any) => {
-        const p = styleProcs.find((pp: any) => pp.bomItemId === b.id);
-        return p ? false : true;
-      }).length;
 
       const missingBoms = styleBoms.filter((b: any) => {
         const p = styleProcs.find((pp: any) => pp.bomItemId === b.id);

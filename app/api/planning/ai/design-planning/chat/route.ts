@@ -292,8 +292,6 @@ ${(MATERIAL_SUGGESTIONS[collectedData.matchedTheme as keyof typeof MATERIAL_SUGG
 
     case "confirm_plan":
       if (userMessage.includes("确认") || userMessage.includes("是")) {
-        const designPlan = collectedData.designPlan;
-        
         return {
           response: `✅ 设计企划已保存！
 

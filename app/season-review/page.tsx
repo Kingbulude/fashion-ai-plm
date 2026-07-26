@@ -7,25 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
   CheckCircle2,
   Sparkles,
   Target,
   Loader2,
-  RefreshCw,
   Save,
   FileText,
   Clock,
   Star,
-  ShieldAlert,
   Palette,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
   History,
-  ArrowRight,
 } from "lucide-react";
 
 interface SeasonReview {
@@ -532,7 +524,7 @@ export default function SeasonReviewPage() {
                         </div>
                       </div>
                       <div className="h-32 flex items-end gap-2">
-                        {[...reviews].reverse().slice(-6).map((r, i) => (
+                        {[...reviews].reverse().slice(-6).map((r) => (
                           <div key={r.id} className="flex-1 flex flex-col items-center gap-1">
                             <div
                               className={`w-full rounded-t-md ${getScoreBg(r.overallScore || 0).replace("border-", "bg-").replace("bg-red-50", "bg-red-400").replace("bg-amber-50", "bg-amber-400").replace("bg-emerald-50", "bg-emerald-400")}`}

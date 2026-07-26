@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  LayoutGrid,
   Plus,
   Image,
   Tag,
@@ -18,9 +17,6 @@ import {
   Loader2,
   Palette,
   Sparkles,
-  ChevronRight,
-  Trash2,
-  Edit,
   X,
   Layers,
   TrendingUp,

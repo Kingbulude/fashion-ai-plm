@@ -23,11 +23,9 @@ const BRAND_DNA_DIMENSIONS = [
   { key: "competitive_advantage", label: "竞争优势", description: "品牌区别于竞品的优势" },
 ];
 
-function generateAiResponse(userMessage: string, conversationData: any, brandDna: any): { response: string; nextStep?: string; completed: boolean } {
+function generateAiResponse(userMessage: string, conversationData: any, _brandDna: any): { response: string; nextStep?: string; completed: boolean } {
   const currentStep = conversationData.currentStep || "start";
   const collectedData = conversationData.collectedData || {};
-  
-  const missingDimensions = BRAND_DNA_DIMENSIONS.filter(d => !collectedData[d.key]);
   
   switch (currentStep) {
     case "start":

@@ -17,7 +17,6 @@ import {
   Lightbulb,
   Palette,
   Shirt,
-  Scissors,
   Microscope,
   ShoppingBag,
   Factory,
@@ -70,7 +69,6 @@ const processNodeIcons: Record<string, React.ElementType> = {
 const skillTypeOrder = ["personal_assistant", "process_master", "execution"];
 
 export default function AIWorkspacePage() {
-  const router = useRouter();
   const { accessibleAISkills, isLoading } = useTenant();
 
   const [chatOpen, setChatOpen] = useState(false);

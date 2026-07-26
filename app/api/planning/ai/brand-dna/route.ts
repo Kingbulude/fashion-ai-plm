@@ -8,8 +8,6 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
-
     const { data, error } = await dbAdmin.from("brand_dna").select("*").limit(1).single();
     
     if (error) {

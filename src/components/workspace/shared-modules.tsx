@@ -28,9 +28,7 @@ import {
   Sparkles,
   Lightbulb,
   X as XIcon,
-  AlertTriangle,
   Zap,
-  Eye,
   ThumbsUp,
 } from "lucide-react";
 

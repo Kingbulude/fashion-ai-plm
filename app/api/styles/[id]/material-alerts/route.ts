@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { action, reason, userId } = body;
+    const { action, reason: _reason, userId } = body;
 
     if (action === "check_and_alert") {
       const result = await checkMaterialFulfillmentAndAlert(id, userId, supabase);

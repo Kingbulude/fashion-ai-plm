@@ -40,7 +40,7 @@ const generateProcurementOrderSkill: SkillDefinition = {
     },
   ],
   execute: async (params) => {
-    const { styleId, matches, orderId } = params as {
+    const { styleId, matches, orderId: _orderId } = params as {
       styleId: string;
       matches: SupplierMatch[];
       orderId?: string;

@@ -16,7 +16,6 @@ import {
   Wind,
   CheckCircle2,
   Loader2,
-  ChevronUp,
   Wand2,
   X,
   TrendingUp,

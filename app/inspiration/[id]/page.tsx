@@ -19,10 +19,6 @@ import {
   Search,
   Loader2,
   Sparkles,
-  Trash2,
-  Edit,
-  X,
-  Upload,
   ExternalLink,
   Grid3X3,
   LayoutList,
@@ -53,7 +49,6 @@ export default function InspirationBoardDetailPage() {
   const boardId = params.id as string;
   const [items, setItems] = useState<InspirationItem[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [allCategories, setAllCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -82,7 +77,6 @@ export default function InspirationBoardDetailPage() {
         const data = await res.json();
         setItems(data.items || []);
         setAllTags(data.allTags || []);
-        setAllCategories(data.allCategories || []);
       }
     } catch (err) {
       console.error("获取灵感素材失败:", err);

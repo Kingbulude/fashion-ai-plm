@@ -21,15 +21,12 @@ import {
   CheckCircle2,
   Loader2,
   ListTodo,
-  Filter,
   RotateCcw,
-  Calendar,
   ChevronRight,
   Inbox,
   Sparkles,
   User,
   Target,
-  TrendingUp,
   BarChart3,
   Zap,
   Plus,
@@ -61,7 +58,7 @@ export default function TodosPage() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createForm, setCreateForm] = useState({

@@ -74,7 +74,7 @@ function createEmptyTechPack(): TechPack {
   };
 }
 
-export function TechPackForm({ styleId, styleName, styleDescription, onCostUpdated }: TechPackFormProps) {
+export function TechPackForm({ styleId, styleName: _styleName, styleDescription: _styleDescription, onCostUpdated }: TechPackFormProps) {
   const [techPacks, setTechPacks] = useState<TechPack[]>([]);
   const [current, setCurrent] = useState<TechPack>(createEmptyTechPack());
   const [loading, setLoading] = useState(true);

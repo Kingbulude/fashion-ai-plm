@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 import { TenantProvider } from "@/lib/auth/tenant-context";
 import { Suspense } from "react";
 

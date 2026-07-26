@@ -34,7 +34,6 @@ import {
   Sparkles,
   Send,
   Search,
-  Filter,
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -47,7 +46,6 @@ import {
   ShoppingBag,
   ShieldCheck,
   FileDown,
-  ArrowRight,
 } from "lucide-react";
 
 const DEFECT_CATEGORIES = [

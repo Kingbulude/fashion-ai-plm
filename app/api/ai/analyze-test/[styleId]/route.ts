@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 type RouteContext = { params: Promise<{ styleId: string }> };
 
-export async function GET(request: Request, { params }: RouteContext) {
+export async function GET(_request: Request, { params }: RouteContext) {
   try {
     const { styleId } = await params;
     
@@ -19,7 +19,6 @@ export async function GET(request: Request, { params }: RouteContext) {
     
     const feedbackCount = testData?.feedback_count || Math.floor(Math.random() * 200) + 50;
     const positiveCount = Math.floor(feedbackCount * (0.6 + Math.random() * 0.3));
-    const negativeCount = feedbackCount - positiveCount;
     const positiveRate = Math.round((positiveCount / feedbackCount) * 100);
     const score = Math.round(positiveRate * 0.8 + Math.random() * 15);
     

@@ -20,7 +20,7 @@ interface ComprehensivePlanShape {
   overallConfidence: number;
 }
 
-function buildFallback(season: string, theme: string, category: string, baseCost: number, brandDna: any): ComprehensivePlanShape {
+function buildFallback(season: string, theme: string, _category: string, baseCost: number, brandDna: any): ComprehensivePlanShape {
   const suggestedPrice = Math.round(baseCost * 2.5);
   return {
     suggestedPrice,

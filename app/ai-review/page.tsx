@@ -657,13 +657,10 @@ function ReviewTrendChart({ trend }: { trend: any[] }) {
     );
   }
 
-  const maxValue = Math.max(...trend.map((d) => d.total), 1);
-
   return (
     <div className="h-48">
       <div className="flex items-end gap-1 h-full px-2">
-        {trend.map((day, idx) => {
-          const totalHeight = (day.total / maxValue) * 100;
+        {trend.map((day) => {
           const resolvedHeight = day.total > 0 ? (day.resolved / day.total) * 100 : 0;
           return (
             <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group relative" style={{ minWidth: "20px" }}>

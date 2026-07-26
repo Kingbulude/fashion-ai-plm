@@ -188,7 +188,7 @@ export async function estimateStyleCost(
   return generateText(promptText);
 }
 
-export async function analyzeDesignImage(imageBase64: string, mimeType: string): Promise<string> {
+export async function analyzeDesignImage(imageBase64: string, _mimeType: string): Promise<string> {
   const promptText = "请分析这张服装设计图，输出以下信息：1. 服装类型 2. 主要颜色 3. 设计风格 4. 面料建议 5. 工艺要点。以JSON格式输出。";
 
   // Workers AI 视觉模型使用 image 参数，要求 number[]（Uint8Array 转 Array）

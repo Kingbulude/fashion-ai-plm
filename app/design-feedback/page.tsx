@@ -22,8 +22,6 @@ import {
   Calendar,
   Target,
   Shirt,
-  Award,
-  Clock,
 } from "lucide-react";
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; border: string; label: string }> = {

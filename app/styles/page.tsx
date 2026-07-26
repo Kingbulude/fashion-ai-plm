@@ -34,7 +34,6 @@ import {
   TrendingUp,
   Clock,
   Layers,
-  Zap,
   Factory,
 } from "lucide-react";
 
@@ -651,7 +650,6 @@ function KanbanView({
 
 // 看板小卡片
 function StyleCardMini({ style, onClick }: { style: any; onClick: () => void }) {
-  const cfg = STATUS_CONFIG[style.status] || STATUS_CONFIG.planning;
   const costOverrun = style.targetCost && style.actualCost && style.actualCost > style.targetCost;
   return (
     <div

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Plus,
-  Loader2,
   CheckCircle,
   AlertCircle,
   X,
@@ -35,7 +34,7 @@ interface InspirationItem {
 
 export function InspirationBoard({ planId }: InspirationBoardProps) {
   const [items, setItems] = useState<InspirationItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, _setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [tagInput, setTagInput] = useState("");

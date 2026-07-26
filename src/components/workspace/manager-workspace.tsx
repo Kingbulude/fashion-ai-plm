@@ -17,8 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useTenant } from "@/lib/auth/tenant-context";
 import {
   CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
   Clock,
   TrendingUp,
   Sparkles,
@@ -29,7 +27,6 @@ import {
   Wrench,
   RefreshCw,
   Loader2,
-  ChevronRight,
   ListTodo,
   ShieldAlert,
   Plus,
@@ -68,8 +65,8 @@ const STAGE_COLOR_MAP: Record<string, { bg: string; text: string; bar: string }>
 
 export function ManagerWorkspace({
   workspace,
-  onCompleteTodo,
-  completingTodoId,
+  onCompleteTodo: _onCompleteTodo,
+  completingTodoId: _completingTodoId,
 }: {
   workspace: any;
   onCompleteTodo: (id: string) => void;

@@ -152,13 +152,6 @@ export function ColorSizeSimulator({
     }));
   }, [colors, sizes, totalQuantity]);
 
-  const colorTotalQuantity = useMemo(() => {
-    return colors.map((c) => ({
-      name: c.name,
-      total: Math.round((totalQuantity * c.ratio) / 100),
-    }));
-  }, [colors, totalQuantity]);
-
   const sizeTotalQuantity = useMemo(() => {
     return sizes.map((s) => ({
       name: s.name,

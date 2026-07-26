@@ -39,12 +39,6 @@ export async function POST(request: Request) {
       };
     }
     
-    const { data: brandDnaData } = await supabase
-      .from("brand_dna")
-      .select("*")
-      .limit(1)
-      .single();
-    
     const currentStep = conversation.conversation_data.currentStep;
     const collectedData = conversation.conversation_data.collectedData || {};
 

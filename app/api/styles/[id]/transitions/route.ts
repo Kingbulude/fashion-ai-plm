@@ -6,7 +6,6 @@ import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import {
   StyleStatus,
   getAvailableTransitions,
-  STYLE_TRANSITIONS,
 } from "@/lib/workflow/style-state-machine";
 
 export const runtime = "edge";

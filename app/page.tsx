@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { useTenant, AISkill } from "@/lib/auth/tenant-context";
+import { useTenant } from "@/lib/auth/tenant-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DraggableDialog } from "@/components/ui/draggable-dialog";
@@ -20,7 +20,6 @@ import {
   Clock,
   UserCog,
   Calendar,
-  TrendingUp,
   Target,
   Layers,
   Zap,
@@ -143,7 +142,7 @@ interface ProcessLink {
 
 export default function HomePage() {
   const router = useRouter();
-  const { userRole, processRoles, processOwnerScope, accessibleRoutes, currentBrand, isLoading: tenantLoading } = useTenant();
+  const { userRole, processRoles, processOwnerScope, accessibleRoutes, currentBrand } = useTenant();
 
   // 计算当前用户可访问的工序节点
   const allowedNodes = useMemo(() => {
@@ -464,7 +463,7 @@ export default function HomePage() {
       </defs>
     );
 
-    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, perpOffset: number = 18, combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false, splitAlongLine: boolean = false) => {
+    const renderDualLabels = (cx: number, cy: number, rotation: number = 0, _perpOffset: number = 18, _combined: boolean = false, clickable: boolean = true, isVerticalLine: boolean = false, splitAlongLine: boolean = false) => {
       const hasDeadline = !!deadlineLabel;
       const hasDuration = !!durationLabel;
       const showPlaceholder = !hasDeadline && !hasDuration;
@@ -831,7 +830,6 @@ export default function HomePage() {
     const pdy = ey - sy;
     const isPDiagonal = Math.abs(pdx) > 0 && Math.abs(pdy) > 0 && Math.abs(Math.abs(pdx) - Math.abs(pdy)) > 20;
     const pAngle = isPDiagonal ? Math.atan2(pdy, pdx) * 180 / Math.PI : 0;
-    const pPerpOffset = isPDiagonal ? 42 : 0;
     const pLabelCy = isPDiagonal ? pmidY : pmidY + labelOffsetY;
 
     return (

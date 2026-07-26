@@ -6,7 +6,6 @@ import {
   AISuggestionStatus,
   AISpecialistType,
   AIAssistantType,
-  type AISuggestion,
 } from "@/lib/ai/architecture";
 
 // 创建AI建议（供现有AI API调用）

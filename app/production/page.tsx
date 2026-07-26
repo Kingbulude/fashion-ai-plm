@@ -33,7 +33,6 @@ import {
   DollarSign,
   Layers,
   GanttChart,
-  TrendingDown,
   ShieldCheck,
   Activity,
   Zap,

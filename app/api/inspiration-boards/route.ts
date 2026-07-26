@@ -14,7 +14,6 @@ export async function GET(request: Request) {
     const { tenant, supabase } = ctx;
 
     const companyId = tenant.company_id || DEFAULT_COMPANY;
-    const brandId = tenant.brand_id || DEFAULT_BRAND;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }

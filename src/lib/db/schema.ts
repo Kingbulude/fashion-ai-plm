@@ -250,6 +250,7 @@ export const suppliers = pgTable("suppliers", {
   deliveryScore: numeric("delivery_score"),
   priceLevel: text("price_level"),
   aiMatchScore: numeric("ai_match_score"),
+  companyId: uuid("company_id").references(() => companies.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -29,15 +28,12 @@ import {
   RefreshCw,
   ShoppingCart,
   TrendingUp,
-  Calendar,
   BarChart3,
   PieChart,
   Award,
   Package,
   DollarSign,
-  ChevronRight,
   Search,
-  Filter,
 } from "lucide-react";
 
 const CATEGORY_COLORS = [

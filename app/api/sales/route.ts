@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const { supabase } = ctx;
 
     const body = await request.json();
-    const { styleId, saleDate, quantity, amount, unitPrice, color, size, channel, customerInfo } = body;
+    const { styleId, saleDate, quantity, amount, unitPrice, color, size, channel, customerInfo: _customerInfo } = body;
 
     if (!styleId || !saleDate || !quantity || !amount) {
       return NextResponse.json({ error: "必填字段不能为空" }, { status: 400 });

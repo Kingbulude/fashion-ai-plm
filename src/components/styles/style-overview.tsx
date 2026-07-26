@@ -8,8 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CheckCircle2,
   AlertCircle,
-  Clock,
-  ArrowRight,
   Package,
   Palette,
   ShoppingCart,
@@ -25,7 +23,6 @@ import {
   CircleDot,
   ChevronRight,
 } from "lucide-react";
-import Link from "next/link";
 
 interface StyleOverviewProps {
   styleId: string;
@@ -60,7 +57,7 @@ const stageFlow = [
   { key: "inventory", label: "库存", icon: Box, tabs: "inventory" },
 ];
 
-export function StyleOverview({ styleId, style, onNavigate, transitions = [], completion = {}, onTransition }: StyleOverviewProps) {
+export function StyleOverview({ styleId, style, onNavigate, transitions = [], completion: _completion = {}, onTransition }: StyleOverviewProps) {
   const [bomCount, setBomCount] = useState<number | null>(null);
   const [samplingCount, setSamplingCount] = useState<number | null>(null);
   const [assetCount, setAssetCount] = useState<number | null>(null);
@@ -224,7 +221,7 @@ export function StyleOverview({ styleId, style, onNavigate, transitions = [], co
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
-            {stageFlow.map((stage, idx) => {
+            {stageFlow.map((stage, _idx) => {
               const Icon = stage.icon;
               const isCompleted = (() => {
                 if (stage.tabs === "assets") return (assetCount || 0) > 0;

@@ -132,7 +132,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const [user, setUser] = useState<any>(null);
+  const [, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile>({
     name: "加载中",
     avatarUrl: null,

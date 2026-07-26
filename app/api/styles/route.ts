@@ -8,7 +8,6 @@ import { RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
-const DEFAULT_COMPANY = "00000000-0000-0000-0000-000000000010";
 const DEFAULT_BRAND = "00000000-0000-0000-0000-000000000001";
 
 export async function POST(request: Request) {

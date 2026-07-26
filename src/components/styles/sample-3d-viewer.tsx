@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +15,7 @@ import {
   Pause,
   Layers,
   ArrowLeftRight,
-  Upload,
   Plus,
-  Trash2,
-  Eye,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,7 +44,7 @@ export function Sample3dViewer({ styleId }: Sample3dViewerProps) {
   const [selectedVersion, setSelectedVersion] = useState<DesignAsset | null>(null);
   const [compareVersion, setCompareVersion] = useState<DesignAsset | null>(null);
   const [compareMode, setCompareMode] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
+  const [, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);

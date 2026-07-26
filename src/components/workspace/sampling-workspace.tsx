@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Wrench, CheckCircle2, AlertTriangle } from "lucide-react";
 import { KpiCard, TodoListCard, StyleListCard, AIToolsGrid, AISuggestionBanner } from "./shared-modules";
 import { useTenant } from "@/lib/auth/tenant-context";

@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon } from "lucide-react";
-import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
+import { RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
   id: string;

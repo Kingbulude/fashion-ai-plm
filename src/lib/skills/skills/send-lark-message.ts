@@ -7,7 +7,7 @@
 // Phase 3 先实现 Webhook 模式（零配置，只需 LARK_WEBHOOK_URL 环境变量）
 // 后续扩展 Bot API 模式需要飞书应用凭证
 
-import { SkillDefinition, SkillRiskLevel, SkillCategory } from "../types";
+import { SkillDefinition, SkillRiskLevel } from "../types";
 import { registerSkill } from "../registry";
 
 const LARK_WEBHOOK_URL = process.env.LARK_WEBHOOK_URL || "";

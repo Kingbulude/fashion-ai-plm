@@ -26,7 +26,6 @@ import {
   Upload,
   Image as ImageIcon,
   FileText,
-  Package,
   CheckCircle,
   Shirt,
   Tag,

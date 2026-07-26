@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 }
 
-function calculateSupplierScore(supplier: any, filters: { materialType?: string; location?: string }) {
+function calculateSupplierScore(supplier: any, _filters: { materialType?: string; location?: string }) {
   let score = 0;
 
   const rating = supplier.overallRating || supplier.overall_rating || 0;
@@ -79,7 +79,7 @@ function calculateSupplierScore(supplier: any, filters: { materialType?: string;
   return Math.round(Math.min(score, 100));
 }
 
-function generateMatchReason(supplier: any, score: number) {
+function generateMatchReason(supplier: any, _score: number) {
   const reasons: string[] = [];
   const rating = supplier.overallRating || supplier.overall_rating || 0;
 

@@ -33,9 +33,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
     const adminClient = getAdminClient();
     if (!adminClient) {
       return NextResponse.json(
@@ -72,12 +69,6 @@ export async function POST(request: Request) {
     if (!newRoleLevel) {
       return NextResponse.json({ error: "请选择角色层级" }, { status: 400 });
     }
-
-    // 1. 检查用户是否已存在
-    const { data: existingUser } = await adminClient.auth.admin.getUserById(
-      // 先用邮箱查
-      "00000000-0000-0000-0000-000000000000"
-    ).catch(() => ({ data: null, error: null }));
 
     // 通过 Supabase Admin API 按邮箱查询用户
     const { data: listData } = await adminClient.auth.admin.listUsers();

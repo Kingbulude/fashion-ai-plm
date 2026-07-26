@@ -17,10 +17,7 @@ import {
   Package,
   DollarSign,
   Calendar,
-  Trash2,
   X,
-  Hash,
-  ChevronRight,
 } from "lucide-react";
 
 const CHANNELS = [

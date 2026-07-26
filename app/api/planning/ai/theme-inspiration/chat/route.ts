@@ -231,7 +231,7 @@ ${customizedTheme.designElements.map((e: string) => `- ${e}`).join("\n")}
   }
 }
 
-function recommendThemes(season: string, category: string): any[] {
+function recommendThemes(season: string, _category: string): any[] {
   const results: any[] = [];
   
   for (const [brand, data] of Object.entries(BRAND_THEMES)) {
