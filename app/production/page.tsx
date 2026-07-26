@@ -17,7 +17,6 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle,
-  Scissors,
   CircleDot,
   Package,
   Calendar,
@@ -44,18 +43,18 @@ import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending: { label: "待排产", color: "text-slate-600", bg: "bg-slate-100", icon: Clock },
-  cutting: { label: "裁剪中", color: "text-navy-700", bg: "bg-navy-100", icon: Scissors },
-  sewing: { label: "缝制中", color: "text-terracotta-600", bg: "bg-terracotta-100", icon: CircleDot },
-  finishing: { label: "后整中", color: "text-purple-700", bg: "bg-purple-100", icon: Package },
+  in_progress: { label: "生产中", color: "text-navy-700", bg: "bg-navy-100", icon: CircleDot },
+  partial_completed: { label: "部分完成", color: "text-terracotta-600", bg: "bg-terracotta-100", icon: Package },
   completed: { label: "已完成", color: "text-success", bg: "bg-emerald-50", icon: CheckCircle },
 };
 
-const STATUS_ORDER = ["pending", "cutting", "sewing", "finishing", "completed"];
+const STATUS_ORDER = ["pending", "in_progress", "partial_completed", "completed"];
 
 const KPI_COLORS: Record<string, { bg: string; text: string; gradient: string }> = {
   navy: { bg: "bg-navy-100", text: "text-navy-700", gradient: "from-navy-700 to-navy-900" },
   terracotta: { bg: "bg-terracotta-100", text: "text-terracotta-600", gradient: "from-terracotta-400 to-terracotta-600" },
   slate: { bg: "bg-slate-100", text: "text-slate-600", gradient: "from-slate-500 to-slate-700" },
+  green: { bg: "bg-green-100", text: "text-green-700", gradient: "from-green-500 to-emerald-600" },
   success: { bg: "bg-emerald-50", text: "text-success", gradient: "from-success to-emerald-600" },
   destructive: { bg: "bg-red-50", text: "text-destructive", gradient: "from-destructive to-red-600" },
 };
@@ -330,31 +329,46 @@ export default function ProductionPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[220px] flex items-end gap-1.5 px-2">
-                {(data?.dailyTrend || []).map((d: any) => {
-                  const maxVal = Math.max(...(data?.dailyTrend || []).map((x: any) => x.completed || 0), 1);
-                  const h = ((d.completed || 0) / maxVal) * 100;
-                  return (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group">
-                      <div className="text-[10px] font-medium text-navy-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {d.completed || 0}
-                      </div>
-                      <div
-                        className="w-full rounded-t-md bg-gradient-to-t from-navy-700 to-terracotta-400 transition-all min-h-[4px] hover:from-terracotta-500 hover:to-terracotta-400"
-                        style={{ height: `${Math.max(h, 2)}%` }}
-                      />
-                      <div className="text-[10px] text-muted-foreground">{d.dateLabel}</div>
-                    </div>
-                  );
-                })}
-                {(data?.dailyTrend || []).length === 0 && (
+                {(data?.dailyTrend || []).length === 0 ? (
                   <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
                     暂无生产数据
                   </div>
+                ) : (
+                  (() => {
+                    const maxVal = Math.max(
+                      ...(data?.dailyTrend || []).flatMap((x: any) => [x.completed || 0, x.started || 0]),
+                      1
+                    );
+                    return (data?.dailyTrend || []).map((d: any) => {
+                      const completedH = ((d.completed || 0) / maxVal) * 100;
+                      const startedH = ((d.started || 0) / maxVal) * 100;
+                      return (
+                        <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end">
+                          <div className="text-[10px] font-medium text-navy-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            完成 {d.completed || 0} / 开工 {d.started || 0}
+                          </div>
+                          <div className="w-full flex items-end gap-0.5 h-[180px]">
+                            <div
+                              className="flex-1 rounded-t-sm bg-gradient-to-t from-navy-700 to-navy-500 transition-all min-h-[4px]"
+                              style={{ height: `${Math.max(completedH, 2)}%` }}
+                              title={`完成 ${d.completed || 0}`}
+                            />
+                            <div
+                              className="flex-1 rounded-t-sm bg-slate-300 transition-all min-h-[4px]"
+                              style={{ height: `${Math.max(startedH, 2)}%` }}
+                              title={`开工 ${d.started || 0}`}
+                            />
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">{d.dateLabel}</div>
+                        </div>
+                      );
+                    });
+                  })()
                 )}
               </div>
               <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-navy-700 to-terracotta-400" />
+                  <div className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-navy-700 to-navy-500" />
                   <span>完成订单</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -601,8 +615,8 @@ export default function ProductionPage() {
             <CardContent>
               <div className="space-y-3">
                 {factoryStats.slice(0, 6).map((f: any, idx: number) => {
-                  const totalCost = summary.totalCost || 1;
-                  const pct = (f.cost / totalCost) * 100;
+                  const totalCost = summary.totalCost || 0;
+                  const pct = totalCost > 0 ? (f.cost / totalCost) * 100 : 0;
                   const onTimeRate = f.onTimeRate || 100;
                   const isTop = idx < 3;
                   return (
@@ -823,18 +837,21 @@ export default function ProductionPage() {
             <CardContent className="space-y-3">
               <div>
                 <Label className="text-xs">关联款式 *</Label>
-                <select
-                  value={form.styleId}
-                  onChange={(e) => setForm({ ...form, styleId: e.target.value })}
-                  className="h-9 w-full rounded-lg border border-border bg-card text-sm px-3 focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">请选择款式</option>
-                  {styles.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.styleNo} - {s.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={form.styleId}
+                    onChange={(e) => setForm({ ...form, styleId: e.target.value })}
+                    className="h-9 w-full rounded-lg border border-border bg-card text-sm px-3 pr-9 appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">请选择款式</option>
+                    {styles.map((s: any) => (
+                      <option key={s.id} value={s.id}>
+                        {s.styleNo} - {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1042,8 +1059,32 @@ export default function ProductionPage() {
                 </div>
               </div>
 
-              {/* 逾期提醒 */}
-              {detailOrder.expectedDate && detailOrder.status !== "completed" && new Date(detailOrder.expectedDate) < new Date() && (
+          {/* 状态快速切换 */}
+          <div className="p-3 rounded-xl bg-sand-50 border border-border">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <span className="text-sm font-medium">状态切换</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">当前：{STATUS_CONFIG[detailOrder.status]?.label || detailOrder.status}</span>
+                <div className="relative">
+                  <select
+                    value={detailOrder.status}
+                    onChange={(e) => handleUpdateStatus(detailOrder.id, e.target.value)}
+                    className="h-8 rounded-lg border border-border bg-card text-sm px-3 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {STATUS_ORDER.map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_CONFIG[s]?.label || s}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground rotate-90 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 逾期提醒 */}
+          {detailOrder.expectedDate && detailOrder.status !== "completed" && new Date(detailOrder.expectedDate) < new Date() && (
                 <div className="p-3 rounded-xl bg-red-50 border border-red-200">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
