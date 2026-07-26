@@ -555,18 +555,18 @@ export default function SuppliersPage() {
 
         {/* 添加供应商弹窗 */}
         {showAdd && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <CardHeader className="flex items-center justify-between">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+              <CardHeader className="flex items-center justify-between pb-4">
                 <div>
-                  <CardTitle className="text-lg">新增供应商</CardTitle>
-                  <CardDescription>填写供应商基本信息</CardDescription>
+                  <CardTitle className="text-lg font-semibold">新增供应商</CardTitle>
+                  <CardDescription className="text-sm">填写供应商基本信息</CardDescription>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowAdd(false)}>
+                <Button variant="ghost" size="icon" onClick={() => setShowAdd(false)} className="rounded-full hover:bg-slate-100">
                   <X className="h-4 w-4" />
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5 px-1">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-slate-700 mb-1.5 block">
@@ -576,6 +576,7 @@ export default function SuppliersPage() {
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="例如：广州恒丰纺织"
+                      className="h-10"
                     />
                   </div>
                   <div>
@@ -583,7 +584,7 @@ export default function SuppliersPage() {
                     <select
                       value={form.type}
                       onChange={(e) => setForm({ ...form, type: e.target.value })}
-                      className="h-9 px-3 rounded-md border border-slate-200 text-sm w-full"
+                      className="h-10 px-3 rounded-md border border-slate-200 text-sm w-full focus:outline-none focus:ring-2 focus:ring-navy-200"
                     >
                       {types.map((t) => (
                         <option key={t} value={t}>
@@ -600,7 +601,7 @@ export default function SuppliersPage() {
                     <Input
                       value={form.contact}
                       onChange={(e) => setForm({ ...form, contact: e.target.value })}
-                      placeholder="联系人姓名"
+                      className="h-10"
                     />
                   </div>
                   <div>
@@ -609,6 +610,7 @@ export default function SuppliersPage() {
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       placeholder="手机号码"
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -619,6 +621,7 @@ export default function SuppliersPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="email@example.com"
+                    className="h-10"
                   />
                 </div>
 
@@ -627,9 +630,9 @@ export default function SuppliersPage() {
                   <textarea
                     value={form.capabilities}
                     onChange={(e) => setForm({ ...form, capabilities: e.target.value })}
-                    rows={2}
+                    rows={3}
                     placeholder="例如：主营棉麻布，月产能50万米"
-                    className="w-full px-3 py-2 rounded-md border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    className="w-full px-3 py-2.5 rounded-md border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-200"
                   />
                 </div>
 
@@ -643,6 +646,7 @@ export default function SuppliersPage() {
                       value={form.qualityScore}
                       onChange={(e) => setForm({ ...form, qualityScore: e.target.value })}
                       placeholder="0-100"
+                      className="h-10"
                     />
                   </div>
                   <div>
@@ -654,6 +658,7 @@ export default function SuppliersPage() {
                       value={form.deliveryScore}
                       onChange={(e) => setForm({ ...form, deliveryScore: e.target.value })}
                       placeholder="0-100"
+                      className="h-10"
                     />
                   </div>
                   <div>
@@ -661,7 +666,7 @@ export default function SuppliersPage() {
                     <select
                       value={form.priceLevel}
                       onChange={(e) => setForm({ ...form, priceLevel: e.target.value })}
-                      className="h-9 px-3 rounded-md border border-slate-200 text-sm w-full"
+                      className="h-10 px-3 rounded-md border border-slate-200 text-sm w-full focus:outline-none focus:ring-2 focus:ring-navy-200"
                     >
                       <option value="">选择</option>
                       <option value="low">低价</option>
@@ -671,15 +676,23 @@ export default function SuppliersPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setShowAdd(false)}>
+                <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200 mt-2">
+                  <Button variant="outline" onClick={() => setShowAdd(false)} className="h-10 px-5">
                     取消
                   </Button>
-                  <Button onClick={handleSubmit} disabled={submitting}>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    className="h-10 px-6 bg-navy-700 hover:bg-navy-800 text-white"
+                  >
                     {submitting ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : null}
-                    创建
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        提交中
+                      </>
+                    ) : (
+                      "创建"
+                    )}
                   </Button>
                 </div>
               </CardContent>
