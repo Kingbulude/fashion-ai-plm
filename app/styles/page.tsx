@@ -29,6 +29,13 @@ import {
   Filter,
   Sparkles,
   RefreshCw,
+  Target,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Layers,
+  Zap,
+  Factory,
 } from "lucide-react";
 
 // 11 个状态配置（对应 state machine）
@@ -218,6 +225,225 @@ export default function StylesPage() {
             </Button>
           </div>
         </div>
+
+        {/* 开发进度概览 */}
+        {!loading && allStyles.length > 0 && (
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* 整体开发进度 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5" />
+                    整体开发完成率
+                  </span>
+                  <Badge variant="secondary" className="bg-navy-100 text-navy-700 hover:bg-navy-100">
+                    {allStyles.length} 款
+                  </Badge>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-navy-700">
+                    {(() => {
+                      const completed = allStyles.filter(
+                        (s) => s.status === "produced" || s.status === "selling" || s.status === "sold" || s.status === "archived"
+                      ).length;
+                      return allStyles.length > 0 ? ((completed / allStyles.length) * 100).toFixed(0) : 0;
+                    })()}
+                  </span>
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <div className="h-2 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-navy-700 to-terracotta-400 transition-all"
+                    style={{
+                      width: `${(() => {
+                        const completed = allStyles.filter(
+                          (s) => s.status === "produced" || s.status === "selling" || s.status === "sold" || s.status === "archived"
+                        ).length;
+                        return allStyles.length > 0 ? (completed / allStyles.length) * 100 : 0;
+                      })()}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>已完成 {allStyles.filter((s) => s.status === "produced" || s.status === "selling" || s.status === "sold" || s.status === "archived").length} 款</span>
+                  <span>开发中 {allStyles.filter((s) => s.status !== "produced" && s.status !== "selling" && s.status !== "sold" && s.status !== "archived").length} 款</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 关键阶段统计 */}
+            <Card className="card-premium lg:col-span-2">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" />
+                    关键阶段分布
+                  </span>
+                  <button
+                    onClick={() => setStatusFilter(null)}
+                    className="text-xs text-navy-700 hover:underline"
+                  >
+                    查看全部
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { key: "designing", label: "设计中", icon: Sparkles, color: "navy" },
+                    { key: "sampling", label: "打样中", icon: Shirt, color: "terracotta" },
+                    { key: "producing", label: "生产中", icon: Factory, color: "emerald" },
+                    { key: "selling", label: "销售中", icon: TrendingUp, color: "purple" },
+                  ].map((stage) => {
+                    const count = stageStats[stage.key] || 0;
+                    const pct = allStyles.length > 0 ? (count / allStyles.length) * 100 : 0;
+                    const bgColor = stage.color === "navy" ? "bg-navy-50" : stage.color === "terracotta" ? "bg-terracotta-50" : stage.color === "emerald" ? "bg-emerald-50" : "bg-purple-50";
+                    const textColor = stage.color === "navy" ? "text-navy-700" : stage.color === "terracotta" ? "text-terracotta-700" : stage.color === "emerald" ? "text-emerald-700" : "text-purple-700";
+                    const Icon = stage.icon;
+                    return (
+                      <div
+                        key={stage.key}
+                        className={`p-3 rounded-xl ${bgColor} border border-transparent hover:border-current/20 cursor-pointer transition-all`}
+                        onClick={() => setStatusFilter(stage.key)}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Icon className={`h-3.5 w-3.5 ${textColor}`} />
+                          <span className={`text-xs font-medium ${textColor}`}>{stage.label}</span>
+                        </div>
+                        <div className="text-xl font-bold text-foreground">{count}</div>
+                        <div className="text-[10px] text-muted-foreground">{pct.toFixed(0)}% 占比</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 品类分布 + 阶段转化 */}
+        {!loading && allStyles.length > 0 && categories.length > 0 && (
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* 品类分布 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    品类分布
+                  </span>
+                  <span className="text-xs text-muted-foreground">共 {categories.length} 个品类</span>
+                </div>
+                <div className="space-y-2.5">
+                  {categories.slice(0, 6).map((cat, i) => {
+                    const count = allStyles.filter((s) => s.category === cat).length;
+                    const pct = allStyles.length > 0 ? (count / allStyles.length) * 100 : 0;
+                    const colors = [
+                      "bg-navy-500",
+                      "bg-terracotta-500",
+                      "bg-emerald-500",
+                      "bg-purple-500",
+                      "bg-amber-500",
+                      "bg-pink-500",
+                    ];
+                    const color = colors[i % colors.length];
+                    return (
+                      <div
+                        key={cat}
+                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 -mx-1 px-1 py-0.5 rounded-md transition-colors"
+                        onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+                      >
+                        <div className="w-20 text-xs text-muted-foreground truncate flex-shrink-0">
+                          {cat}
+                        </div>
+                        <div className="flex-1 h-4 bg-slate-100 rounded-md overflow-hidden">
+                          <div
+                            className={`h-full rounded-md ${color} transition-all`}
+                            style={{ width: `${Math.max(pct, count > 0 ? 5 : 0)}%` }}
+                          />
+                        </div>
+                        <div className="w-16 text-right text-xs flex-shrink-0">
+                          <span className="font-semibold text-foreground">{count}</span>
+                          <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {categories.length > 6 && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    还有 {categories.length - 6} 个品类，使用上方品类筛选查看
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 阶段转化漏斗 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    阶段转化概览
+                  </span>
+                  <span className="text-xs text-muted-foreground">各阶段数量</span>
+                </div>
+                <div className="space-y-1.5">
+                  {[
+                    { key: "planning", label: "企划", color: "from-slate-300 to-slate-400" },
+                    { key: "designing", label: "设计", color: "from-navy-400 to-navy-600" },
+                    { key: "sampling", label: "打样", color: "from-terracotta-400 to-terracotta-600" },
+                    { key: "producing", label: "生产", color: "from-emerald-400 to-emerald-600" },
+                    { key: "selling", label: "销售", color: "from-purple-400 to-purple-600" },
+                  ].map((stage) => {
+                    const count = stageStats[stage.key] || 0;
+                    const maxCount = Math.max(...Object.values(stageStats), 1);
+                    const widthPct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                    return (
+                      <div key={stage.key} className="flex items-center gap-2">
+                        <div className="w-10 text-[10px] text-muted-foreground flex-shrink-0">
+                          {stage.label}
+                        </div>
+                        <div className="flex-1 h-6 bg-slate-50 rounded-md overflow-hidden relative">
+                          <div
+                            className={`h-full rounded-md bg-gradient-to-r ${stage.color} flex items-center justify-end px-2 transition-all`}
+                            style={{ width: `${Math.max(widthPct, count > 0 ? 10 : 0)}%` }}
+                          >
+                            {count > 0 && (
+                              <span className="text-[10px] font-bold text-white">{count}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-10" />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border text-xs">
+                  <div className="text-muted-foreground">
+                    <Clock className="h-3 w-3 inline mr-1" />
+                    平均周期
+                  </div>
+                  <div className="font-semibold text-foreground">
+                    {allStyles.filter((s) => s.createdAt && (s.status === "produced" || s.status === "selling")).length > 0
+                      ? (() => {
+                          const completed = allStyles.filter(
+                            (s) => s.createdAt && (s.status === "produced" || s.status === "selling")
+                          );
+                          if (completed.length === 0) return "—";
+                          const totalDays = completed.reduce((sum: number, s: any) => {
+                            const start = new Date(s.createdAt).getTime();
+                            const end = new Date().getTime();
+                            return sum + Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                          }, 0);
+                          return `${Math.round(totalDays / completed.length)} 天`;
+                        })()
+                      : "—"}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* 阶段快速筛选条 */}
         <div className="mb-5 flex items-center gap-2.5 overflow-x-auto pb-2">
