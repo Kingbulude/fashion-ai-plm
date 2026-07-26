@@ -31,6 +31,12 @@ import {
   AlertTriangle,
   RefreshCw,
   Sparkles,
+  BarChart3,
+  Award,
+  TrendingUp,
+  ShieldCheck,
+  Target,
+  Layers,
 } from "lucide-react";
 
 const SUPPLIER_TYPES: Record<string, { label: string; color: string }> = {
@@ -237,6 +243,191 @@ export default function SuppliersPage() {
             </Button>
           </div>
         </div>
+
+        {/* 供应商绩效概览 */}
+        {!loading && suppliers.length > 0 && (
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* KPI 概览 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">供应商总数</span>
+                  <Factory className="h-4 w-4 text-navy-600" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">{suppliers.length}</div>
+                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <span>面料 {suppliers.filter(s => s.type === "fabric").length}</span>
+                  <span>辅料 {suppliers.filter(s => s.type === "accessory").length}</span>
+                  <span>加工厂 {suppliers.filter(s => s.type === "factory").length}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 平均质量评分 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">平均质量评分</span>
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-emerald-700">
+                    {(suppliers.reduce((sum, s) => sum + (s.qualityScore || 0), 0) / (suppliers.filter(s => s.qualityScore).length || 1)).toFixed(1)}
+                  </span>
+                  <span className="text-sm text-muted-foreground">/ 5</span>
+                </div>
+                <div className="h-1.5 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500"
+                    style={{ width: `${(suppliers.reduce((sum, s) => sum + (s.qualityScore || 0), 0) / (suppliers.filter(s => s.qualityScore).length || 1)) / 5 * 100}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 平均交付评分 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">平均交付评分</span>
+                  <Truck className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-blue-700">
+                    {(suppliers.reduce((sum, s) => sum + (s.deliveryScore || 0), 0) / (suppliers.filter(s => s.deliveryScore).length || 1)).toFixed(1)}
+                  </span>
+                  <span className="text-sm text-muted-foreground">/ 5</span>
+                </div>
+                <div className="h-1.5 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
+                    style={{ width: `${(suppliers.reduce((sum, s) => sum + (s.deliveryScore || 0), 0) / (suppliers.filter(s => s.deliveryScore).length || 1)) / 5 * 100}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 供应商评分排行 + 类型分布 */}
+        {!loading && suppliers.length > 0 && (
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* TOP 5 评分排行 */}
+            <Card className="card-premium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                  <Award className="h-4 w-4 text-amber-500" />
+                  供应商评分排行
+                  <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700 hover:bg-amber-100">
+                    TOP 5
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {[...suppliers]
+                  .sort((a, b) => ((b.qualityScore || 0) + (b.deliveryScore || 0)) - ((a.qualityScore || 0) + (a.deliveryScore || 0)))
+                  .slice(0, 5)
+                  .map((s, idx) => {
+                    const totalScore = (s.qualityScore || 0) + (s.deliveryScore || 0);
+                    const maxScore = 10;
+                    const pct = (totalScore / maxScore) * 100;
+                    return (
+                      <div
+                        key={s.id}
+                        className={`flex items-center gap-3 p-2.5 rounded-xl ${idx < 3 ? "bg-amber-50/50" : ""} hover:bg-slate-50 transition-colors cursor-pointer`}
+                        onClick={() => router.push(`/suppliers/${s.id}`)}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${
+                            idx === 0
+                              ? "bg-gradient-to-br from-amber-400 to-amber-600"
+                              : idx === 1
+                                ? "bg-gradient-to-br from-slate-400 to-slate-600"
+                                : idx === 2
+                                  ? "bg-gradient-to-br from-amber-600 to-amber-800"
+                                  : "bg-slate-300"
+                          }`}
+                        >
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{s.name}</span>
+                            <Badge variant="outline" className={`text-[10px] h-5 ${SUPPLIER_TYPES[s.type]?.color || ""}`}>
+                              {SUPPLIER_TYPES[s.type]?.label || "其他"}
+                            </Badge>
+                          </div>
+                          <div className="h-1 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-sm font-bold text-amber-700">{totalScore.toFixed(1)}</div>
+                          <div className="text-[10px] text-muted-foreground">总分</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+
+            {/* 类型分布 */}
+            <Card className="card-premium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                  <Layers className="h-4 w-4 text-navy-700" />
+                  供应商类型分布
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2.5">
+                  {types.map((t) => {
+                    const count = suppliers.filter(s => s.type === t).length;
+                    const pct = (count / suppliers.length) * 100;
+                    const cfg = SUPPLIER_TYPES[t];
+                    return (
+                      <div key={t} className="flex items-center gap-3">
+                        <div className="w-24 text-xs text-muted-foreground flex-shrink-0">
+                          {cfg.label}
+                        </div>
+                        <div className="flex-1 h-6 bg-slate-100 rounded-lg overflow-hidden relative">
+                          <div
+                            className={`h-full rounded-lg transition-all ${cfg.color.split(" ")[0].replace("bg-", "bg-").replace("50", "400")}`}
+                            style={{ width: `${Math.max(pct, 3)}%` }}
+                          />
+                        </div>
+                        <div className="w-12 text-right text-xs font-medium flex-shrink-0">
+                          {count} <span className="text-muted-foreground">({pct.toFixed(0)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 价格水平分布 */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">价格水平分布</div>
+                  <div className="flex gap-2">
+                    {["低", "中", "高"].map((level) => {
+                      const count = suppliers.filter(s => s.priceLevel === level).length;
+                      const pct = suppliers.length > 0 ? (count / suppliers.length) * 100 : 0;
+                      return (
+                        <div key={level} className="flex-1 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                          <div className="text-lg font-bold text-foreground">{count}</div>
+                          <div className="text-[10px] text-muted-foreground">{level}价位</div>
+                          <div className="text-[10px] text-muted-foreground">{pct.toFixed(0)}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* 类型统计条 */}
         <div className="mb-5 flex items-center gap-2.5 overflow-x-auto pb-2">
