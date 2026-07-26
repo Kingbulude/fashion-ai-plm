@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { useTenant, AISkill } from "@/lib/auth/tenant-context";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { DraggableDialog } from "@/components/ui/draggable-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,13 @@ import {
   GitBranch,
   Clock,
   UserCog,
+  Calendar,
+  TrendingUp,
+  Target,
+  Layers,
+  Zap,
+  Route,
+  Flag,
 } from "lucide-react";
 import { RoleLevel, RouteProcessNodeMap } from "@/lib/auth/rbac";
 import { supabase } from "@/lib/auth/supabase";
@@ -944,6 +952,127 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 关键指标概览 */}
+        {!loading && (
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">关键路径</span>
+                  <Route className="h-4 w-4 text-navy-600" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {(() => {
+                    const criticalLinks = LINKS_DEF.filter((l) => l.type === "critical");
+                    return criticalLinks.length;
+                  })()}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">个节点</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  企划 → 设计 → 打样 → 测款 → 销售
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">并行工序</span>
+                  <Layers className="h-4 w-4 text-purple-600" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {(() => {
+                    const parallelLinks = LINKS_DEF.filter((l) => l.type === "parallel");
+                    return parallelLinks.length;
+                  })()}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">条</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">测款→采购 等并行链路</div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">总工期</span>
+                  <Calendar className="h-4 w-4 text-terracotta-600" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {(() => {
+                    const totalDays = links.reduce((sum: number, l: any) => sum + (l.duration_hours || 0), 0);
+                    return totalDays;
+                  })()}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">天</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">全部工序累计时长</div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">反馈回路</span>
+                  <Zap className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {(() => {
+                    const feedbackLinks = LINKS_DEF.filter((l) => l.type === "feedback");
+                    return feedbackLinks.length;
+                  })()}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">条</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">售后→企划 数据回流</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 关键路径时间线 */}
+        {!loading && (
+          <div className="mt-6 card-premium p-5 lg:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-navy-600" />
+                <h3 className="font-semibold text-foreground">关键路径交付节点</h3>
+              </div>
+              <Badge variant="outline" className="h-6 px-2 text-xs font-medium border-amber-200 text-amber-700 bg-amber-50/50">
+                <Flag className="h-3 w-3 mr-1" />
+                里程碑
+              </Badge>
+            </div>
+            <div className="relative">
+              <div className="absolute left-0 right-0 top-4 h-0.5 bg-gradient-to-r from-navy-200 via-terracotta-300 to-emerald-300 rounded-full" />
+              <div className="relative flex items-start justify-between gap-4">
+                {NODES.filter((n) => ["planning", "design", "sampling", "testing", "stocking", "sales", "aftersales"].includes(n.id)).map((node, i, arr) => {
+                  const nextNode = arr[i + 1];
+                  const link = nextNode ? getLink(node.id, nextNode.id) : null;
+                  const deadline = link?.deadline;
+                  const isLast = i === arr.length - 1;
+                  return (
+                    <div key={node.id} className="flex flex-col items-center flex-1 min-w-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md z-10 ${
+                        i === 0 ? "bg-navy-700" : isLast ? "bg-emerald-600" : "bg-gradient-to-br from-navy-600 to-terracotta-400"
+                      }`}>
+                        {node.number}
+                      </div>
+                      <div className="mt-2 text-center">
+                        <p className="text-xs font-semibold text-foreground">{node.name}</p>
+                        {deadline ? (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(deadline).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">未设置</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
