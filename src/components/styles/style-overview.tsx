@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ import {
   Sparkles,
   CircleDot,
   ChevronRight,
+  Upload,
+  ClipboardCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 interface StyleOverviewProps {
@@ -57,7 +61,62 @@ const stageFlow = [
   { key: "inventory", label: "库存", icon: Box, tabs: "inventory" },
 ];
 
+type StageAction = {
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+  tab?: string;
+  href?: string;
+};
+
+// 根据当前状态推荐下一步操作，实现款式 → 打样 → 采购 → 生产 → 销售 → 售后的跨模块联动
+const STAGE_ACTIONS: Record<string, StageAction[]> = {
+  planning: [
+    { icon: FileText, title: "完善款式档案", desc: "补充款号、品类、目标成本", tab: "info" },
+    { icon: Upload, title: "上传灵感图", desc: "收集设计灵感素材", tab: "assets" },
+  ],
+  designing: [
+    { icon: Upload, title: "上传设计稿", desc: "添加设计稿并 AI 分析", tab: "assets" },
+    { icon: Sparkles, title: "AI 设计分析", desc: "提取色彩、风格标签", tab: "assets" },
+  ],
+  designed: [
+    { icon: FileText, title: "创建工艺包", desc: "沉淀尺寸、工艺要求", tab: "techpack" },
+    { icon: Package, title: "建立 BOM", desc: "维护面辅料清单", tab: "bom" },
+    { icon: Wrench, title: "开始打样", desc: "创建打样记录并送样", tab: "sampling" },
+  ],
+  sampling: [
+    { icon: Wrench, title: "更新打样进度", desc: "记录工厂反馈与修改", tab: "sampling" },
+    { icon: ClipboardCheck, title: "打样质检", desc: "检查样衣质量", tab: "qc" },
+  ],
+  sampled: [
+    { icon: ShoppingCart, title: "创建采购单", desc: "锁定面辅料供应商", tab: "procurement" },
+    { icon: Factory, title: "创建生产订单", desc: "安排大货生产", href: "/production?styleId={styleId}&openCreate=1" },
+  ],
+  producing: [
+    { icon: Factory, title: "跟踪生产进度", desc: "更新生产节点", tab: "production" },
+    { icon: ClipboardCheck, title: "大货质检", desc: "记录质检结果", tab: "qc" },
+  ],
+  produced: [
+    { icon: Box, title: "入库登记", desc: "登记大货入库", tab: "inventory" },
+    { icon: ShoppingCart, title: "上架销售", desc: "推进到销售阶段", tab: "sales" },
+  ],
+  selling: [
+    { icon: TrendingUp, title: "录入销售数据", desc: "跟踪销量与库存", tab: "sales" },
+    { icon: ShieldAlert, title: "售后反馈", desc: "记录退换货问题", tab: "aftersales" },
+  ],
+  sold: [
+    { icon: TrendingUp, title: "销售复盘", desc: "分析售罄与利润", tab: "sales" },
+  ],
+  reviewing: [
+    { icon: TrendingUp, title: "整理复盘报告", desc: "汇总数据并归档", tab: "sales" },
+  ],
+  archived: [
+    { icon: FileText, title: "查看档案", desc: "查看完整款式资料", tab: "info" },
+  ],
+};
+
 export function StyleOverview({ styleId, style, onNavigate, transitions = [], completion: _completion = {}, onTransition }: StyleOverviewProps) {
+  const router = useRouter();
   const [bomCount, setBomCount] = useState<number | null>(null);
   const [samplingCount, setSamplingCount] = useState<number | null>(null);
   const [assetCount, setAssetCount] = useState<number | null>(null);
@@ -179,7 +238,50 @@ export function StyleOverview({ styleId, style, onNavigate, transitions = [], co
         </Card>
       </div>
 
-      {/* 2. 风险/阻塞项 */}
+      {/* 2. 当前阶段推荐操作（跨模块快捷入口） */}
+      {(STAGE_ACTIONS[style?.status]?.length ?? 0) > 0 && (
+        <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-indigo-50/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-500" />
+              当前阶段推荐操作
+            </CardTitle>
+            <CardDescription className="text-xs">
+              根据款式当前状态推荐的下一步动作
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {STAGE_ACTIONS[style?.status].map((action, idx) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (action.href) {
+                        router.push(action.href.replace("{styleId}", styleId));
+                      } else if (action.tab) {
+                        onNavigate(action.tab);
+                      }
+                    }}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm transition-all text-left"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800">{action.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{action.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 3. 风险/阻塞项 */}
       {risks.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
@@ -210,7 +312,7 @@ export function StyleOverview({ styleId, style, onNavigate, transitions = [], co
         </Card>
       )}
 
-      {/* 3. 开发流水线：6大区域一图看全 */}
+      {/* 4. 开发流水线：6大区域一图看全 */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -281,7 +383,7 @@ export function StyleOverview({ styleId, style, onNavigate, transitions = [], co
         </CardContent>
       </Card>
 
-      {/* 4. 状态机：可执行的状态转换 */}
+      {/* 5. 状态机：可执行的状态转换 */}
       {transitions.length > 0 && (
         <Card className="border-0 shadow-sm bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
           <CardHeader className="pb-3">
@@ -311,7 +413,7 @@ export function StyleOverview({ styleId, style, onNavigate, transitions = [], co
         </Card>
       )}
 
-      {/* 5. 关键信息速览 */}
+      {/* 6. 关键信息速览 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">

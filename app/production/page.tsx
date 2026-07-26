@@ -2,8 +2,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,14 +60,28 @@ const KPI_COLORS: Record<string, { bg: string; text: string; gradient: string }>
 };
 
 export default function ProductionPage() {
+  return (
+    <Suspense fallback={<ProductionPageSkeleton />}>
+      <ProductionPageInner />
+    </Suspense>
+  );
+}
+
+function ProductionPageInner() {
   const { currentBrand } = useTenant();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlStyleId = searchParams.get("styleId");
+  const openCreate = searchParams.get("openCreate") === "1";
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [view, setView] = useState<"list" | "kanban" | "gantt">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [styleFilter, setStyleFilter] = useState<string | null>(urlStyleId);
+  const [showAdd, setShowAdd] = useState(openCreate);
   const [form, setForm] = useState({
     styleId: "",
     quantity: "",
@@ -88,6 +103,14 @@ export default function ProductionPage() {
     fetchMaterialAlerts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBrand?.id]);
+
+  // 从 URL 带入款式筛选与创建弹窗默认值
+  useEffect(() => {
+    if (urlStyleId) {
+      setStyleFilter(urlStyleId);
+      setForm((prev) => ({ ...prev, styleId: urlStyleId }));
+    }
+  }, [urlStyleId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -212,6 +235,7 @@ export default function ProductionPage() {
 
   const filtered = (data?.orders || []).filter((o: any) => {
     if (statusFilter && o.status !== statusFilter) return false;
+    if (styleFilter && o.styleId !== styleFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -728,6 +752,49 @@ export default function ProductionPage() {
             />
           </div>
 
+          {styleFilter && (
+            <div className="flex items-center gap-2 px-3 h-8 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="font-medium">
+                款式：{styles.find((s: any) => s.id === styleFilter)?.styleNo || styleFilter}
+              </span>
+              <button
+                onClick={() => {
+                  setStyleFilter(null);
+                  setForm((prev) => ({ ...prev, styleId: "" }));
+                  router.replace("/production");
+                }}
+                className="hover:text-indigo-900"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+          <div className="relative min-w-[180px]">
+            <select
+              value={styleFilter || ""}
+              onChange={(e) => {
+                const value = e.target.value || null;
+                setStyleFilter(value);
+                setForm((prev) => ({ ...prev, styleId: value || "" }));
+                if (value) {
+                  router.replace(`/production?styleId=${value}`);
+                } else {
+                  router.replace("/production");
+                }
+              }}
+              className="h-9 w-full rounded-lg border border-border bg-card text-sm px-3 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">按款式筛选</option>
+              {styles.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.styleNo} - {s.name}
+                </option>
+              ))}
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+          </div>
+
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setStatusFilter(null)}
@@ -829,7 +896,7 @@ export default function ProductionPage() {
                 <CardTitle className="text-base">创建生产订单</CardTitle>
                 <CardDescription className="text-xs">为款式创建生产订单并指定加工厂</CardDescription>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowAdd(false)}>
+              <Button variant="ghost" size="icon" onClick={() => { setShowAdd(false); router.replace("/production"); }}>
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
@@ -902,7 +969,7 @@ export default function ProductionPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3">
-                <Button variant="outline" onClick={() => setShowAdd(false)}>取消</Button>
+                <Button variant="outline" onClick={() => { setShowAdd(false); router.replace("/production"); }}>取消</Button>
                 <Button onClick={handleCreate} disabled={submitting} className="bg-navy-700 hover:bg-navy-800 text-white">
                   {submitting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                   创建
@@ -1121,6 +1188,26 @@ export default function ProductionPage() {
           </Card>
         </div>
       )}
+    </SidebarLayout>
+  );
+}
+
+// 页面骨架屏
+function ProductionPageSkeleton() {
+  return (
+    <SidebarLayout>
+      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 animate-pulse" />
+          <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="h-28 bg-slate-100 animate-pulse" />
+          ))}
+        </div>
+        <Card className="h-64 bg-slate-100 animate-pulse" />
+      </div>
     </SidebarLayout>
   );
 }
