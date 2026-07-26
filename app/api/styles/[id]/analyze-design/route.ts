@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { analyzeDesignImage } from "@/lib/ai/cloudflare-ai";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -121,6 +121,10 @@ async function imageUrlToBase64(url: string): Promise<{ base64: string; mimeType
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const assetId = body.assetId as string | undefined;

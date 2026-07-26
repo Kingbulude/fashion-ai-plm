@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { RoleLevel, getAllowedBrandIds } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_id, name, email, avatar_url, company_id, role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (!profile?.company_id) {
@@ -39,7 +37,7 @@ export async function GET(request: Request) {
       const { data: ub } = await supabase
         .from("user_brands")
         .select("brand_id")
-        .eq("user_id", session.user.id);
+        .eq("user_id", user.id);
       allowedBrandIds = (ub || []).map((x: any) => x.brand_id);
     }
 
@@ -47,7 +45,7 @@ export async function GET(request: Request) {
     const { data: userProcessRoles } = await supabase
       .from("user_process_roles")
       .select("process_role_id, process_roles(*)")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("company_id", profile.company_id);
 
     const processRoles = ((userProcessRoles || [])
@@ -59,7 +57,7 @@ export async function GET(request: Request) {
     const { data: userProcessOwnerScopes } = await supabase
       .from("user_process_owner_scopes")
       .select("process_owner_scopes(*)")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("company_id", profile.company_id);
 
     const processOwnerScope = ((userProcessOwnerScopes || [])

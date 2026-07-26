@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const url = new URL(request.url);
     const companyId = url.searchParams.get("companyId");
     const brandId = url.searchParams.get("brandId");

@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 // 获取季次列表
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const url = new URL(request.url);
     const brandId = url.searchParams.get("brand_id");
@@ -37,15 +35,14 @@ export async function GET(request: Request) {
 // 创建季次（仅老板/管理员/品牌负责人）
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     const allowedRoles = [RoleLevel.BOSS, RoleLevel.ADMIN, RoleLevel.BRAND_MANAGER];
@@ -93,15 +90,14 @@ export async function POST(request: Request) {
 // 锁定季次（仅老板/管理员/品牌负责人）
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     const allowedRoles = [RoleLevel.BOSS, RoleLevel.ADMIN, RoleLevel.BRAND_MANAGER];

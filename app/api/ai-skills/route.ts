@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
 
@@ -22,7 +23,7 @@ const processNodeOptions = [
   "aftersales",
 ];
 
-async function requireAdmin(request: Request) {
+async function requireAdmin(request: Request, supabase: SupabaseClient) {
   const session = await getSession(request as any);
   if (!session?.user) {
     return { error: "Unauthorized", status: 401 };
@@ -46,7 +47,7 @@ async function requireAdmin(request: Request) {
 }
 
 // 获取当前用户的 company_id（用于普通用户的列表查询）
-async function getCompanyId(request: Request) {
+async function getCompanyId(request: Request, supabase: SupabaseClient) {
   const session = await getSession(request as any);
   if (!session?.user) {
     return { error: "Unauthorized", status: 401 } as const;
@@ -67,7 +68,11 @@ async function getCompanyId(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const companyCheck = await getCompanyId(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const companyCheck = await getCompanyId(request, supabase);
     if ("error" in companyCheck) {
       return NextResponse.json({ error: companyCheck.error }, { status: companyCheck.status });
     }
@@ -120,7 +125,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const adminCheck = await requireAdmin(request, supabase);
     if ("error" in adminCheck) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
@@ -212,7 +221,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const adminCheck = await requireAdmin(request, supabase);
     if ("error" in adminCheck) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }

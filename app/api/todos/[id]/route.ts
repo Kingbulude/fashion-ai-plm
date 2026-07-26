@@ -2,15 +2,19 @@
 // 获取 / 更新状态（完成/取消）/ 删除
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { data, error } = await supabase
       .from("todos")
@@ -30,6 +34,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
     const { status, isRead } = body;
@@ -66,8 +74,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { error } = await supabase.from("todos").delete().eq("id", id);
     if (error) {

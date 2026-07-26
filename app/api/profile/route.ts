@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
-import { logOperation } from "@/lib/auth/audit";
 import { isSupabaseConfigured } from "@/lib/db/client";
+import { logOperation } from "@/lib/auth/audit";
 import { RoleLevelLabels } from "@/lib/auth/rbac";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     if (!isSupabaseConfigured) {
       return NextResponse.json(
         {
@@ -23,14 +26,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const session = await getSession(request as any);
-
-    let userId: string | null = null;
-    let userEmail: string | null = null;
-    if (session?.user) {
-      userId = session.user.id;
-      userEmail = session.user.email || null;
-    }
+    const userId = ctx.user.id;
+    const userEmail = ctx.user.email || null;
 
     if (!userId) {
       return NextResponse.json(
@@ -65,11 +62,11 @@ export async function GET(request: Request) {
     let { data, error } = profileQuery;
 
     // 首次登录时自动创建 profile（company_id 为 null，便于后台分配）
-    if ((error?.code === "PGRST116" || !data) && session) {
+    if ((error?.code === "PGRST116" || !data)) {
       const baseProfile = {
         user_id: userId,
-        name: session.user.user_metadata?.name || userEmail?.split("@")[0] || "用户",
-        avatar_url: session.user.user_metadata?.avatar_url || null,
+        name: ctx.user.user_metadata?.name || userEmail?.split("@")[0] || "用户",
+        avatar_url: ctx.user.user_metadata?.avatar_url || null,
         role: "executor",
         role_level: "executor",
       };
@@ -136,6 +133,10 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     if (!isSupabaseConfigured) {
       return NextResponse.json(
         {
@@ -146,8 +147,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const session = await getSession(request as any);
-    const userId = session?.user?.id;
+    const userId = ctx.user.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -165,7 +165,7 @@ export async function PUT(request: Request) {
 
     const userName = name || "小芳";
     const userAvatarUrl = avatarUrl || null;
-    const userEmail = session.user.email || null;
+    const userEmail = ctx.user.email || null;
 
     // 头像 base64 长度校验：PostgreSQL text 字段无上限，但建议控制在 1MB 以内
     if (userAvatarUrl && typeof userAvatarUrl === "string" && userAvatarUrl.length > 1024 * 1024) {

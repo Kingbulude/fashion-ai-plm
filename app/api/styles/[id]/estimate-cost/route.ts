@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { estimateStyleCost } from "@/lib/ai/cloudflare-ai";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -24,6 +24,10 @@ interface ParsedCostEstimate {
 // AI 估算款式生产成本（基于款式信息，BOM 未完成时使用）
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     // 多租户隔离：校验款式归属

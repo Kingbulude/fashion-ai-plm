@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -8,6 +8,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { data, error } = await supabase.from("planning").select("*").eq("id", id).single();
     if (error || !data) {
@@ -21,6 +25,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
     const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags } = body;
@@ -46,6 +54,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { error } = await supabase.from("planning").delete().eq("id", id);
     if (error) {

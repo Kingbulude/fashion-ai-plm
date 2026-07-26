@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -8,6 +8,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { season, theme } = await request.json();
 

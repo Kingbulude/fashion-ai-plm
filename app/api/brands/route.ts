@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 // 获取品牌列表（含季次信息）
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("company_id, role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (!profile?.company_id) {
@@ -36,7 +34,7 @@ export async function GET(request: Request) {
     const { data: userBrands } = await supabase
       .from("user_brands")
       .select("brand_id")
-      .eq("user_id", session.user.id);
+      .eq("user_id", ctx.user.id);
 
     if (!userBrands || userBrands.length === 0) {
       return NextResponse.json([]);
@@ -58,15 +56,14 @@ export async function GET(request: Request) {
 // 创建新品牌（仅老板/管理员）
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level, company_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {
@@ -102,15 +99,14 @@ export async function POST(request: Request) {
 // 更新品牌信息
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {

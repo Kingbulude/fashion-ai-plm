@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
 import { generateTechPack } from "@/lib/ai/cloudflare-ai";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -10,6 +10,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 // AI 生成工艺包草稿（基于款式名称和描述）
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     // 获取款式信息

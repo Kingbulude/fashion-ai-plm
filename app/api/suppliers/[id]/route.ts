@@ -2,16 +2,20 @@
 // 获取供应商信息 / 合作历史
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET: 获取供应商详情
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
 
@@ -32,6 +36,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
 // PUT: 更新供应商
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
     const { name, type, contact, phone, email, capabilities, qualityScore, deliveryScore, priceLevel } = body;
@@ -64,8 +72,12 @@ export async function PUT(request: Request, { params }: RouteContext) {
 }
 
 // DELETE: 删除供应商
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { error } = await supabase.from("suppliers").delete().eq("id", id);
 

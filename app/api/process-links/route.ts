@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { logOperation, recordVersion } from "@/lib/auth/audit";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -35,8 +34,12 @@ function mergeWithDefault(row: any): any {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { data, error } = await supabase
       .from("process_links")
       .select("*")
@@ -54,8 +57,11 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request as any);
-    const userId = session?.user?.id || "anonymous";
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const userId = ctx.user.id || "anonymous";
 
     const body = await request.json();
     const { id, duration_hours, deadline, work_content, deliverables, from_node, to_node, link_type } = body;

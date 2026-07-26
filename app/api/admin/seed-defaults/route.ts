@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
@@ -174,26 +173,22 @@ const defaultAISkills = [
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user, roleLevel } = ctx;
 
     // 校验权限
-    const { data: currentProfile } = await supabase
-      .from("profiles")
-      .select("role_level, company_id")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (
-      currentProfile?.role_level !== RoleLevel.BOSS &&
-      currentProfile?.role_level !== RoleLevel.ADMIN
-    ) {
+    if (roleLevel !== RoleLevel.BOSS && roleLevel !== RoleLevel.ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!currentProfile.company_id) {
+    const { data: currentProfile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!currentProfile?.company_id) {
       return NextResponse.json({ error: "当前用户未绑定公司" }, { status: 400 });
     }
 

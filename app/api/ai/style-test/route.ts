@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { generateJson } from "@/lib/ai/json-generation";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
@@ -22,6 +22,10 @@ interface StyleTestResult {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const body = await request.json();
     const { styleId, styleName, category, price, season, targetAudience, designFeatures } = body;
 

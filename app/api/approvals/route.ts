@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { logOperation } from "@/lib/auth/audit";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 // 获取审批列表
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const url = new URL(request.url);
     const status = url.searchParams.get("status") || "pending";
@@ -41,10 +39,9 @@ export async function GET(request: Request) {
 // 提交审批申请（执行者发起）
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const body = await request.json();
     const { brandId, tableName, recordId, action, proposedData } = body;
@@ -61,7 +58,7 @@ export async function POST(request: Request) {
         record_id: recordId,
         action,
         proposed_data: proposedData,
-        submitted_by: session.user.id,
+        submitted_by: ctx.user.id,
         status: "pending",
       })
       .select()
@@ -70,7 +67,7 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     await logOperation({
-      userId: session.user.id,
+      userId: ctx.user.id,
       brandId,
       action: "create",
       targetTable: "approval_flows",
@@ -89,15 +86,14 @@ export async function POST(request: Request) {
 // 审批处理（工序负责人/品牌负责人/老板）
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     // 只有负责人级别以上才能审批
@@ -130,7 +126,7 @@ export async function PUT(request: Request) {
       .update({
         status,
         review_comment: reviewComment || null,
-        reviewed_by: session.user.id,
+        reviewed_by: ctx.user.id,
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -155,7 +151,7 @@ export async function PUT(request: Request) {
     }
 
     await logOperation({
-      userId: session.user.id,
+      userId: ctx.user.id,
       brandId: approval.brand_id,
       action: `approval_${status}`,
       targetTable: "approval_flows",

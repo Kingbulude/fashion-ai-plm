@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -8,6 +9,10 @@ type RouteContext = { params: Promise<{ id: string; procurementId: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { procurementId } = await params;
     const { data, error } = await supabase.from("material_procurement").select("*").eq("id", procurementId).single();
     if (error || !data) {
@@ -21,6 +26,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id, procurementId } = await params;
     const body = await request.json();
     const { supplierId, status, orderDate, expectedDate, actualDate, quantity, unitPrice, receivedQuantity } = body;
@@ -69,7 +78,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     // 物料到货后检查是否齐套，齐套则关闭相关缺料预警待办
     if (status === "fully_received" || receivedQuantity !== undefined) {
-      await checkAndCloseFulfillmentAlerts(id);
+      await checkAndCloseFulfillmentAlerts(id, supabase);
     }
 
     return NextResponse.json(toCamelCase(data));
@@ -78,7 +87,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 }
 
-async function checkAndCloseFulfillmentAlerts(styleId: string) {
+async function checkAndCloseFulfillmentAlerts(styleId: string, supabase: SupabaseClient) {
   try {
     const bomRes = await supabase.from("bom_items").select("id").eq("style_id", styleId);
     const bomItems = bomRes.data || [];
@@ -101,6 +110,10 @@ async function checkAndCloseFulfillmentAlerts(styleId: string) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { procurementId } = await params;
     const { error } = await supabase.from("material_procurement").delete().eq("id", procurementId);
     if (error) {

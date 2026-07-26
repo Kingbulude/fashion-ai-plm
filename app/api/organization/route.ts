@@ -1,23 +1,21 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 // 获取公司架构（公司→品牌→用户）
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     // 获取用户的公司
     const { data: currentProfile } = await supabase
       .from("profiles")
       .select("company_id, role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     const companyId = currentProfile?.company_id;
@@ -107,12 +105,12 @@ export async function GET(request: Request) {
 
     // 兜底：如果当前用户不在查询结果中（常见于 seed 数据未同步时），把自己加入列表
     const profileList = profiles || [];
-    if (currentProfile && !profileList.some((p) => p.user_id === session.user.id)) {
+    if (currentProfile && !profileList.some((p) => p.user_id === ctx.user.id)) {
       profileList.push({
-        user_id: session.user.id,
-        name: session.user.user_metadata?.name || session.user.email || "当前用户",
-        email: session.user.email || null,
-        avatar_url: session.user.user_metadata?.avatar_url || null,
+        user_id: ctx.user.id,
+        name: ctx.user.user_metadata?.name || ctx.user.email || "当前用户",
+        email: ctx.user.email || null,
+        avatar_url: ctx.user.user_metadata?.avatar_url || null,
         role: currentProfile.role_level || "",
         role_level: currentProfile.role_level || "",
         company_id: companyId,
@@ -167,16 +165,15 @@ export async function GET(request: Request) {
 // 分配用户角色和品牌
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     // 检查是否有权限分配（仅老板/管理员）
     const { data: currentProfile } = await supabase
       .from("profiles")
       .select("role_level, company_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     const roleLevel = currentProfile?.role_level;
@@ -197,7 +194,7 @@ export async function POST(request: Request) {
     }
 
     // 校验不能修改 BOSS 账号（除 BOSS 自己外）
-    if (userId !== session.user.id) {
+    if (userId !== ctx.user.id) {
       const { data: targetProfile } = await supabase
         .from("profiles")
         .select("role_level")
@@ -276,7 +273,7 @@ export async function POST(request: Request) {
           user_id: userId,
           process_role_id: processRoleId,
           company_id: companyId,
-          assigned_by: session.user.id,
+          assigned_by: ctx.user.id,
         }));
 
         const { error: insertError } = await supabase
@@ -302,7 +299,7 @@ export async function POST(request: Request) {
             user_id: userId,
             scope_id: processOwnerScopeId,
             company_id: companyId,
-            assigned_by: session.user.id,
+            assigned_by: ctx.user.id,
           });
 
         if (scopeError) throw scopeError;

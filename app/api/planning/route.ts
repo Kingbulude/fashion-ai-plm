@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { data, error } = await supabase
       .from("planning")
       .select("*")
@@ -23,6 +27,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const body = await request.json();
     const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags } = body;
 

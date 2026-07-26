@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { logOperation } from "@/lib/auth/audit";
 import {
   AIRoleLevel,
@@ -13,10 +12,9 @@ export const runtime = "edge";
 // 获取AI建议列表（根据用户角色返回对应级别的建议）
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user } = ctx;
 
     const url = new URL(request.url);
     const status = url.searchParams.get("status") || "pending";
@@ -26,7 +24,7 @@ export async function GET(request: Request) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     const userAIRole = getAIRoleForUser(profile?.role_level || "executor");
@@ -71,10 +69,9 @@ export async function GET(request: Request) {
 // 审核AI建议（人工审核后才生效）
 export async function PUT(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user } = ctx;
 
     const body = await request.json();
     const { id, status, reviewComment } = body;
@@ -100,7 +97,7 @@ export async function PUT(request: Request) {
       .update({
         status,
         review_comment: reviewComment || null,
-        reviewed_by: session.user.id,
+        reviewed_by: user.id,
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -131,7 +128,7 @@ export async function PUT(request: Request) {
     }
 
     await logOperation({
-      userId: session.user.id,
+      userId: user.id,
       brandId: suggestion.brand_id,
       action: `ai_suggestion_${status}`,
       targetTable: "ai_suggestions",
@@ -150,6 +147,10 @@ export async function PUT(request: Request) {
 // 创建AI建议（供AI系统调用）
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const body = await request.json();
     const {
       aiRoleLevel,

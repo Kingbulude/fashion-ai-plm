@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -9,6 +9,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 // 获取款式的所有工艺包（按版本倒序）
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     const { data, error } = await supabase
@@ -30,6 +34,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 // 新建工艺包（支持指定版本，或自动 +1）
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
 

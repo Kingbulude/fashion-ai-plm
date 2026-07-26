@@ -2,7 +2,7 @@
 // 对单个审核项调用 Cloudflare AI 进行深度问题分析与改进建议
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { generateJson } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -33,6 +33,10 @@ function buildFallback(item: any): AIAnalysisResult {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const body = await request.json();
     const { reviewItem } = body as { reviewItem: any };
 

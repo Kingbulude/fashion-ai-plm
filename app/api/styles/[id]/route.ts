@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { hasPermission, Permission, RoleLevel } from "@/lib/auth/rbac";
 
 export const runtime = "edge";
@@ -9,7 +9,12 @@ export const runtime = "edge";
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 获取当前用户可访问的品牌 ID 列表
-async function getAllowedBrandIds(sessionUserId: string, roleLevel: string | null, companyId: string | null): Promise<string[]> {
+async function getAllowedBrandIds(
+  supabase: SupabaseClient,
+  sessionUserId: string,
+  roleLevel: string | null,
+  companyId: string | null
+): Promise<string[]> {
   if (!companyId) return [];
 
   if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
@@ -29,24 +34,17 @@ async function getAllowedBrandIds(sessionUserId: string, roleLevel: string | nul
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user, tenant, roleLevel } = ctx;
 
     const { id } = await params;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id, role_level")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (!profile?.company_id) {
+    if (!tenant.company_id) {
       return NextResponse.json({ error: "未加入公司" }, { status: 400 });
     }
 
-    const allowedBrandIds = await getAllowedBrandIds(session.user.id, profile.role_level, profile.company_id);
+    const allowedBrandIds = await getAllowedBrandIds(supabase, user.id, roleLevel, tenant.company_id);
 
     const { data, error } = await supabase
       .from("styles")
@@ -67,28 +65,21 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user, tenant, roleLevel } = ctx;
 
     const { id } = await params;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id, role_level")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (!profile?.company_id) {
+    if (!tenant.company_id) {
       return NextResponse.json({ error: "未加入公司" }, { status: 400 });
     }
 
-    if (!hasPermission(profile.role_level || "", Permission.EDIT)) {
+    if (!hasPermission(roleLevel || "", Permission.EDIT)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const allowedBrandIds = await getAllowedBrandIds(session.user.id, profile.role_level, profile.company_id);
+    const allowedBrandIds = await getAllowedBrandIds(supabase, user.id, roleLevel, tenant.company_id);
 
     const body = await request.json();
 
@@ -143,28 +134,21 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase, user, tenant, roleLevel } = ctx;
 
     const { id } = await params;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id, role_level")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (!profile?.company_id) {
+    if (!tenant.company_id) {
       return NextResponse.json({ error: "未加入公司" }, { status: 400 });
     }
 
-    if (!hasPermission(profile.role_level || "", Permission.DELETE)) {
+    if (!hasPermission(roleLevel || "", Permission.DELETE)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const allowedBrandIds = await getAllowedBrandIds(session.user.id, profile.role_level, profile.company_id);
+    const allowedBrandIds = await getAllowedBrandIds(supabase, user.id, roleLevel, tenant.company_id);
 
     // 校验目标款式是否在可访问品牌内
     const { data: existingStyle } = await supabase

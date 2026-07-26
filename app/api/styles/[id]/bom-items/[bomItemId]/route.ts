@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -15,6 +16,10 @@ function computeTotalCost(unitConsumption: number, lossRate: number, unitPrice: 
 // 获取单个 BOM 物料
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { bomItemId } = await params;
 
     const { data, error } = await supabase
@@ -36,6 +41,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 // 更新 BOM 物料
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id, bomItemId } = await params;
     const body = await request.json();
 
@@ -69,7 +78,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     }
 
     // 同步更新款式实际成本
-    await syncStyleActualCost(id);
+    await syncStyleActualCost(id, supabase);
 
     return NextResponse.json(toCamelCase(data));
   } catch {
@@ -80,6 +89,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
 // 删除 BOM 物料
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id, bomItemId } = await params;
 
     const { error } = await supabase
@@ -92,7 +105,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     }
 
     // 同步更新款式实际成本
-    await syncStyleActualCost(id);
+    await syncStyleActualCost(id, supabase);
 
     return NextResponse.json({ message: "删除成功" }, { status: 200 });
   } catch {
@@ -100,7 +113,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   }
 }
 
-async function syncStyleActualCost(styleId: string) {
+async function syncStyleActualCost(styleId: string, supabase: SupabaseClient) {
   try {
     const { data } = await supabase
       .from("bom_items")

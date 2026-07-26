@@ -1,12 +1,16 @@
 // 组织架构 API 转发路由
 // 为 tenant-context 提供统一的 /api/organization/* 入口
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const url = new URL(request.url);
     const brandId = url.searchParams.get("brandId");
 

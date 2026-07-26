@@ -1,8 +1,12 @@
-import { supabase } from "@/lib/db/client";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ctx = await requireApiAuth(request);
+  if ("error" in ctx) return ctx.error;
+  const { supabase } = ctx;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";

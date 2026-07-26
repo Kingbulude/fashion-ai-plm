@@ -2,17 +2,20 @@
 // 包含基本信息 + 品牌 DNA + 款式统计
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     // 1. 品牌基本信息
@@ -82,15 +85,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
 // 更新品牌（仅老板/管理员）
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level, company_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {
@@ -142,15 +144,14 @@ export async function PUT(request: Request, { params }: RouteContext) {
 // 删除品牌（仅老板/管理员）
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level, company_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {

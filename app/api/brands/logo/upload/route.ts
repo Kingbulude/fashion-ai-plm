@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -9,15 +9,14 @@ const LOGO_BUCKET = "brand-logos";
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("role_level, company_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", ctx.user.id)
       .single();
 
     if (profile?.role_level !== RoleLevel.BOSS && profile?.role_level !== RoleLevel.ADMIN) {
@@ -43,7 +42,7 @@ export async function POST(request: Request) {
 
     const fileName = `${brandId}/${Date.now()}.${fileExt}`;
 
-    await createBucketIfNotExists();
+    await createBucketIfNotExists(supabase);
 
     const { error } = await supabase.storage
       .from(LOGO_BUCKET)
@@ -69,7 +68,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function createBucketIfNotExists(): Promise<void> {
+async function createBucketIfNotExists(supabase: SupabaseClient): Promise<void> {
   const { data: buckets } = await supabase.storage.listBuckets();
   const bucketExists = buckets?.some((b) => b.name === LOGO_BUCKET);
 

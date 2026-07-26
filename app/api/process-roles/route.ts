@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 // 校验当前用户是否为 BOSS/ADMIN，并返回 company_id
-async function requireAdmin(request: Request) {
+async function requireAdmin(request: Request, supabase: SupabaseClient) {
   const session = await getSession(request as any);
   if (!session?.user) {
     return { error: "Unauthorized", status: 401 };
@@ -32,7 +33,11 @@ async function requireAdmin(request: Request) {
 // 获取工序角色列表（仅 BOSS/ADMIN）
 export async function GET(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const adminCheck = await requireAdmin(request, supabase);
     if ("error" in adminCheck) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
@@ -56,7 +61,11 @@ export async function GET(request: Request) {
 // 创建/更新工序角色（仅 BOSS/ADMIN）
 export async function POST(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const adminCheck = await requireAdmin(request, supabase);
     if ("error" in adminCheck) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
@@ -108,7 +117,11 @@ export async function POST(request: Request) {
 // 删除（软删除）工序角色
 export async function DELETE(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const adminCheck = await requireAdmin(request, supabase);
     if ("error" in adminCheck) {
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }

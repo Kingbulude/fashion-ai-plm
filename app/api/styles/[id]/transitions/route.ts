@@ -2,8 +2,7 @@
 // 列出可用转换 / 执行状态转换
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import {
   StyleStatus,
   getAvailableTransitions,
@@ -15,8 +14,12 @@ export const runtime = "edge";
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET: 获取当前款式的可用转换列表
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { data: style } = await supabase
       .from("styles")
@@ -62,11 +65,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 // POST: 执行状态转换
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const body = await request.json();
     const { toStatus, event, comment } = body;
@@ -93,7 +96,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       toStatus: toStatus as StyleStatus,
       event,
       comment,
-      userId: session.user.id,
+      userId: ctx.user.id,
       brandId: style.brand_id,
     });
 

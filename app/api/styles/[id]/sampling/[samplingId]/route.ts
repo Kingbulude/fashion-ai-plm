@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -8,6 +8,10 @@ type RouteContext = { params: Promise<{ id: string; samplingId: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { samplingId } = await params;
     const { data, error } = await supabase
       .from("sampling_records")
@@ -25,6 +29,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { samplingId } = await params;
     const body = await request.json();
     const { round, factoryId, status, sentDate, receivedDate, feedback, revisionNotes, qcResult, approved } = body;
@@ -57,6 +65,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { samplingId } = await params;
     const { error } = await supabase.from("sampling_records").delete().eq("id", samplingId);
     if (error) {
