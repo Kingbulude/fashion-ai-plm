@@ -497,6 +497,116 @@ export default function SalesPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* 渠道效率对比 + 销售汇总 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 渠道效率对比 */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Award className="h-4 w-4 text-amber-500" />
+                    渠道效率对比
+                  </CardTitle>
+                  <CardDescription className="text-xs">客单价 · 件单价 · 转化效率</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {channelBreakdown.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-6 text-center">暂无渠道数据</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {channelBreakdown.slice(0, 5).map((ch, i) => {
+                        const avgOrder = ch.orders > 0 ? ch.revenue / ch.orders : 0;
+                        const avgPrice = ch.quantity > 0 ? ch.revenue / ch.quantity : 0;
+                        const maxAvgOrder = Math.max(...channelBreakdown.map((c) => (c.orders > 0 ? c.revenue / c.orders : 0)), 1);
+                        const efficiencyPct = (avgOrder / maxAvgOrder) * 100;
+                        return (
+                          <div key={ch.channel} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`}>
+                                  {i + 1}
+                                </div>
+                                <span className="text-sm font-medium">{ch.channel}</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{ch.orders} 单</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                              <div>
+                                <div className="text-muted-foreground">客单价</div>
+                                <div className="font-semibold text-slate-900">{formatCurrency(avgOrder)}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">件单价</div>
+                                <div className="font-semibold text-slate-900">{formatCurrency(avgPrice)}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">件/单</div>
+                                <div className="font-semibold text-slate-900">{ch.quantity > 0 ? (ch.quantity / ch.orders).toFixed(1) : "0"}</div>
+                              </div>
+                            </div>
+                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600"
+                                style={{ width: `${efficiencyPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 销售汇总 */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                    销售汇总
+                  </CardTitle>
+                  <CardDescription className="text-xs">核心指标一览</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                      <div className="text-xs text-blue-600 mb-1">总销售额</div>
+                      <div className="text-lg font-bold text-blue-700">{formatCurrency(totalRevenue)}</div>
+                      <div className="text-[10px] text-blue-500 mt-0.5">{totalOrders} 笔订单</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-green-50 border border-green-100">
+                      <div className="text-xs text-green-600 mb-1">总销量</div>
+                      <div className="text-lg font-bold text-green-700">{totalQuantity} 件</div>
+                      <div className="text-[10px] text-green-500 mt-0.5">平均件单价 {formatCurrency(avgSellingPrice)}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+                      <div className="text-xs text-amber-600 mb-1">客单价</div>
+                      <div className="text-lg font-bold text-amber-700">{formatCurrency(avgOrderValue)}</div>
+                      <div className="text-[10px] text-amber-500 mt-0.5">每单平均金额</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-purple-50 border border-purple-100">
+                      <div className="text-xs text-purple-600 mb-1">渠道数</div>
+                      <div className="text-lg font-bold text-purple-700">{channelBreakdown.length}</div>
+                      <div className="text-[10px] text-purple-500 mt-0.5">活跃销售渠道</div>
+                    </div>
+                  </div>
+
+                  {/* 最佳渠道 */}
+                  {channelBreakdown.length > 0 && (
+                    <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-amber-500" />
+                        <span className="text-xs font-medium text-amber-700">最佳渠道</span>
+                      </div>
+                      <div className="mt-1 flex items-baseline justify-between">
+                        <span className="text-sm font-bold text-amber-800">{channelBreakdown[0].channel}</span>
+                        <span className="text-xs text-amber-600">{formatCurrency(channelBreakdown[0].revenue)}</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="styles" className="space-y-6">
