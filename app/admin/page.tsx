@@ -19,6 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ElementType } from "react";
+import { cn } from "@/lib/utils";
 
 interface AdminModule {
   id: string;
@@ -260,8 +261,4 @@ export default function AdminPage() {
       </AdminPageContainer>
     </SidebarLayout>
   );
-}
-
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }
