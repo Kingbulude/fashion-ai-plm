@@ -34,6 +34,10 @@ import {
   DollarSign,
   Layers,
   GanttChart,
+  TrendingDown,
+  ShieldCheck,
+  Activity,
+  Zap,
 } from "lucide-react";
 import { useTenant } from "@/lib/auth/tenant-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
@@ -296,11 +300,11 @@ export default function ProductionPage() {
             color="terracotta"
           />
           <KpiCard
-            title="待排产"
-            value={summary.pending || 0}
-            sub="需安排生产"
-            icon={Clock}
-            color="slate"
+            title="本月产量"
+            value={summary.thisMonthQuantity || 0}
+            sub="件/本月"
+            icon={Package}
+            color="green"
           />
           <KpiCard
             title="逾期订单"
@@ -309,6 +313,110 @@ export default function ProductionPage() {
             icon={AlertTriangle}
             color={summary.overdue > 0 ? "destructive" : "success"}
           />
+        </div>
+
+        {/* 生产趋势 + 效率分析 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* 生产趋势图 */}
+          <Card className="card-premium lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                <Activity className="h-4 w-4 text-navy-700" />
+                生产趋势
+                <Badge variant="secondary" className="ml-1 bg-navy-100 text-navy-700 hover:bg-navy-100">
+                  近14天
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[220px] flex items-end gap-1.5 px-2">
+                {(data?.dailyTrend || []).map((d: any) => {
+                  const maxVal = Math.max(...(data?.dailyTrend || []).map((x: any) => x.completed || 0), 1);
+                  const h = ((d.completed || 0) / maxVal) * 100;
+                  return (
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group">
+                      <div className="text-[10px] font-medium text-navy-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {d.completed || 0}
+                      </div>
+                      <div
+                        className="w-full rounded-t-md bg-gradient-to-t from-navy-700 to-terracotta-400 transition-all min-h-[4px] hover:from-terracotta-500 hover:to-terracotta-400"
+                        style={{ height: `${Math.max(h, 2)}%` }}
+                      />
+                      <div className="text-[10px] text-muted-foreground">{d.dateLabel}</div>
+                    </div>
+                  );
+                })}
+                {(data?.dailyTrend || []).length === 0 && (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                    暂无生产数据
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-navy-700 to-terracotta-400" />
+                  <span>完成订单</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-slate-300" />
+                  <span>新开工</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 效率分析 */}
+          <Card className="card-premium">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
+                <Zap className="h-4 w-4 text-amber-500" />
+                生产效率
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 平均生产周期 */}
+              <div className="p-3 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100/50 border border-navy-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-navy-700">平均生产周期</span>
+                  <Clock className="h-3.5 w-3.5 text-navy-600" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-navy-800">{summary.avgProductionDays || 0}</span>
+                  <span className="text-sm text-navy-600">天</span>
+                </div>
+              </div>
+
+              {/* 按期交付率 */}
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100/50 border border-green-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-green-700">按期交付率</span>
+                  <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-green-800">{summary.onTimeDeliveryRate || 0}</span>
+                  <span className="text-sm text-green-600">%</span>
+                </div>
+                <div className="h-1.5 bg-green-200 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
+                    style={{ width: `${summary.onTimeDeliveryRate || 0}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 其他指标 */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-muted-foreground mb-0.5">完成订单</div>
+                  <div className="text-lg font-semibold text-foreground">{summary.completed || 0}</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] text-muted-foreground mb-0.5">待排产</div>
+                  <div className="text-lg font-semibold text-foreground">{summary.pending || 0}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 缺料预警看板 */}
@@ -413,48 +521,179 @@ export default function ProductionPage() {
           </CardContent>
         </Card>
 
-        {/* 工厂分布 */}
-        {factoryStats.length > 0 && (
+        {/* 质检统计 */}
+        {data?.qcStats && data.qcStats.total > 0 && (
           <Card className="card-premium mb-6">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                <BarChart3 className="h-4 w-4 text-navy-700" />
-                加工厂分布
-                <Badge variant="secondary" className="ml-1 bg-navy-100 text-navy-700 hover:bg-navy-100">
-                  {factoryStats.length} 家
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                质检统计
+                <Badge variant="secondary" className="ml-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  合格率 {data.qcStats.passRate?.toFixed(1) || 0}%
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {factoryStats.slice(0, 6).map((f: any) => {
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="text-xs text-muted-foreground mb-1">质检总数</div>
+                  <div className="text-xl font-bold text-foreground">{data.qcStats.total}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-green-50 border border-green-200">
+                  <div className="text-xs text-green-700 mb-1">合格</div>
+                  <div className="text-xl font-bold text-green-700">{data.qcStats.passed}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                  <div className="text-xs text-red-700 mb-1">不合格</div>
+                  <div className="text-xl font-bold text-red-700">{data.qcStats.failed}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="text-xs text-amber-700 mb-1">待检</div>
+                  <div className="text-xl font-bold text-amber-700">{data.qcStats.pending}</div>
+                </div>
+              </div>
+
+              {/* 合格率进度条 */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">一次合格率</span>
+                  <span className="font-semibold text-emerald-700">{data.qcStats.passRate?.toFixed(1) || 0}%</span>
+                </div>
+                <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500"
+                    style={{ width: `${data.qcStats.passRate || 0}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 质检类型分布 */}
+              {data.qcStats.byType && Object.keys(data.qcStats.byType).length > 0 && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">质检类型分布</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(data.qcStats.byType).map(([type, count]) => (
+                      <Badge key={type} variant="outline" className="bg-slate-50">
+                        {type}: {count as number}次
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 工厂分布 */}
+        {factoryStats.length > 0 && (
+          <Card className="card-premium mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between section-title !before:hidden">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-navy-700" />
+                  加工厂产能排名
+                  <Badge variant="secondary" className="ml-1 bg-navy-100 text-navy-700 hover:bg-navy-100">
+                    {factoryStats.length} 家
+                  </Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {factoryStats.slice(0, 6).map((f: any, idx: number) => {
                   const totalCost = summary.totalCost || 1;
                   const pct = (f.cost / totalCost) * 100;
+                  const onTimeRate = f.onTimeRate || 100;
+                  const isTop = idx < 3;
                   return (
-                    <div key={f.name} className="p-3 rounded-xl border border-border bg-sand-50/50 hover:shadow-md transition-all">
+                    <div
+                      key={f.name}
+                      className={`p-4 rounded-xl border transition-all hover:shadow-md ${
+                        isTop
+                          ? "border-navy-200 bg-gradient-to-r from-navy-50/50 to-transparent"
+                          : "border-border bg-sand-50/30"
+                      }`}
+                    >
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg gradient-navy flex items-center justify-center shadow-sm">
-                            <Factory className="h-3.5 w-3.5 text-white" />
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm ${
+                              idx === 0
+                                ? "bg-gradient-to-br from-amber-400 to-amber-600"
+                                : idx === 1
+                                  ? "bg-gradient-to-br from-slate-400 to-slate-600"
+                                  : idx === 2
+                                    ? "bg-gradient-to-br from-amber-600 to-amber-800"
+                                    : "bg-slate-300"
+                            }`}
+                          >
+                            {idx + 1}
                           </div>
-                          <span className="font-medium text-sm">{f.name}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{f.name}</span>
+                              {isTop && (
+                                <Badge
+                                  variant="outline"
+                                  className="h-5 text-[10px] bg-amber-50 text-amber-700 border-amber-200"
+                                >
+                                  TOP {idx + 1}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {f.orders} 单 · {f.quantity} 件
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs font-semibold text-foreground">
-                          {pct.toFixed(0)}%
-                        </span>
+                        <div className="text-right">
+                          <div className="font-semibold text-foreground">
+                            ¥{(f.cost / 10000).toFixed(1)}万
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            占比 {pct.toFixed(1)}%
+                          </div>
+                        </div>
                       </div>
+
+                      {/* 成本占比进度条 */}
                       <div className="h-1.5 bg-sand-200 rounded-full overflow-hidden mb-2">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-navy-700 to-terracotta-400"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{f.orders} 单</span>
-                        <span>{f.quantity} 件</span>
-                        <span className="font-semibold text-foreground">
-                          ¥{(f.cost / 10000).toFixed(1)}万
-                        </span>
+
+                      {/* 准期率 + 完成数 */}
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span className="text-muted-foreground">
+                              完成 <span className="font-medium text-foreground">{f.completed}</span> 单
+                            </span>
+                          </div>
+                          {f.overdue > 0 && (
+                            <div className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-600" />
+                              <span className="text-amber-700">{f.overdue} 单逾期</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                          <span
+                            className={`font-medium ${
+                              onTimeRate >= 90
+                                ? "text-emerald-700"
+                                : onTimeRate >= 70
+                                  ? "text-amber-700"
+                                  : "text-red-700"
+                            }`}
+                          >
+                            准期率 {onTimeRate.toFixed(0)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
