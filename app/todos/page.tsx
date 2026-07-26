@@ -27,6 +27,10 @@ import {
   Inbox,
   Sparkles,
   User,
+  Target,
+  TrendingUp,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; order: number }> = {
@@ -222,6 +226,116 @@ export default function TodosPage() {
             color="green"
           />
         </div>
+
+        {/* 完成率概览 + 优先级分布 */}
+        {!loading && todos.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            {/* 完成率进度 */}
+            <Card className="card-premium">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">完成率</span>
+                  <Target className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-emerald-700">
+                    {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(0) : 0}
+                  </span>
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <div className="h-2 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all"
+                    style={{ width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>已完成 {stats.completed}</span>
+                  <span>共 {stats.total}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 优先级分布 */}
+            <Card className="card-premium lg:col-span-2">
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    优先级分布
+                  </span>
+                  <button
+                    onClick={() => setPriorityFilter(priorityFilter ? null : "urgent")}
+                    className="text-xs text-navy-700 hover:underline"
+                  >
+                    {priorityFilter ? "清除筛选" : "筛选紧急"}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {(["urgent", "high", "medium", "low"] as const).map((p) => {
+                    const count = todos.filter((t) => t.priority === p).length;
+                    const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                    const cfg = PRIORITY_CONFIG[p];
+                    const barColor = p === "urgent" ? "bg-red-500" : p === "high" ? "bg-orange-500" : p === "medium" ? "bg-amber-500" : "bg-slate-400";
+                    return (
+                      <div key={p} className="flex items-center gap-3">
+                        <div className="w-10 text-xs text-muted-foreground flex-shrink-0">
+                          {cfg.label}
+                        </div>
+                        <div className="flex-1 h-5 bg-slate-100 rounded-md overflow-hidden">
+                          <div
+                            className={`h-full rounded-md ${barColor} transition-all flex items-center justify-end px-1.5`}
+                            style={{ width: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+                          >
+                            {count > 0 && (
+                              <span className="text-[10px] font-bold text-white">{count}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-10 text-right text-xs text-muted-foreground flex-shrink-0">
+                          {pct.toFixed(0)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 逾期任务提醒 */}
+        {!loading && stats.overdue > 0 && (
+          <Card className="card-premium mb-6 border-red-200 bg-red-50/30">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800">
+                    {stats.overdue} 项待办已逾期
+                  </p>
+                  <p className="text-xs text-red-700/80 mt-0.5">
+                    逾期任务可能影响项目进度，建议优先处理
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("pending");
+                    setPriorityFilter(null);
+                  }}
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  <Zap className="h-3.5 w-3.5 mr-1.5" />
+                  查看待处理
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 状态切换 + 优先级筛选 */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
