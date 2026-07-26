@@ -7,12 +7,26 @@
 -- ============================================
 
 -- ───────────────────────────────────────────
--- Step 1: 撤销 anon 角色在所有对象上的权限
+-- Step 0: 安全执行辅助函数（必须最先创建，供后续所有 DDL/DCL 使用）
+-- 捕获：表/列/函数不存在、对象重复、权限不足，避免单点失败中断整个脚本
 -- ───────────────────────────────────────────
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
-REVOKE ALL ON SCHEMA public FROM anon;
+CREATE OR REPLACE FUNCTION rls_safe_execute(p_sql TEXT)
+RETURNS void AS $$
+BEGIN
+  EXECUTE p_sql;
+EXCEPTION
+  WHEN undefined_table OR undefined_column OR undefined_function OR duplicate_object OR insufficient_privilege THEN
+    RAISE NOTICE 'rls_safe_execute skipped (%): %', SQLSTATE, p_sql;
+END $$ LANGUAGE plpgsql;
+
+-- ───────────────────────────────────────────
+-- Step 1: 撤销 anon 角色在所有对象上的权限
+-- 使用安全函数执行，防止某些对象不存在或当前用户权限不足导致中断
+-- ───────────────────────────────────────────
+SELECT rls_safe_execute('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;');
+SELECT rls_safe_execute('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;');
+SELECT rls_safe_execute('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;');
+SELECT rls_safe_execute('REVOKE ALL ON SCHEMA public FROM anon;');
 
 -- ───────────────────────────────────────────
 -- Step 2: 修正/固化辅助函数，确保未认证时返回空
@@ -37,9 +51,9 @@ BEGIN
 END;
 $$;
 
--- 撤销 anon 对所有辅助函数的访问
-REVOKE EXECUTE ON FUNCTION get_user_brand_ids() FROM anon;
-REVOKE EXECUTE ON FUNCTION check_brand_access(UUID, TEXT) FROM anon;
+-- 撤销 anon 对所有辅助函数的访问（安全执行，防止函数不存在）
+SELECT rls_safe_execute('REVOKE EXECUTE ON FUNCTION get_user_brand_ids() FROM anon;');
+SELECT rls_safe_execute('REVOKE EXECUTE ON FUNCTION check_brand_access(UUID, TEXT) FROM anon;');
 
 -- 辅助函数：检查当前用户是否为某公司的 admin/boss
 CREATE OR REPLACE FUNCTION is_company_admin_or_boss(p_company_id UUID)
@@ -76,25 +90,13 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION is_company_admin_or_boss(UUID) FROM anon;
-REVOKE EXECUTE ON FUNCTION is_brand_admin_or_boss(UUID) FROM anon;
-
--- ───────────────────────────────────────────
--- 安全执行策略 DDL：表或列不存在时静默跳过，不中断整个脚本
--- ───────────────────────────────────────────
-CREATE OR REPLACE FUNCTION rls_safe_execute(p_sql TEXT)
-RETURNS void AS $$
-BEGIN
-  EXECUTE p_sql;
-EXCEPTION
-  WHEN undefined_table THEN NULL;
-  WHEN undefined_column THEN NULL;
-  WHEN duplicate_object THEN NULL;
-END $$ LANGUAGE plpgsql;
+SELECT rls_safe_execute('REVOKE EXECUTE ON FUNCTION is_company_admin_or_boss(UUID) FROM anon;');
+SELECT rls_safe_execute('REVOKE EXECUTE ON FUNCTION is_brand_admin_or_boss(UUID) FROM anon;');
 
 -- ───────────────────────────────────────────
 -- Step 3: 清理所有现有宽松策略
--- 安全起见：删除 public schema 下除迁移表外所有表的现有策略，再重建
+-- 安全起见：删除 public schema 下除迁移表外所有表的现有策略，再重建。
+-- 必须使用安全函数：DROP POLICY IF EXISTS 在表不存在时仍会报错。
 -- ───────────────────────────────────────────
 DO $$
 DECLARE
@@ -106,7 +108,7 @@ BEGIN
     WHERE schemaname = 'public'
       AND tablename NOT IN ('schema_migrations', 'migrations')
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', pol.policyname, pol.tablename);
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS %I ON %I;', pol.policyname, pol.tablename));
   END LOOP;
 END $$;
 
@@ -124,8 +126,8 @@ BEGIN
     WHERE schemaname = 'public'
       AND tablename NOT IN ('schema_migrations', 'migrations')
   LOOP
-    EXECUTE format('ALTER TABLE IF EXISTS public.%I ENABLE ROW LEVEL SECURITY;', tbl.tablename);
-    EXECUTE format('ALTER TABLE IF EXISTS public.%I FORCE ROW LEVEL SECURITY;', tbl.tablename);
+    PERFORM rls_safe_execute(format('ALTER TABLE IF EXISTS public.%I ENABLE ROW LEVEL SECURITY;', tbl.tablename));
+    PERFORM rls_safe_execute(format('ALTER TABLE IF EXISTS public.%I FORCE ROW LEVEL SECURITY;', tbl.tablename));
   END LOOP;
 END $$;
 
@@ -437,15 +439,16 @@ SELECT rls_safe_execute('CREATE POLICY "rls_delete_inspiration_items" ON inspira
 
 -- ───────────────────────────────────────────
 -- Step 8: 确保 authenticated 拥有必要的基础权限（RLS 策略再做细粒度控制）
+-- 使用安全函数执行，防止权限不足或对象不存在导致中断
 -- ───────────────────────────────────────────
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+SELECT rls_safe_execute('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;');
+SELECT rls_safe_execute('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;');
+SELECT rls_safe_execute('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;');
 
 -- 再次确认 anon 无任何权限
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+SELECT rls_safe_execute('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;');
+SELECT rls_safe_execute('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;');
+SELECT rls_safe_execute('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;');
 
 -- ───────────────────────────────────────────
 -- 完成状态
