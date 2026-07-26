@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { searchFabricSuppliers, getFabricDetails, getSeasonFabrics, searchFabricsByTheme } from "@/services/crawler";
 
 export const runtime = "edge";
@@ -13,6 +13,7 @@ interface Message {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { userMessage, conversationId } = await request.json();
     
     let conversation: any = null;
@@ -338,6 +339,7 @@ ${suppliers.slice(0, 4).map((s: any) => `**${s.name}**
 
 export async function GET(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const url = new URL(request.url);
     const conversationId = url.searchParams.get("conversationId");
     

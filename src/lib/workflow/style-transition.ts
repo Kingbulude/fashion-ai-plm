@@ -136,6 +136,7 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
     event,
     comment,
     responsibleNode,
+    supabase,
   });
 
   return { success: true, newStatus: toStatus, createdTodoId };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -24,6 +24,7 @@ const FALLBACK_FABRICS: FabricRecommendation[] = [
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { category, season } = await request.json();
 
     const fabricRecommendations = await generateJsonArray<FabricRecommendation>({

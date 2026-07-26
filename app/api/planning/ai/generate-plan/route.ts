@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray, generateJson } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -64,6 +64,7 @@ function buildFallback(season: string, theme: string, _category: string, baseCos
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { season, theme, category, targetCost } = await request.json();
 
     let brandDna: any = {

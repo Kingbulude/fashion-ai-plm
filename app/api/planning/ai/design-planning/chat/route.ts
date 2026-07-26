@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -370,6 +370,7 @@ function generateFullDesignPlan(collectedData: any, themeData: any, brandDna: an
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { userMessage, conversationId } = await request.json();
     
     let conversation: any = null;
@@ -456,6 +457,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const url = new URL(request.url);
     const conversationId = url.searchParams.get("conversationId");
     

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -24,6 +24,7 @@ const FALLBACK_COLORS: ColorRecommendation[] = [
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { season, category, brandColors } = await request.json();
 
     const colorRecommendations = await generateJsonArray<ColorRecommendation>({

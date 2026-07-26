@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJson } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -36,6 +36,7 @@ function buildFallback(cost: number, positionMultiplier: number): PricingStrateg
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { cost, category, brandPosition } = await request.json();
 
     const baseCost = cost || 100;

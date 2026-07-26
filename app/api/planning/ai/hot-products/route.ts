@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
 
 export const runtime = "edge";
@@ -25,6 +25,7 @@ const FALLBACK_HOT_PRODUCTS: HotProduct[] = [
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { category, season } = await request.json();
 
     const hotProducts = await generateJsonArray<HotProduct>({

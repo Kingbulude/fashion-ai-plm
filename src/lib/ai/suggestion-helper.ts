@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import {
   AIRoleLevel,
   AISuggestionType,
@@ -23,9 +24,11 @@ export async function createAISuggestion(params: {
   targetTable?: string;
   targetId?: string;
   expireAt?: string;
+  supabase?: SupabaseClient;
 }): Promise<string | null> {
   try {
-    const { data, error } = await supabase
+    const client = params.supabase || supabase;
+    const { data, error } = await client
       .from("ai_suggestions")
       .insert({
         ai_role_level: params.aiRoleLevel,

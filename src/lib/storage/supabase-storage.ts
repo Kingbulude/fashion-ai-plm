@@ -1,8 +1,18 @@
-import { supabase } from "@/lib/db/client";
+import { supabase as globalSupabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET_NAME = "design-assets";
 
-export async function uploadFile(file: File, path: string): Promise<{ url: string; path: string }> {
+function getClient(client?: SupabaseClient): SupabaseClient {
+  return client || globalSupabase;
+}
+
+export async function uploadFile(
+  file: File,
+  path: string,
+  client?: SupabaseClient
+): Promise<{ url: string; path: string }> {
+  const supabase = getClient(client);
   const fileExt = file.name.split(".").pop();
   const fileName = `${path}/${Date.now()}.${fileExt}`;
 
@@ -24,7 +34,8 @@ export async function uploadFile(file: File, path: string): Promise<{ url: strin
   return { url: urlData.publicUrl, path: fileName };
 }
 
-export async function getFileUrl(path: string): Promise<string> {
+export async function getFileUrl(path: string, client?: SupabaseClient): Promise<string> {
+  const supabase = getClient(client);
   const { data } = supabase.storage
     .from(BUCKET_NAME)
     .getPublicUrl(path);
@@ -32,7 +43,8 @@ export async function getFileUrl(path: string): Promise<string> {
   return data.publicUrl;
 }
 
-export async function deleteFile(path: string): Promise<void> {
+export async function deleteFile(path: string, client?: SupabaseClient): Promise<void> {
+  const supabase = getClient(client);
   const { error } = await supabase.storage
     .from(BUCKET_NAME)
     .remove([path]);
@@ -42,7 +54,8 @@ export async function deleteFile(path: string): Promise<void> {
   }
 }
 
-export async function createBucketIfNotExists(): Promise<void> {
+export async function createBucketIfNotExists(client?: SupabaseClient): Promise<void> {
+  const supabase = getClient(client);
   const { data: buckets } = await supabase.storage.listBuckets();
 
   const bucketExists = buckets?.some((b) => b.name === BUCKET_NAME);

@@ -4,13 +4,14 @@
 // 此处理器负责：记录跨工序流转日志 + 预留飞书/企微通知扩展点
 
 import { AppEvent, EventHandler } from "../types";
-import { supabase } from "@/lib/db/client";
+import { supabase as globalSupabase } from "@/lib/db/client";
 import { statusToProcessNode, STATUS_CONFIG } from "@/lib/workflow/style-state-machine";
 
 // 状态变更 → 跨工序信息流转
 export const styleStatusChangeHandler: EventHandler = async (event: AppEvent) => {
   const payload = event.payload as any;
   const { styleId, fromStatus, toStatus, brandId: _brandId, responsibleNode, userId } = payload;
+  const supabase = payload.supabase || globalSupabase;
 
   if (!styleId || !fromStatus || !toStatus) return;
 

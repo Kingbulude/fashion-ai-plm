@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/auth/supabase";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
@@ -23,6 +23,7 @@ const FALLBACK_TRENDS: TrendItem[] = [
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const { season, category } = await request.json();
 
     const trends = await generateJsonArray<TrendItem>({
@@ -65,6 +66,7 @@ ${t.description}
       content: `AI企划专员基于市场数据分析，发现以下高置信度趋势：\n\n${suggestionContent}\n\n建议在企划阶段重点参考这些趋势方向。`,
       proposedData: { trends, season, category },
       targetTable: "planning_ai_results",
+      supabase,
     });
 
     return NextResponse.json({ trends, confidence: Math.round(trends.reduce((sum, t) => sum + (t.confidence || 0), 0) / Math.max(trends.length, 1)) });

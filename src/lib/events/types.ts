@@ -67,6 +67,8 @@ export interface BaseEventPayload {
   userId?: string;
   // 品牌 ID（用于多租户隔离）
   brandId?: string;
+  // 请求级 Supabase Client（用于服务端事件处理时遵守 RLS）
+  supabase?: import("@supabase/supabase-js").SupabaseClient;
 }
 
 // ─── 具体事件载荷 ───

@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // 上传文件到 Supabase Storage
-    const { url: fileUrl, path: filePath } = await uploadFile(file, `styles/${id}`);
+    const { url: fileUrl, path: filePath } = await uploadFile(file, `styles/${id}`, supabase);
 
     // 获取当前最大版本号
     const { data: existingAssets } = await supabase
