@@ -439,7 +439,7 @@ export default function SuppliersPage() {
                 : "bg-card text-muted-foreground border-border hover:border-navy-200"
             }`}
           >
-            全部 ({filtered.length})
+            全部 ({suppliers.length})
           </button>
           {types.map((t) => {
             const count = suppliers.filter((s) => s.type === t).length;
@@ -476,18 +476,21 @@ export default function SuppliersPage() {
             />
           </div>
 
-          <select
-            value={typeFilter || ""}
-            onChange={(e) => setTypeFilter(e.target.value || null)}
-            className="h-10 px-3 rounded-lg border border-border text-sm bg-card hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">全类型</option>
-            {types.map((t) => (
-              <option key={t} value={t}>
-                {SUPPLIER_TYPES[t].label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={typeFilter || ""}
+              onChange={(e) => setTypeFilter(e.target.value || null)}
+              className="h-10 w-full px-3 pr-9 rounded-lg border border-border text-sm bg-card appearance-none hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">全类型</option>
+              {types.map((t) => (
+                <option key={t} value={t}>
+                  {SUPPLIER_TYPES[t].label}
+                </option>
+              ))}
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+          </div>
 
           {(search || typeFilter) && (
             <Button
@@ -566,7 +569,7 @@ export default function SuppliersPage() {
                   <X className="h-4 w-4" />
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-5 px-1">
+              <CardContent className="space-y-5 px-6 pb-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-slate-700 mb-1.5 block">
@@ -581,17 +584,20 @@ export default function SuppliersPage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-700 mb-1.5 block">类型</label>
-                    <select
-                      value={form.type}
-                      onChange={(e) => setForm({ ...form, type: e.target.value })}
-                      className="h-10 px-3 rounded-md border border-slate-200 text-sm w-full focus:outline-none focus:ring-2 focus:ring-navy-200"
-                    >
-                      {types.map((t) => (
-                        <option key={t} value={t}>
-                          {SUPPLIER_TYPES[t].label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={form.type}
+                        onChange={(e) => setForm({ ...form, type: e.target.value })}
+                        className="h-10 w-full px-3 pr-9 rounded-md border border-slate-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy-200"
+                      >
+                        {types.map((t) => (
+                          <option key={t} value={t}>
+                            {SUPPLIER_TYPES[t].label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
@@ -663,16 +669,19 @@ export default function SuppliersPage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-700 mb-1.5 block">价格等级</label>
-                    <select
-                      value={form.priceLevel}
-                      onChange={(e) => setForm({ ...form, priceLevel: e.target.value })}
-                      className="h-10 px-3 rounded-md border border-slate-200 text-sm w-full focus:outline-none focus:ring-2 focus:ring-navy-200"
-                    >
-                      <option value="">选择</option>
-                      <option value="low">低价</option>
-                      <option value="medium">中等</option>
-                      <option value="high">高价</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={form.priceLevel}
+                        onChange={(e) => setForm({ ...form, priceLevel: e.target.value })}
+                        className="h-10 w-full px-3 pr-9 rounded-md border border-slate-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy-200"
+                      >
+                        <option value="">选择</option>
+                        <option value="low">低价</option>
+                        <option value="medium">中价</option>
+                        <option value="high">高价</option>
+                      </select>
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
@@ -754,28 +763,34 @@ export default function SuppliersPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-slate-700 mb-1.5 block">物料类型</label>
-                      <select
-                        value={matchForm.materialType}
-                        onChange={(e) => setMatchForm({ ...matchForm, materialType: e.target.value })}
-                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
-                      >
-                        <option value="fabric">面料</option>
-                        <option value="accessory">辅料</option>
-                        <option value="factory">加工厂</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={matchForm.materialType}
+                          onChange={(e) => setMatchForm({ ...matchForm, materialType: e.target.value })}
+                          className="h-9 w-full rounded-md border border-slate-200 px-3 pr-8 text-sm appearance-none"
+                        >
+                          <option value="fabric">面料</option>
+                          <option value="accessory">辅料</option>
+                          <option value="factory">加工厂</option>
+                        </select>
+                        <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground rotate-90 pointer-events-none" />
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-slate-700 mb-1.5 block">最低评分</label>
-                      <select
-                        value={matchForm.minRating}
-                        onChange={(e) => setMatchForm({ ...matchForm, minRating: e.target.value })}
-                        className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm"
-                      >
-                        <option value="0">不限</option>
-                        <option value="3">3分以上</option>
-                        <option value="4">4分以上</option>
-                        <option value="4.5">4.5分以上</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={matchForm.minRating}
+                          onChange={(e) => setMatchForm({ ...matchForm, minRating: e.target.value })}
+                          className="h-9 w-full rounded-md border border-slate-200 px-3 pr-8 text-sm appearance-none"
+                        >
+                          <option value="0">不限</option>
+                          <option value="3">3分以上</option>
+                          <option value="4">4分以上</option>
+                          <option value="4.5">4.5分以上</option>
+                        </select>
+                        <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground rotate-90 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -998,7 +1013,7 @@ function SupplierCard({ supplier, onClick }: { supplier: any; onClick: () => voi
                 价格等级
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {supplier.priceLevel === "low" ? "低价" : supplier.priceLevel === "medium" ? "中等" : "高价"}
+                {supplier.priceLevel === "low" ? "低价" : supplier.priceLevel === "medium" ? "中价" : supplier.priceLevel === "high" ? "高价" : "-"}
               </p>
             </div>
           ) : null}
