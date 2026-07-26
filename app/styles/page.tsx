@@ -254,13 +254,13 @@ export default function StylesPage() {
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-navy-700 to-terracotta-400 transition-all"
+                    className="h-full rounded-full bg-gradient-to-r from-navy-700 to-terracotta-400 transition-all min-w-[2px]"
                     style={{
                       width: `${(() => {
                         const completed = allStyles.filter(
                           (s) => s.status === "produced" || s.status === "selling" || s.status === "sold" || s.status === "archived"
                         ).length;
-                        return allStyles.length > 0 ? (completed / allStyles.length) * 100 : 0;
+                        return allStyles.length > 0 ? Math.max((completed / allStyles.length) * 100, 0.5) : 0;
                       })()}%`,
                     }}
                   />
@@ -490,29 +490,35 @@ export default function StylesPage() {
           </div>
 
           {categories.length > 0 && (
-            <select
-              value={categoryFilter || ""}
-              onChange={(e) => setCategoryFilter(e.target.value || null)}
-              className="h-9 px-3 rounded-lg border border-border text-sm bg-card hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">全品类</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={categoryFilter || ""}
+                onChange={(e) => setCategoryFilter(e.target.value || null)}
+                className="h-9 w-full px-3 pr-9 rounded-lg border border-border text-sm bg-card appearance-none hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">全品类</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+            </div>
           )}
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="h-9 px-3 rounded-lg border border-border text-sm bg-card hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="updatedAt">按更新时间</option>
-            <option value="createdAt">按创建时间</option>
-            <option value="styleNo">按款号</option>
-          </select>
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="h-9 w-full px-3 pr-9 rounded-lg border border-border text-sm bg-card appearance-none hover:border-navy-200 focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="updatedAt">按更新时间</option>
+              <option value="createdAt">按创建时间</option>
+              <option value="styleNo">按款号</option>
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-90 pointer-events-none" />
+          </div>
 
           {(statusFilter || categoryFilter || search) && (
             <Button
