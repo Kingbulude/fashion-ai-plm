@@ -80,6 +80,19 @@ REVOKE EXECUTE ON FUNCTION is_company_admin_or_boss(UUID) FROM anon;
 REVOKE EXECUTE ON FUNCTION is_brand_admin_or_boss(UUID) FROM anon;
 
 -- ───────────────────────────────────────────
+-- 安全执行策略 DDL：表或列不存在时静默跳过，不中断整个脚本
+-- ───────────────────────────────────────────
+CREATE OR REPLACE FUNCTION rls_safe_execute(p_sql TEXT)
+RETURNS void AS $$
+BEGIN
+  EXECUTE p_sql;
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+  WHEN undefined_column THEN NULL;
+  WHEN duplicate_object THEN NULL;
+END $$ LANGUAGE plpgsql;
+
+-- ───────────────────────────────────────────
 -- Step 3: 清理所有现有宽松策略
 -- 安全起见：删除 public schema 下除迁移表外所有表的现有策略，再重建
 -- ───────────────────────────────────────────
@@ -142,27 +155,27 @@ BEGIN
       AND column_name = 'brand_id'
       AND table_name <> ALL (excluded_tables)
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', tbl.table_name, tbl.table_name);
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', tbl.table_name, tbl.table_name));
 
-    EXECUTE format(
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_select_%1$I" ON %1$I FOR SELECT TO authenticated USING (brand_id IN (SELECT get_user_brand_ids()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_insert_%1$I" ON %1$I FOR INSERT TO authenticated WITH CHECK (brand_id IN (SELECT get_user_brand_ids()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_update_%1$I" ON %1$I FOR UPDATE TO authenticated USING (brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IN (SELECT get_user_brand_ids()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_delete_%1$I" ON %1$I FOR DELETE TO authenticated USING (brand_id IN (SELECT get_user_brand_ids()));',
       tbl.table_name
-    );
+    ));
   END LOOP;
 END $$;
 
@@ -187,27 +200,27 @@ BEGIN
       )
       AND c.table_name <> 'companies'
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', tbl.table_name, tbl.table_name);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', tbl.table_name, tbl.table_name);
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', tbl.table_name, tbl.table_name));
+    PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', tbl.table_name, tbl.table_name));
 
-    EXECUTE format(
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_select_%1$I" ON %1$I FOR SELECT TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_insert_%1$I" ON %1$I FOR INSERT TO authenticated WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_update_%1$I" ON %1$I FOR UPDATE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())) WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));',
       tbl.table_name
-    );
-    EXECUTE format(
+    ));
+    PERFORM rls_safe_execute(format(
       'CREATE POLICY "rls_delete_%1$I" ON %1$I FOR DELETE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));',
       tbl.table_name
-    );
+    ));
   END LOOP;
 END $$;
 
@@ -216,94 +229,64 @@ END $$;
 -- ───────────────────────────────────────────
 
 -- 7.1 profiles：用户只能读写自己的 profile
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'profiles') THEN
-    DROP POLICY IF EXISTS "rls_select_profiles" ON profiles;
-    CREATE POLICY "rls_select_profiles" ON profiles FOR SELECT TO authenticated USING (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_insert_profiles" ON profiles;
-    CREATE POLICY "rls_insert_profiles" ON profiles FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_update_profiles" ON profiles;
-    CREATE POLICY "rls_update_profiles" ON profiles FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_delete_profiles" ON profiles;
-    CREATE POLICY "rls_delete_profiles" ON profiles FOR DELETE TO authenticated USING (user_id = auth.uid());
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_profiles" ON profiles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_profiles" ON profiles FOR SELECT TO authenticated USING (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_profiles" ON profiles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_profiles" ON profiles FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_profiles" ON profiles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_profiles" ON profiles FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_profiles" ON profiles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_profiles" ON profiles FOR DELETE TO authenticated USING (user_id = auth.uid());');
 
 -- 7.2 user_brands：用户只能看到自己关联的品牌
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_brands') THEN
-    DROP POLICY IF EXISTS "rls_select_user_brands" ON user_brands;
-    CREATE POLICY "rls_select_user_brands" ON user_brands FOR SELECT TO authenticated USING (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_insert_user_brands" ON user_brands;
-    CREATE POLICY "rls_insert_user_brands" ON user_brands FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_update_user_brands" ON user_brands;
-    CREATE POLICY "rls_update_user_brands" ON user_brands FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-    DROP POLICY IF EXISTS "rls_delete_user_brands" ON user_brands;
-    CREATE POLICY "rls_delete_user_brands" ON user_brands FOR DELETE TO authenticated USING (user_id = auth.uid());
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_user_brands" ON user_brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_user_brands" ON user_brands FOR SELECT TO authenticated USING (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_user_brands" ON user_brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_user_brands" ON user_brands FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_user_brands" ON user_brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_user_brands" ON user_brands FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_user_brands" ON user_brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_user_brands" ON user_brands FOR DELETE TO authenticated USING (user_id = auth.uid());');
 
 -- 7.3 companies：已认证用户可读；写操作仅限本公司 admin/boss
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'companies') THEN
-    DROP POLICY IF EXISTS "rls_select_companies" ON companies;
-    CREATE POLICY "rls_select_companies" ON companies FOR SELECT TO authenticated USING (true);
-    DROP POLICY IF EXISTS "rls_insert_companies" ON companies;
-    CREATE POLICY "rls_insert_companies" ON companies FOR INSERT TO authenticated WITH CHECK (is_company_admin_or_boss(id));
-    DROP POLICY IF EXISTS "rls_update_companies" ON companies;
-    CREATE POLICY "rls_update_companies" ON companies FOR UPDATE TO authenticated USING (is_company_admin_or_boss(id)) WITH CHECK (is_company_admin_or_boss(id));
-    DROP POLICY IF EXISTS "rls_delete_companies" ON companies;
-    CREATE POLICY "rls_delete_companies" ON companies FOR DELETE TO authenticated USING (is_company_admin_or_boss(id));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_companies" ON companies;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_companies" ON companies FOR SELECT TO authenticated USING (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_companies" ON companies;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_companies" ON companies FOR INSERT TO authenticated WITH CHECK (is_company_admin_or_boss(id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_companies" ON companies;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_companies" ON companies FOR UPDATE TO authenticated USING (is_company_admin_or_boss(id)) WITH CHECK (is_company_admin_or_boss(id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_companies" ON companies;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_companies" ON companies FOR DELETE TO authenticated USING (is_company_admin_or_boss(id));');
 
 -- 7.4 brands：已认证用户可读；写操作仅限公司 admin/boss
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'brands') THEN
-    DROP POLICY IF EXISTS "rls_select_brands" ON brands;
-    CREATE POLICY "rls_select_brands" ON brands FOR SELECT TO authenticated USING (true);
-    DROP POLICY IF EXISTS "rls_insert_brands" ON brands;
-    CREATE POLICY "rls_insert_brands" ON brands FOR INSERT TO authenticated WITH CHECK (is_company_admin_or_boss(company_id));
-    DROP POLICY IF EXISTS "rls_update_brands" ON brands;
-    CREATE POLICY "rls_update_brands" ON brands FOR UPDATE TO authenticated USING (is_company_admin_or_boss(company_id)) WITH CHECK (is_company_admin_or_boss(company_id));
-    DROP POLICY IF EXISTS "rls_delete_brands" ON brands;
-    CREATE POLICY "rls_delete_brands" ON brands FOR DELETE TO authenticated USING (is_company_admin_or_boss(company_id));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_brands" ON brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_brands" ON brands FOR SELECT TO authenticated USING (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_brands" ON brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_brands" ON brands FOR INSERT TO authenticated WITH CHECK (is_company_admin_or_boss(company_id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_brands" ON brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_brands" ON brands FOR UPDATE TO authenticated USING (is_company_admin_or_boss(company_id)) WITH CHECK (is_company_admin_or_boss(company_id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_brands" ON brands;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_brands" ON brands FOR DELETE TO authenticated USING (is_company_admin_or_boss(company_id));');
 
 -- 7.5 seasons：已认证用户可读；写操作仅限品牌 admin/boss
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'seasons') THEN
-    DROP POLICY IF EXISTS "rls_select_seasons" ON seasons;
-    CREATE POLICY "rls_select_seasons" ON seasons FOR SELECT TO authenticated USING (true);
-    DROP POLICY IF EXISTS "rls_insert_seasons" ON seasons;
-    CREATE POLICY "rls_insert_seasons" ON seasons FOR INSERT TO authenticated WITH CHECK (is_brand_admin_or_boss(brand_id));
-    DROP POLICY IF EXISTS "rls_update_seasons" ON seasons;
-    CREATE POLICY "rls_update_seasons" ON seasons FOR UPDATE TO authenticated USING (is_brand_admin_or_boss(brand_id)) WITH CHECK (is_brand_admin_or_boss(brand_id));
-    DROP POLICY IF EXISTS "rls_delete_seasons" ON seasons;
-    CREATE POLICY "rls_delete_seasons" ON seasons FOR DELETE TO authenticated USING (is_brand_admin_or_boss(brand_id));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_seasons" ON seasons;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_seasons" ON seasons FOR SELECT TO authenticated USING (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_seasons" ON seasons;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_seasons" ON seasons FOR INSERT TO authenticated WITH CHECK (is_brand_admin_or_boss(brand_id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_seasons" ON seasons;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_seasons" ON seasons FOR UPDATE TO authenticated USING (is_brand_admin_or_boss(brand_id)) WITH CHECK (is_brand_admin_or_boss(brand_id));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_seasons" ON seasons;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_seasons" ON seasons FOR DELETE TO authenticated USING (is_brand_admin_or_boss(brand_id));');
 
 -- 7.6 todos：brand_id 可为 NULL，NULL 视为全局待办
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'todos') THEN
-    DROP POLICY IF EXISTS "rls_select_todos" ON todos;
-    CREATE POLICY "rls_select_todos" ON todos FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_insert_todos" ON todos;
-    CREATE POLICY "rls_insert_todos" ON todos FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_update_todos" ON todos;
-    CREATE POLICY "rls_update_todos" ON todos FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_delete_todos" ON todos;
-    CREATE POLICY "rls_delete_todos" ON todos FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_todos" ON todos;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_todos" ON todos FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_todos" ON todos;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_todos" ON todos FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_todos" ON todos;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_todos" ON todos FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_todos" ON todos;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_todos" ON todos FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
 
 -- 7.7 仅含 style_id 的子表：通过 styles 关联到品牌
 DO $$
@@ -314,203 +297,143 @@ BEGIN
   FOREACH style_tbl IN ARRAY style_tables
   LOOP
     IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = style_tbl) THEN
-      EXECUTE format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', style_tbl, style_tbl);
-      EXECUTE format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', style_tbl, style_tbl);
-      EXECUTE format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', style_tbl, style_tbl);
-      EXECUTE format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', style_tbl, style_tbl);
+      PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', style_tbl, style_tbl));
+      PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', style_tbl, style_tbl));
+      PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', style_tbl, style_tbl));
+      PERFORM rls_safe_execute(format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', style_tbl, style_tbl));
 
-      EXECUTE format(
+      PERFORM rls_safe_execute(format(
         'CREATE POLICY "rls_select_%1$I" ON %1$I FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
         style_tbl
-      );
-      EXECUTE format(
+      ));
+      PERFORM rls_safe_execute(format(
         'CREATE POLICY "rls_insert_%1$I" ON %1$I FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
         style_tbl
-      );
-      EXECUTE format(
+      ));
+      PERFORM rls_safe_execute(format(
         'CREATE POLICY "rls_update_%1$I" ON %1$I FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
         style_tbl
-      );
-      EXECUTE format(
+      ));
+      PERFORM rls_safe_execute(format(
         'CREATE POLICY "rls_delete_%1$I" ON %1$I FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
         style_tbl
-      );
+      ));
     END IF;
   END LOOP;
 END $$;
 
 -- 7.8 mood_boards 家族：通过 planning 关联到品牌
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'mood_boards') THEN
-    DROP POLICY IF EXISTS "rls_select_mood_boards" ON mood_boards;
-    CREATE POLICY "rls_select_mood_boards" ON mood_boards FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_insert_mood_boards" ON mood_boards;
-    CREATE POLICY "rls_insert_mood_boards" ON mood_boards FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_update_mood_boards" ON mood_boards;
-    CREATE POLICY "rls_update_mood_boards" ON mood_boards FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_delete_mood_boards" ON mood_boards;
-    CREATE POLICY "rls_delete_mood_boards" ON mood_boards FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_mood_boards" ON mood_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_mood_boards" ON mood_boards FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_mood_boards" ON mood_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_mood_boards" ON mood_boards FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_mood_boards" ON mood_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_mood_boards" ON mood_boards FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_mood_boards" ON mood_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_mood_boards" ON mood_boards FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM planning p WHERE p.id = mood_boards.planning_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'mood_board_shapes') THEN
-    DROP POLICY IF EXISTS "rls_select_mood_board_shapes" ON mood_board_shapes;
-    CREATE POLICY "rls_select_mood_board_shapes" ON mood_board_shapes FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_insert_mood_board_shapes" ON mood_board_shapes;
-    CREATE POLICY "rls_insert_mood_board_shapes" ON mood_board_shapes FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_update_mood_board_shapes" ON mood_board_shapes;
-    CREATE POLICY "rls_update_mood_board_shapes" ON mood_board_shapes FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_delete_mood_board_shapes" ON mood_board_shapes;
-    CREATE POLICY "rls_delete_mood_board_shapes" ON mood_board_shapes FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_mood_board_shapes" ON mood_board_shapes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_mood_board_shapes" ON mood_board_shapes FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_mood_board_shapes" ON mood_board_shapes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_mood_board_shapes" ON mood_board_shapes FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_mood_board_shapes" ON mood_board_shapes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_mood_board_shapes" ON mood_board_shapes FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_mood_board_shapes" ON mood_board_shapes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_mood_board_shapes" ON mood_board_shapes FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_shapes.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'mood_board_areas') THEN
-    DROP POLICY IF EXISTS "rls_select_mood_board_areas" ON mood_board_areas;
-    CREATE POLICY "rls_select_mood_board_areas" ON mood_board_areas FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_insert_mood_board_areas" ON mood_board_areas;
-    CREATE POLICY "rls_insert_mood_board_areas" ON mood_board_areas FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_update_mood_board_areas" ON mood_board_areas;
-    CREATE POLICY "rls_update_mood_board_areas" ON mood_board_areas FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_delete_mood_board_areas" ON mood_board_areas;
-    CREATE POLICY "rls_delete_mood_board_areas" ON mood_board_areas FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_mood_board_areas" ON mood_board_areas;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_mood_board_areas" ON mood_board_areas FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_mood_board_areas" ON mood_board_areas;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_mood_board_areas" ON mood_board_areas FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_mood_board_areas" ON mood_board_areas;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_mood_board_areas" ON mood_board_areas FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_mood_board_areas" ON mood_board_areas;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_mood_board_areas" ON mood_board_areas FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_areas.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'mood_board_assets') THEN
-    DROP POLICY IF EXISTS "rls_select_mood_board_assets" ON mood_board_assets;
-    CREATE POLICY "rls_select_mood_board_assets" ON mood_board_assets FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_insert_mood_board_assets" ON mood_board_assets;
-    CREATE POLICY "rls_insert_mood_board_assets" ON mood_board_assets FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_update_mood_board_assets" ON mood_board_assets;
-    CREATE POLICY "rls_update_mood_board_assets" ON mood_board_assets FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-    DROP POLICY IF EXISTS "rls_delete_mood_board_assets" ON mood_board_assets;
-    CREATE POLICY "rls_delete_mood_board_assets" ON mood_board_assets FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_mood_board_assets" ON mood_board_assets;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_mood_board_assets" ON mood_board_assets FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_mood_board_assets" ON mood_board_assets;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_mood_board_assets" ON mood_board_assets FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_mood_board_assets" ON mood_board_assets;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_mood_board_assets" ON mood_board_assets FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_mood_board_assets" ON mood_board_assets;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_mood_board_assets" ON mood_board_assets FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM mood_boards mb JOIN planning p ON p.id = mb.planning_id WHERE mb.id = mood_board_assets.board_id AND p.brand_id IN (SELECT get_user_brand_ids())));');
 
 -- 7.9 pipeline_runs：系统级流水，已认证用户可读写
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'pipeline_runs') THEN
-    DROP POLICY IF EXISTS "rls_select_pipeline_runs" ON pipeline_runs;
-    CREATE POLICY "rls_select_pipeline_runs" ON pipeline_runs FOR SELECT TO authenticated USING (true);
-    DROP POLICY IF EXISTS "rls_insert_pipeline_runs" ON pipeline_runs;
-    CREATE POLICY "rls_insert_pipeline_runs" ON pipeline_runs FOR INSERT TO authenticated WITH CHECK (true);
-    DROP POLICY IF EXISTS "rls_update_pipeline_runs" ON pipeline_runs;
-    CREATE POLICY "rls_update_pipeline_runs" ON pipeline_runs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "rls_delete_pipeline_runs" ON pipeline_runs;
-    CREATE POLICY "rls_delete_pipeline_runs" ON pipeline_runs FOR DELETE TO authenticated USING (true);
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_pipeline_runs" ON pipeline_runs;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_pipeline_runs" ON pipeline_runs FOR SELECT TO authenticated USING (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_pipeline_runs" ON pipeline_runs;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_pipeline_runs" ON pipeline_runs FOR INSERT TO authenticated WITH CHECK (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_pipeline_runs" ON pipeline_runs;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_pipeline_runs" ON pipeline_runs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_pipeline_runs" ON pipeline_runs;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_pipeline_runs" ON pipeline_runs FOR DELETE TO authenticated USING (true);');
 
 -- 7.10 工序角色/AI skill 关联表：通过父表 company_id 隔离
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'process_role_ai_skills') THEN
-    DROP POLICY IF EXISTS "rls_select_process_role_ai_skills" ON process_role_ai_skills;
-    CREATE POLICY "rls_select_process_role_ai_skills" ON process_role_ai_skills FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_insert_process_role_ai_skills" ON process_role_ai_skills;
-    CREATE POLICY "rls_insert_process_role_ai_skills" ON process_role_ai_skills FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_update_process_role_ai_skills" ON process_role_ai_skills;
-    CREATE POLICY "rls_update_process_role_ai_skills" ON process_role_ai_skills FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))) WITH CHECK (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_delete_process_role_ai_skills" ON process_role_ai_skills;
-    CREATE POLICY "rls_delete_process_role_ai_skills" ON process_role_ai_skills FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_process_role_ai_skills" ON process_role_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_process_role_ai_skills" ON process_role_ai_skills FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_process_role_ai_skills" ON process_role_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_process_role_ai_skills" ON process_role_ai_skills FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_process_role_ai_skills" ON process_role_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_process_role_ai_skills" ON process_role_ai_skills FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))) WITH CHECK (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_process_role_ai_skills" ON process_role_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_process_role_ai_skills" ON process_role_ai_skills FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM process_roles pr WHERE pr.id = process_role_ai_skills.process_role_id AND pr.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'process_owner_scope_ai_skills') THEN
-    DROP POLICY IF EXISTS "rls_select_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;
-    CREATE POLICY "rls_select_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_insert_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;
-    CREATE POLICY "rls_insert_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_update_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;
-    CREATE POLICY "rls_update_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))) WITH CHECK (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-    DROP POLICY IF EXISTS "rls_delete_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;
-    CREATE POLICY "rls_delete_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))) WITH CHECK (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_process_owner_scope_ai_skills" ON process_owner_scope_ai_skills FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM process_owner_scopes pos WHERE pos.id = process_owner_scope_ai_skills.scope_id AND pos.company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())));');
 
 -- 7.11 user_process_roles / user_process_owner_scopes：brand_id 可能为空，按 company_id 隔离
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_process_roles') THEN
-    DROP POLICY IF EXISTS "rls_select_user_process_roles" ON user_process_roles;
-    CREATE POLICY "rls_select_user_process_roles" ON user_process_roles FOR SELECT TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_insert_user_process_roles" ON user_process_roles;
-    CREATE POLICY "rls_insert_user_process_roles" ON user_process_roles FOR INSERT TO authenticated WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_update_user_process_roles" ON user_process_roles;
-    CREATE POLICY "rls_update_user_process_roles" ON user_process_roles FOR UPDATE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())) WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_delete_user_process_roles" ON user_process_roles;
-    CREATE POLICY "rls_delete_user_process_roles" ON user_process_roles FOR DELETE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_user_process_roles" ON user_process_roles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_user_process_roles" ON user_process_roles FOR SELECT TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_user_process_roles" ON user_process_roles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_user_process_roles" ON user_process_roles FOR INSERT TO authenticated WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_user_process_roles" ON user_process_roles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_user_process_roles" ON user_process_roles FOR UPDATE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())) WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_user_process_roles" ON user_process_roles;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_user_process_roles" ON user_process_roles FOR DELETE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_process_owner_scopes') THEN
-    DROP POLICY IF EXISTS "rls_select_user_process_owner_scopes" ON user_process_owner_scopes;
-    CREATE POLICY "rls_select_user_process_owner_scopes" ON user_process_owner_scopes FOR SELECT TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_insert_user_process_owner_scopes" ON user_process_owner_scopes;
-    CREATE POLICY "rls_insert_user_process_owner_scopes" ON user_process_owner_scopes FOR INSERT TO authenticated WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_update_user_process_owner_scopes" ON user_process_owner_scopes;
-    CREATE POLICY "rls_update_user_process_owner_scopes" ON user_process_owner_scopes FOR UPDATE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())) WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-    DROP POLICY IF EXISTS "rls_delete_user_process_owner_scopes" ON user_process_owner_scopes;
-    CREATE POLICY "rls_delete_user_process_owner_scopes" ON user_process_owner_scopes FOR DELETE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_user_process_owner_scopes" ON user_process_owner_scopes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_user_process_owner_scopes" ON user_process_owner_scopes FOR SELECT TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_user_process_owner_scopes" ON user_process_owner_scopes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_user_process_owner_scopes" ON user_process_owner_scopes FOR INSERT TO authenticated WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_user_process_owner_scopes" ON user_process_owner_scopes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_user_process_owner_scopes" ON user_process_owner_scopes FOR UPDATE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid())) WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_user_process_owner_scopes" ON user_process_owner_scopes;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_user_process_owner_scopes" ON user_process_owner_scopes FOR DELETE TO authenticated USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));');
 
 -- 7.12 design_feedback_items / inspiration_boards / inspiration_items：brand_id 可为 NULL
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'design_feedback_items') THEN
-    DROP POLICY IF EXISTS "rls_select_design_feedback_items" ON design_feedback_items;
-    CREATE POLICY "rls_select_design_feedback_items" ON design_feedback_items FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_insert_design_feedback_items" ON design_feedback_items;
-    CREATE POLICY "rls_insert_design_feedback_items" ON design_feedback_items FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_update_design_feedback_items" ON design_feedback_items;
-    CREATE POLICY "rls_update_design_feedback_items" ON design_feedback_items FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_delete_design_feedback_items" ON design_feedback_items;
-    CREATE POLICY "rls_delete_design_feedback_items" ON design_feedback_items FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_design_feedback_items" ON design_feedback_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_design_feedback_items" ON design_feedback_items FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_design_feedback_items" ON design_feedback_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_design_feedback_items" ON design_feedback_items FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_design_feedback_items" ON design_feedback_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_design_feedback_items" ON design_feedback_items FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_design_feedback_items" ON design_feedback_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_design_feedback_items" ON design_feedback_items FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'inspiration_boards') THEN
-    DROP POLICY IF EXISTS "rls_select_inspiration_boards" ON inspiration_boards;
-    CREATE POLICY "rls_select_inspiration_boards" ON inspiration_boards FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_insert_inspiration_boards" ON inspiration_boards;
-    CREATE POLICY "rls_insert_inspiration_boards" ON inspiration_boards FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_update_inspiration_boards" ON inspiration_boards;
-    CREATE POLICY "rls_update_inspiration_boards" ON inspiration_boards FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_delete_inspiration_boards" ON inspiration_boards;
-    CREATE POLICY "rls_delete_inspiration_boards" ON inspiration_boards FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_inspiration_boards" ON inspiration_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_inspiration_boards" ON inspiration_boards FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_inspiration_boards" ON inspiration_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_inspiration_boards" ON inspiration_boards FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_inspiration_boards" ON inspiration_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_inspiration_boards" ON inspiration_boards FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_inspiration_boards" ON inspiration_boards;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_inspiration_boards" ON inspiration_boards FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'inspiration_items') THEN
-    DROP POLICY IF EXISTS "rls_select_inspiration_items" ON inspiration_items;
-    CREATE POLICY "rls_select_inspiration_items" ON inspiration_items FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_insert_inspiration_items" ON inspiration_items;
-    CREATE POLICY "rls_insert_inspiration_items" ON inspiration_items FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_update_inspiration_items" ON inspiration_items;
-    CREATE POLICY "rls_update_inspiration_items" ON inspiration_items FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-    DROP POLICY IF EXISTS "rls_delete_inspiration_items" ON inspiration_items;
-    CREATE POLICY "rls_delete_inspiration_items" ON inspiration_items FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));
-  END IF;
-END $$;
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_select_inspiration_items" ON inspiration_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_select_inspiration_items" ON inspiration_items FOR SELECT TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_insert_inspiration_items" ON inspiration_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_insert_inspiration_items" ON inspiration_items FOR INSERT TO authenticated WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_update_inspiration_items" ON inspiration_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_update_inspiration_items" ON inspiration_items FOR UPDATE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids())) WITH CHECK (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
+SELECT rls_safe_execute('DROP POLICY IF EXISTS "rls_delete_inspiration_items" ON inspiration_items;');
+SELECT rls_safe_execute('CREATE POLICY "rls_delete_inspiration_items" ON inspiration_items FOR DELETE TO authenticated USING (brand_id IS NULL OR brand_id IN (SELECT get_user_brand_ids()));');
 
 -- ───────────────────────────────────────────
 -- Step 8: 确保 authenticated 拥有必要的基础权限（RLS 策略再做细粒度控制）
