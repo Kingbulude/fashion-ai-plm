@@ -142,7 +142,8 @@ async function checkMaterialFulfillmentAndAlert(styleId: string, userId: string,
     const responsible = await resolveResponsibleUserByNode(
       "procurement",
       tenant?.brand_id,
-      tenant?.company_id
+      tenant?.company_id,
+      supabase
     );
     if (responsible) {
       assignedTo = responsible.userId;

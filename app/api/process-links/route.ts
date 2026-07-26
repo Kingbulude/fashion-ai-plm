@@ -158,6 +158,7 @@ export async function PUT(request: Request) {
           beforeData,
           afterData: resultData,
           request,
+          supabase,
         }),
         recordVersion({
           tableName: "process_links",
@@ -165,6 +166,7 @@ export async function PUT(request: Request) {
           data: resultData,
           changedBy: userId,
           changeReason: beforeData ? "更新工序链接" : "新建工序链接",
+          supabase,
         }),
       ]);
     } catch (logError) {

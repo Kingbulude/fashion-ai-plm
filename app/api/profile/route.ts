@@ -235,6 +235,7 @@ export async function PUT(request: Request) {
         targetId: userId,
         afterData: resultData,
         request,
+        supabase,
       });
     } catch (logError) {
       console.error("Failed to log operation:", logError);

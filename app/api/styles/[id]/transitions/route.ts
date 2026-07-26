@@ -97,6 +97,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       comment,
       userId: ctx.user.id,
       brandId: style.brand_id,
+      supabase,
     });
 
     if (!result.success) {

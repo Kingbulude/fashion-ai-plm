@@ -3,7 +3,8 @@
 // 2. 执行状态转换
 // 3. 自动生成待办
 
-import { supabase } from "@/lib/db/client";
+import { supabase as globalSupabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import {
   StyleStatus,
   isValidTransition,
@@ -23,6 +24,7 @@ interface TransitionInput {
   userId?: string;
   comment?: string;
   brandId?: string;
+  supabase?: SupabaseClient;
 }
 
 interface TransitionResult {
@@ -34,6 +36,7 @@ interface TransitionResult {
 
 export async function transitionStyle(input: TransitionInput): Promise<TransitionResult> {
   const { styleId, fromStatus, toStatus, event, userId, comment } = input;
+  const supabase = input.supabase || globalSupabase;
 
   // 1. 验证转换合法性
   if (!isValidTransition(fromStatus, toStatus, event)) {
@@ -49,7 +52,7 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
   );
 
   if (transition?.requiredFields) {
-    const check = await checkRequiredFields(styleId, transition.requiredFields);
+    const check = await checkRequiredFields(styleId, transition.requiredFields, supabase);
     if (!check.ok) {
       return { success: false, error: check.reason };
     }
@@ -79,7 +82,7 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
   // 5. 自动创建待办并指派给对应负责人
   let createdTodoId: string | undefined;
   if (transition?.autoCreateTodo) {
-    const styleTenant = await getStyleCompany(styleId);
+    const styleTenant = await getStyleCompany(styleId, supabase);
     const responsibleNode = getTransitionResponsibleNode(transition);
     let assignedTo = userId;
     let assignmentSource = "trigger_user";
@@ -88,7 +91,8 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
       const responsible = await resolveResponsibleUserByNode(
         responsibleNode,
         input.brandId || styleTenant?.brand_id,
-        styleTenant?.company_id
+        styleTenant?.company_id,
+        supabase
       );
       if (responsible) {
         assignedTo = responsible.userId;
@@ -118,7 +122,7 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
 
   // 6. 发射状态变更事件（跨工序信息流转的关键）
   // 触发 AI Pipeline 联动和跨工序通知
-  const eventStyleTenant = await getStyleCompany(styleId);
+  const eventStyleTenant = await getStyleCompany(styleId, supabase);
   const responsibleNode = transition
     ? getTransitionResponsibleNode(transition)
     : null;
@@ -139,7 +143,8 @@ export async function transitionStyle(input: TransitionInput): Promise<Transitio
 
 async function checkRequiredFields(
   styleId: string,
-  fields: string[]
+  fields: string[],
+  supabase: SupabaseClient
 ): Promise<{ ok: boolean; reason?: string }> {
   for (const field of fields) {
     if (field === "design_assets") {
@@ -197,7 +202,7 @@ async function checkRequiredFields(
   return { ok: true };
 }
 
-async function getStyleCompany(styleId: string) {
+async function getStyleCompany(styleId: string, supabase: SupabaseClient) {
   const { data } = await supabase
     .from("styles")
     .select("company_id, brand_id")

@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/db/client";
+import { supabase as globalSupabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 
 // 记录操作日志
 export async function logOperation(params: {
@@ -11,8 +12,10 @@ export async function logOperation(params: {
   beforeData?: any;
   afterData?: any;
   request?: Request;
+  supabase?: SupabaseClient;
 }) {
   try {
+    const supabase = params.supabase || globalSupabase;
     const ipAddress = params.request?.headers.get("x-forwarded-for") || null;
     const userAgent = params.request?.headers.get("user-agent") || null;
 
@@ -40,8 +43,10 @@ export async function recordVersion(params: {
   data: any;
   changedBy: string;
   changeReason?: string;
+  supabase?: SupabaseClient;
 }) {
   try {
+    const supabase = params.supabase || globalSupabase;
     // 获取当前最大版本号
     const { data: versions } = await supabase
       .from("data_versions")
@@ -67,8 +72,13 @@ export async function recordVersion(params: {
 }
 
 // 获取数据历史版本
-export async function getVersions(tableName: string, recordId: string) {
-  const { data, error } = await supabase
+export async function getVersions(
+  tableName: string,
+  recordId: string,
+  supabase?: SupabaseClient
+) {
+  const client = supabase || globalSupabase;
+  const { data, error } = await client
     .from("data_versions")
     .select("*")
     .eq("table_name", tableName)

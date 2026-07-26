@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       targetId: data.id,
       afterData: data,
       request,
+      supabase,
     });
 
     return NextResponse.json(data);
@@ -158,6 +159,7 @@ export async function PUT(request: Request) {
       targetId: id,
       afterData: data,
       request,
+      supabase,
     });
 
     return NextResponse.json(data);

@@ -5,7 +5,8 @@
 // 3. 未设置主管时，回退到当前品牌负责人（brand_manager）
 // 4. 仍无时，返回 null（调用方可继续使用触发人兜底）
 
-import { supabase } from "@/lib/db/client";
+import { supabase as globalSupabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { RoleLevel } from "@/lib/auth/rbac";
 
 interface ResponsibleUserResult {
@@ -25,12 +26,14 @@ interface ResponsibleUserResult {
 export async function resolveResponsibleUserByNode(
   node: string,
   brandId?: string | null,
-  companyId?: string | null
+  companyId?: string | null,
+  supabase?: SupabaseClient
 ): Promise<ResponsibleUserResult | null> {
+  const client = supabase || globalSupabase;
   if (!node) return null;
 
   // 1. 查找覆盖该节点的工序主管类型（按公司隔离）
-  let scopeQuery = supabase
+  let scopeQuery = client
     .from("process_owner_scopes")
     .select("id, key, name, process_nodes, company_id")
     .eq("is_active", true);
@@ -47,7 +50,7 @@ export async function resolveResponsibleUserByNode(
 
   if (matchedScope) {
     // 2. 查找该主管类型下、对应当前品牌的负责人（按公司隔离）
-    let assignmentQuery = supabase
+    let assignmentQuery = client
       .from("user_process_owner_scopes")
       .select("user_id")
       .eq("scope_id", matchedScope.id);
@@ -66,7 +69,7 @@ export async function resolveResponsibleUserByNode(
     const assignment = assignments?.[0];
 
     if (assignment?.user_id) {
-      const { data: profile } = await supabase
+      const { data: profile } = await client
         .from("profiles")
         .select("user_id, name")
         .eq("user_id", assignment.user_id)
@@ -84,7 +87,7 @@ export async function resolveResponsibleUserByNode(
   }
 
   // 3. 回退到品牌负责人
-  return resolveBrandManager(brandId, companyId);
+  return resolveBrandManager(brandId, companyId, client);
 }
 
 /**
@@ -100,19 +103,22 @@ export async function resolveResponsibleUserByLink(
   toNode: string,
   linkType: string,
   brandId?: string | null,
-  companyId?: string | null
+  companyId?: string | null,
+  supabase?: SupabaseClient
 ): Promise<ResponsibleUserResult | null> {
   const responsibleNode = linkType === "feedback" ? fromNode : toNode;
-  return resolveResponsibleUserByNode(responsibleNode, brandId, companyId);
+  return resolveResponsibleUserByNode(responsibleNode, brandId, companyId, supabase);
 }
 
 async function resolveBrandManager(
   brandId?: string | null,
-  companyId?: string | null
+  companyId?: string | null,
+  supabase?: SupabaseClient
 ): Promise<ResponsibleUserResult | null> {
+  const client = supabase || globalSupabase;
   // 优先从 user_brands 中查找当前品牌的 brand_manager
   if (brandId) {
-    const { data: userBrand } = await supabase
+    const { data: userBrand } = await client
       .from("user_brands")
       .select("user_id")
       .eq("brand_id", brandId)
@@ -121,7 +127,7 @@ async function resolveBrandManager(
 
     const userId = userBrand?.[0]?.user_id;
     if (userId) {
-      const { data: profile } = await supabase
+      const { data: profile } = await client
         .from("profiles")
         .select("user_id, name")
         .eq("user_id", userId)
@@ -139,7 +145,7 @@ async function resolveBrandManager(
   }
 
   // 其次从 profiles 中查找 brand_manager 且 brand_id 匹配（按公司隔离）
-  let profileQuery = supabase
+  let profileQuery = client
     .from("profiles")
     .select("user_id, name")
     .eq("role_level", RoleLevel.BRAND_MANAGER);
