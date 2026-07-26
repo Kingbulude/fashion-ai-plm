@@ -20,6 +20,10 @@ import {
   Palette,
   Sparkles,
   Calendar,
+  Target,
+  Shirt,
+  Award,
+  Clock,
 } from "lucide-react";
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; border: string; label: string }> = {
@@ -128,6 +132,18 @@ export default function DesignFeedbackPage() {
     const cat = item.defectCategory || "other";
     categoryStats[cat] = (categoryStats[cat] || 0) + 1;
   }
+
+  const resolveRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
+
+  const styleStats = feedbackItems.reduce((acc: Record<string, number>, item) => {
+    const styleName = item.styles?.styleName || item.styleName || "未知款式";
+    acc[styleName] = (acc[styleName] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topStyles = Object.entries(styleStats)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
 
   return (
     <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
@@ -322,6 +338,102 @@ export default function DesignFeedbackPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 解决率统计 */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Target className="h-4 w-4 text-emerald-500" />
+                解决率统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center mb-3">
+                <div className="relative w-24 h-24">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      className="text-slate-100"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      strokeDasharray={`${resolveRate * 2.64} 264`}
+                      strokeLinecap="round"
+                      className={resolveRate >= 70 ? "text-emerald-500" : resolveRate >= 40 ? "text-amber-500" : "text-red-500"}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-slate-900">{resolveRate}%</span>
+                    <span className="text-[10px] text-slate-500">解决率</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-emerald-50 text-center">
+                  <div className="font-bold text-emerald-700">{stats.resolved}</div>
+                  <div className="text-emerald-600">已解决</div>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50 text-center">
+                  <div className="font-bold text-amber-700">{stats.pending + stats.inProgress}</div>
+                  <div className="text-amber-600">处理中</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 款式问题排行 */}
+          {topStyles.length > 0 && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shirt className="h-4 w-4 text-navy-500" />
+                  问题款式排行
+                </CardTitle>
+                <CardDescription className="text-xs">问题最多的款式</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {topStyles.map(([style, count], i) => {
+                    const maxCount = topStyles[0]?.[1] || 1;
+                    const pct = (count / maxCount) * 100;
+                    return (
+                      <div key={style} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white ${
+                              i === 0 ? "bg-amber-500" : i === 1 ? "bg-slate-400" : i === 2 ? "bg-amber-700" : "bg-slate-300"
+                            }`}>
+                              {i + 1}
+                            </span>
+                            <span className="text-slate-700 truncate max-w-[120px]" title={style}>{style}</span>
+                          </div>
+                          <span className="font-medium text-slate-900">{count}</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              i === 0 ? "bg-amber-400" : i === 1 ? "bg-slate-400" : i === 2 ? "bg-amber-600" : "bg-slate-300"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* 反馈列表 */}
