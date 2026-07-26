@@ -313,27 +313,29 @@ DECLARE
 BEGIN
   FOREACH style_tbl IN ARRAY style_tables
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', style_tbl, style_tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', style_tbl, style_tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', style_tbl, style_tbl);
-    EXECUTE format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', style_tbl, style_tbl);
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = style_tbl) THEN
+      EXECUTE format('DROP POLICY IF EXISTS "rls_select_%I" ON %I;', style_tbl, style_tbl);
+      EXECUTE format('DROP POLICY IF EXISTS "rls_insert_%I" ON %I;', style_tbl, style_tbl);
+      EXECUTE format('DROP POLICY IF EXISTS "rls_update_%I" ON %I;', style_tbl, style_tbl);
+      EXECUTE format('DROP POLICY IF EXISTS "rls_delete_%I" ON %I;', style_tbl, style_tbl);
 
-    EXECUTE format(
-      'CREATE POLICY "rls_select_%1$I" ON %1$I FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
-      style_tbl
-    );
-    EXECUTE format(
-      'CREATE POLICY "rls_insert_%1$I" ON %1$I FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
-      style_tbl
-    );
-    EXECUTE format(
-      'CREATE POLICY "rls_update_%1$I" ON %1$I FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
-      style_tbl
-    );
-    EXECUTE format(
-      'CREATE POLICY "rls_delete_%1$I" ON %1$I FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
-      style_tbl
-    );
+      EXECUTE format(
+        'CREATE POLICY "rls_select_%1$I" ON %1$I FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
+        style_tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY "rls_insert_%1$I" ON %1$I FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
+        style_tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY "rls_update_%1$I" ON %1$I FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids()))) WITH CHECK (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
+        style_tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY "rls_delete_%1$I" ON %1$I FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM styles s WHERE s.id = %1$I.style_id AND s.brand_id IN (SELECT get_user_brand_ids())));',
+        style_tbl
+      );
+    END IF;
   END LOOP;
 END $$;
 
