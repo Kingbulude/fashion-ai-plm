@@ -116,8 +116,9 @@ BEGIN
   END LOOP;
 END $$;
 
--- 允许 service_role 绕过强制 RLS
-ALTER ROLE service_role WITH BYPASSRLS;
+-- 注意：Supabase 的 service_role 是保留角色，默认已具备绕过 RLS 的权限，
+-- 且只有 superuser 才能修改它，因此这里不执行 ALTER ROLE。
+-- 应用层必须确保普通 API 请求不使用 service_role key。
 
 -- ───────────────────────────────────────────
 -- Step 5: 为含 brand_id 字段的表批量创建品牌隔离策略
