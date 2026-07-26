@@ -22,6 +22,10 @@ import {
   Trash2,
   Edit,
   X,
+  Layers,
+  TrendingUp,
+  Clock,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useTenant } from "@/lib/auth/tenant-context";
 import {
@@ -46,6 +50,8 @@ export default function InspirationPage() {
   const { currentBrand } = useTenant();
   const [boards, setBoards] = useState<InspirationBoard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -130,6 +136,133 @@ export default function InspirationPage() {
           </Button>
         </div>
 
+        {/* 统计概览 + 热门标签 */}
+        {!loading && boards.length > 0 && (
+          <>
+            <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="card-premium">
+                <CardContent className="pt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">白板总数</span>
+                    <Layers className="h-4 w-4 text-navy-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">{boards.length}</div>
+                  <div className="text-xs text-muted-foreground mt-1">个灵感白板</div>
+                </CardContent>
+              </Card>
+              <Card className="card-premium">
+                <CardContent className="pt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">素材总数</span>
+                    <ImageIcon className="h-4 w-4 text-terracotta-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    {boards.reduce((sum, b) => sum + (b.itemCount || 0), 0)}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    平均 {boards.length > 0 ? Math.round(boards.reduce((sum, b) => sum + (b.itemCount || 0), 0) / boards.length) : 0} 张/板
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="card-premium">
+                <CardContent className="pt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">标签数</span>
+                    <Tag className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    {Array.from(new Set(boards.flatMap((b) => b.themeTags || []))).length}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">个不同标签</div>
+                </CardContent>
+              </Card>
+              <Card className="card-premium">
+                <CardContent className="pt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">最近更新</span>
+                    <Clock className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="text-sm font-bold text-foreground truncate">
+                    {boards.length > 0
+                      ? boards
+                          .slice()
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+                          .title
+                      : "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {boards.length > 0
+                      ? new Date(
+                          boards
+                            .slice()
+                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
+                        ).toLocaleDateString("zh-CN")
+                      : ""}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 搜索栏 + 热门标签 */}
+            <div className="mb-6 space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索白板标题、描述或标签..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 max-w-md"
+                />
+              </div>
+
+              {/* 热门标签云 */}
+              {(() => {
+                const tagCount: Record<string, number> = {};
+                boards.forEach((b) => {
+                  (b.themeTags || []).forEach((t) => {
+                    tagCount[t] = (tagCount[t] || 0) + 1;
+                  });
+                });
+                const sortedTags = Object.entries(tagCount)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 12);
+                if (sortedTags.length === 0) return null;
+                return (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      热门标签：
+                    </span>
+                    {sortedTags.map(([tag, count]) => (
+                      <button
+                        key={tag}
+                        onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                          activeTag === tag
+                            ? "bg-navy-700 text-white border-navy-700"
+                            : "bg-card text-muted-foreground border-border hover:border-navy-200 hover:text-navy-700"
+                        }`}
+                      >
+                        {tag}
+                        <span className="ml-1 opacity-60">({count})</span>
+                      </button>
+                    ))}
+                    {activeTag && (
+                      <button
+                        onClick={() => setActiveTag(null)}
+                        className="px-2 py-1 rounded-full text-xs text-red-600 hover:bg-red-50"
+                      >
+                        <X className="h-3 w-3 inline mr-0.5" />
+                        清除
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+
         {loading ? (
           <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -150,8 +283,34 @@ export default function InspirationPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {boards.map((board) => (
+          (() => {
+            const filtered = boards.filter((b) => {
+              if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const matchTitle = (b.title || "").toLowerCase().includes(q);
+                const matchDesc = (b.description || "").toLowerCase().includes(q);
+                const matchTags = (b.themeTags || []).some((t) => t.toLowerCase().includes(q));
+                if (!matchTitle && !matchDesc && !matchTags) return false;
+              }
+              if (activeTag && !(b.themeTags || []).includes(activeTag)) return false;
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <Search className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-2">没有匹配的白板</p>
+                  <p className="text-xs text-muted-foreground">
+                    尝试调整搜索关键词或清除标签筛选
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filtered.map((board) => (
               <Link key={board.id} href={`/inspiration/${board.id}`}>
                 <Card className="border-0 shadow-sm hover:shadow-md transition-all overflow-hidden group cursor-pointer h-full">
                   <div className="aspect-[4/3] bg-gradient-to-br from-purple-100 via-pink-50 to-amber-100 relative overflow-hidden">
@@ -203,6 +362,8 @@ export default function InspirationPage() {
               </Link>
             ))}
           </div>
+            );
+          })()
         )}
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
