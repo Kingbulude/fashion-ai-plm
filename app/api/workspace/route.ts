@@ -3,8 +3,7 @@
 // 根据用户角色和工序返回差异化数据
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import {
   getWorkspaceConfig,
   filterStylesByProcess,
@@ -17,10 +16,13 @@ const DEFAULT_BRAND = "00000000-0000-0000-0000-000000000001";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const url = new URL(request.url);
-    const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id || DEFAULT_BRAND;
-    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+    const brandId = url.searchParams.get("brandId") || tenant.brand_id || DEFAULT_BRAND;
+    const seasonId = url.searchParams.get("seasonId") || tenant.season_id;
 
     // 角色感知：从请求头读取用户角色和工序
     const headerRole = request.headers.get("x-user-role") || "";

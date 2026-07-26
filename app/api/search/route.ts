@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
-import { getSession } from "@/lib/auth/supabase";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession(request as any);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
 
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim() || "";
@@ -20,8 +17,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ styles: [], suppliers: [], todos: [] });
     }
 
-    const tenant = getTenantFromHeaders(request);
-    const brandId = tenant?.brand_id;
+    const brandId = tenant.brand_id;
 
     if (!brandId) {
       return NextResponse.json({ styles: [], suppliers: [], todos: [] });
@@ -53,7 +49,7 @@ export async function GET(request: Request) {
       const { data: supplierData, error: supErr } = await supabase
         .from("suppliers")
         .select("id, name, type, contact, phone")
-        .eq("company_id", tenant?.company_id || "")
+        .eq("company_id", tenant.company_id || "")
         .or(`name.ilike.%${q}%,type.ilike.%${q}%,contact.ilike.%${q}%`)
         .order("updated_at", { ascending: false })
         .limit(6);

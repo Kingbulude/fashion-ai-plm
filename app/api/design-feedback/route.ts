@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -9,8 +8,11 @@ const DEFAULT_COMPANY = "00000000-0000-0000-0000-000000000010";
 
 export async function GET(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
@@ -57,8 +59,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
@@ -96,8 +101,11 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }

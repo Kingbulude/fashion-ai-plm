@@ -8,8 +8,11 @@ const ADMIN_ROUTE_PREFIXES = ["/admin", "/brands"];
 // 需要品牌管理员权限的路由
 const MANAGER_ROUTE_PREFIXES = ["/suppliers"];
 
-// 公开路由
-const PUBLIC_ROUTES = ["/login", "/register", "/api", "/_next", "/favicon.ico"];
+// 公开页面路由（无需登录即可访问）
+const PUBLIC_PAGE_ROUTES = ["/login", "/register", "/reset-password", "/forbidden"];
+
+// 公开 API 白名单（无需 session 即可访问）
+const PUBLIC_API_ROUTES = ["/api/health", "/api/auth"];
 
 interface AuthMePayload {
   roleLevel?: string;
@@ -17,23 +20,62 @@ interface AuthMePayload {
   accessibleProcessNodes?: string[];
 }
 
+function isPublicApi(pathname: string): boolean {
+  return PUBLIC_API_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isPublicPage(pathname: string): boolean {
+  return PUBLIC_PAGE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isStaticResource(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/fonts/") ||
+    pathname.startsWith("/images/") ||
+    pathname.startsWith("/assets/")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 公开路由和静态资源直接放行
-  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+  // 静态资源直接放行
+  if (isStaticResource(pathname)) {
     return NextResponse.next();
   }
 
+  // 公开 API 白名单直接放行
+  if (pathname.startsWith("/api/") && isPublicApi(pathname)) {
+    return NextResponse.next();
+  }
+
+  // 公开页面直接放行
+  if (isPublicPage(pathname)) {
+    return NextResponse.next();
+  }
+
+  // 统一获取服务端会话（从 cookie 或 Authorization header）
   const session = await getSession(request);
 
+  // API 路由：无 session 直接返回 401（避免重定向到登录页污染 API 调用）
+  if (pathname.startsWith("/api/")) {
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // API 路由在 middleware 层只做 session 校验，更细粒度的权限由各自 route 负责
+    return NextResponse.next();
+  }
+
+  // 页面路由：无 session 重定向到登录页
   if (!session?.user) {
     const url = new URL("/login", request.url);
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  // 调用 /api/auth/me 获取当前用户权限（复用已登录会话）
+  // 以下页面路由权限检查需要 /api/auth/me 配合，但 /api/auth/me 本身在白名单中不会递归
   const origin = request.nextUrl.origin;
   let authMe: AuthMePayload = {};
   try {
@@ -95,7 +137,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 拦截所有页面路由，排除公开页面、API、静态资源
-    "/((?!api|_next/static|_next/image|_next/data|favicon.ico|login|register|reset-password|forbidden|health).*)",
+    // 拦截所有路径，仅排除静态资源
+    "/((?!_next/static|_next/image|_next/data|favicon.ico|fonts|images|assets).*)",
   ],
 };

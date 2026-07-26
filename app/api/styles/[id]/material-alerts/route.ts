@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { resolveStyleTenant } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, resolveStyleTenant } from "@/lib/auth/tenant-helpers";
 import { resolveResponsibleUserByNode } from "@/lib/workflow/responsible-user";
 
 export const runtime = "edge";
@@ -10,12 +10,16 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
     const { action, reason, userId } = body;
 
     if (action === "check_and_alert") {
-      const result = await checkMaterialFulfillmentAndAlert(id, userId);
+      const result = await checkMaterialFulfillmentAndAlert(id, userId, supabase);
       return NextResponse.json(result);
     }
 
@@ -27,15 +31,19 @@ export async function POST(request: Request, { params }: RouteContext) {
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
-    const result = await getMaterialFulfillmentStatus(id);
+    const result = await getMaterialFulfillmentStatus(id, supabase);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "获取失败" }, { status: 500 });
   }
 }
 
-async function getMaterialFulfillmentStatus(styleId: string) {
+async function getMaterialFulfillmentStatus(styleId: string, supabase: SupabaseClient) {
   const { data: bomItems } = await supabase
     .from("bom_items")
     .select("id, material_name, material_type, unit_consumption, status")
@@ -94,8 +102,8 @@ async function getMaterialFulfillmentStatus(styleId: string) {
   };
 }
 
-async function checkMaterialFulfillmentAndAlert(styleId: string, userId: string) {
-  const status = await getMaterialFulfillmentStatus(styleId);
+async function checkMaterialFulfillmentAndAlert(styleId: string, userId: string, supabase: SupabaseClient) {
+  const status = await getMaterialFulfillmentStatus(styleId, supabase);
 
   if (status.allFulfilled) {
     // 物料齐套，关闭所有缺料预警待办
@@ -125,7 +133,7 @@ async function checkMaterialFulfillmentAndAlert(styleId: string, userId: string)
   }
 
   // 创建缺料预警待办
-  const { tenant } = await resolveStyleTenant(styleId);
+  const { tenant } = await resolveStyleTenant(styleId, supabase);
 
   let assignedTo = userId;
   let assignmentSource = "trigger_user";

@@ -2,18 +2,20 @@
 // 跨款式聚合所有生产订单 + 统计 + 风险检测
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const url = new URL(request.url);
-    const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
-    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+    const brandId = url.searchParams.get("brandId") || tenant.brand_id;
+    const seasonId = url.searchParams.get("seasonId") || tenant.season_id;
     const status = url.searchParams.get("status");
     const factory = url.searchParams.get("factory");
 

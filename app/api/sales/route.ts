@@ -2,18 +2,20 @@
 // 销售记录按款式 -> 品牌链路隔离
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const url = new URL(request.url);
-    const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
-    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+    const brandId = url.searchParams.get("brandId") || tenant.brand_id;
+    const seasonId = url.searchParams.get("seasonId") || tenant.season_id;
 
     // 先获取本品牌的款式 ID
     let styleQuery = supabase.from("styles").select("id, category, season_id");
@@ -62,6 +64,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const body = await request.json();
     const { styleId, saleDate, quantity, amount, unitPrice, color, size, channel, customerInfo } = body;
 

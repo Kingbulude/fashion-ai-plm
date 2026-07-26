@@ -2,18 +2,20 @@
 // 一次返回：KPI、销售趋势、品类占比、款式排行、售后分析、复盘建议
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const url = new URL(request.url);
-    const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
-    const seasonId = url.searchParams.get("seasonId") || headerTenant?.season_id;
+    const brandId = url.searchParams.get("brandId") || tenant.brand_id;
+    const seasonId = url.searchParams.get("seasonId") || tenant.season_id;
     const days = parseInt(url.searchParams.get("days") || "30"); // 趋势图默认 30 天
 
     // 1. 获取本品牌款式

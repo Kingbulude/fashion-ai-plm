@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -18,6 +18,10 @@ function computeTotalCost(unitConsumption: number, lossRate: number, unitPrice: 
 // 获取款式的 BOM 物料清单
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     const { data, error } = await supabase
@@ -62,6 +66,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 // 新增 BOM 物料
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
 
@@ -77,7 +85,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     const totalCost = computeTotalCost(uc, lr, up);
 
     // 自动从款式继承租户字段（多品牌隔离）
-    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    const { tenant, error: tenantError } = await resolveStyleTenant(id, supabase);
     if (tenantError) {
       return NextResponse.json({ error: tenantError }, { status: 400 });
     }
@@ -110,7 +118,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // 同步更新款式实际成本
-    await syncStyleActualCost(id);
+    await syncStyleActualCost(id, supabase);
 
     return NextResponse.json(toCamelCase(data), { status: 201 });
   } catch {
@@ -119,7 +127,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 // 同步更新款式的实际成本（所有 BOM 总和）
-async function syncStyleActualCost(styleId: string) {
+async function syncStyleActualCost(styleId: string, supabase: SupabaseClient) {
   try {
     const { data } = await supabase
       .from("bom_items")

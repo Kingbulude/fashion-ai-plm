@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
-
-const DEFAULT_COMPANY = "00000000-0000-0000-0000-000000000010";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const { id: supplierId } = await params;
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const companyId = tenant.company_id;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
@@ -58,9 +59,12 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const { id: supplierId } = await params;
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const companyId = tenant.company_id;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
@@ -97,7 +101,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     if (error) throw error;
 
-    await updateSupplierStats(supplierId, companyId);
+    await updateSupplierStats(supplierId, companyId, supabase);
 
     return NextResponse.json(toCamelCase(data), { status: 201 });
   } catch {
@@ -105,7 +109,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 }
 
-async function updateSupplierStats(supplierId: string, companyId: string) {
+async function updateSupplierStats(supplierId: string, companyId: string, supabase: SupabaseClient) {
   try {
     const { data: ratings } = await supabase
       .from("supplier_ratings")

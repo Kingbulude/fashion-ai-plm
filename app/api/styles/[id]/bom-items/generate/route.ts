@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { generateBom } from "@/lib/ai/cloudflare-ai";
-import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -39,6 +39,10 @@ function normalizeMaterialType(raw: unknown): "fabric" | "accessory" | "packagin
 // AI 生成 BOM 物料清单草稿（基于款式信息）
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
 
     // 多租户隔离：从请求头获取租户，验证款式归属
@@ -86,7 +90,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // 获取款式租户上下文，用于自动填充 company_id/brand_id/season_id
-    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    const { tenant, error: tenantError } = await resolveStyleTenant(id, supabase);
     if (tenantError) {
       return NextResponse.json({ error: tenantError }, { status: 400 });
     }
@@ -130,7 +134,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // 同步款式实际成本
-    await syncStyleActualCost(id);
+    await syncStyleActualCost(id, supabase);
 
     return NextResponse.json({
       insertedCount: insertedItems.length,
@@ -145,7 +149,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 // 同步更新款式的实际成本（所有 BOM 总和）
-async function syncStyleActualCost(styleId: string) {
+async function syncStyleActualCost(styleId: string, supabase: SupabaseClient) {
   try {
     const { data } = await supabase
       .from("bom_items")

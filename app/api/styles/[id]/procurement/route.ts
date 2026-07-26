@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -9,6 +8,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const { data, error } = await supabase
       .from("material_procurement")
@@ -58,6 +61,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
     const { id } = await params;
     const body = await request.json();
     const { bomItemId, supplierId, status, orderDate, expectedDate, quantity, unitPrice } = body;
@@ -67,7 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     // 自动从款式继承租户字段
-    const { tenant, error: tenantError } = await resolveStyleTenant(id);
+    const { tenant, error: tenantError } = await resolveStyleTenant(id, supabase);
     if (tenantError) {
       return NextResponse.json({ error: tenantError }, { status: 400 });
     }

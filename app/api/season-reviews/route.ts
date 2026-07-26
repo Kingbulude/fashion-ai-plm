@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -9,9 +9,12 @@ const DEFAULT_COMPANY = "00000000-0000-0000-0000-000000000010";
 
 export async function GET(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
-    const brandId = tenant?.brand_id;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
+    const brandId = tenant.brand_id;
 
     const { searchParams } = new URL(request.url);
     const seasonId = searchParams.get("seasonId");
@@ -38,15 +41,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
-    const brandId = tenant?.brand_id;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
+    const brandId = tenant.brand_id;
 
     const body = await request.json();
     const { action, seasonId, reviewType = "mid_season" } = body;
 
     if (action === "generate") {
-      const result = await generateReview(companyId, brandId, seasonId, reviewType);
+      const result = await generateReview(supabase, companyId, brandId, seasonId, reviewType);
       return NextResponse.json(result);
     }
 
@@ -82,7 +88,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function generateReview(companyId: string, brandId: string | undefined, seasonId: string | undefined, reviewType: string) {
+async function generateReview(supabase: SupabaseClient, companyId: string, brandId: string | undefined, seasonId: string | undefined, reviewType: string) {
   let styleQuery = supabase
     .from("styles")
     .select("id, style_no, name, category, status, target_cost, actual_cost, target_quantity, produced_quantity, sold_quantity, season_id");

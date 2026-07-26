@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { generateJson } from "@/lib/ai/json-generation";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 import { AIRoleLevel, AISuggestionType, AISuggestionPriority, AISpecialistType } from "@/lib/ai/architecture";
@@ -37,8 +37,11 @@ interface AICategorizationResult {
 
 export async function POST(request: Request) {
   try {
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || DEFAULT_COMPANY;
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
+    const companyId = tenant.company_id || DEFAULT_COMPANY;
     if (!companyId) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
@@ -47,22 +50,22 @@ export async function POST(request: Request) {
     const { action, styleId, days = 30, recordId, target = "design", items } = body;
 
     if (action === "analyze") {
-      const result = await analyzeDefects(companyId, styleId, days);
+      const result = await analyzeDefects(supabase, companyId, styleId, days);
       return NextResponse.json(result);
     }
 
     if (action === "ai_categorize") {
-      const result = await aiCategorizeRecord(companyId, recordId);
+      const result = await aiCategorizeRecord(supabase, companyId, recordId);
       return NextResponse.json(result);
     }
 
     if (action === "push_to_target") {
-      const result = await pushToTarget(companyId, target, styleId, items);
+      const result = await pushToTarget(supabase, companyId, target, styleId, items);
       return NextResponse.json(result);
     }
 
     if (action === "batch_ai_categorize") {
-      const result = await batchAICategorize(companyId, styleId, days);
+      const result = await batchAICategorize(supabase, companyId, styleId, days);
       return NextResponse.json(result);
     }
 
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function analyzeDefects(companyId: string, styleId?: string, days = 30) {
+async function analyzeDefects(supabase: SupabaseClient, companyId: string, styleId?: string, days = 30) {
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
@@ -225,7 +228,7 @@ function generateSuggestions(categoryStats: Record<string, { count: number; labe
   });
 }
 
-async function aiCategorizeRecord(companyId: string, recordId: string) {
+async function aiCategorizeRecord(supabase: SupabaseClient, companyId: string, recordId: string) {
   const { data: record, error } = await supabase
     .from("aftersales_records")
     .select("*, styles:style_id(name, style_no, category)")
@@ -319,7 +322,7 @@ async function aiCategorizeRecord(companyId: string, recordId: string) {
   };
 }
 
-async function batchAICategorize(companyId: string, styleId?: string, days = 30) {
+async function batchAICategorize(supabase: SupabaseClient, companyId: string, styleId?: string, days = 30) {
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
@@ -340,7 +343,7 @@ async function batchAICategorize(companyId: string, styleId?: string, days = 30)
 
   for (const id of recordIds) {
     try {
-      const result = await aiCategorizeRecord(companyId, id);
+      const result = await aiCategorizeRecord(supabase, companyId, id);
       if (result.success) successCount++;
     } catch {
       // 跳过失败的
@@ -355,6 +358,7 @@ async function batchAICategorize(companyId: string, styleId?: string, days = 30)
 }
 
 async function pushToTarget(
+  supabase: SupabaseClient,
   companyId: string,
   target: string,
   styleId?: string,

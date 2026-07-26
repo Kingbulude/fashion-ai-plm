@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -16,17 +15,20 @@ interface SupplierBrief {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const body = await request.json();
     const { styleName, category, material, processRequirements, location, budget } = body;
 
     // 多租户隔离：按 company_id 过滤
-    const tenant = getTenantFromHeaders(request);
-    const companyId = tenant?.company_id || "";
-
-    let query = supabase.from("suppliers").select("id, name, type, location, specialties, quality_score, delivery_score, price_level");
-    if (companyId) {
-      query = query.eq("company_id", companyId);
+    const companyId = tenant.company_id;
+    if (!companyId) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
+
+    let query = supabase.from("suppliers").select("id, name, type, location, specialties, quality_score, delivery_score, price_level").eq("company_id", companyId);
 
     const { data: suppliers, error } = await query.limit(100);
     if (error) {

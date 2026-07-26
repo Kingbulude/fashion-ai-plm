@@ -2,9 +2,8 @@
 // 列出待办 / 创建待办 / 更新状态
 
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db/client";
 import { toCamelCase } from "@/lib/db/mappers";
-import { getTenantFromHeaders, withTenant } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -13,9 +12,12 @@ const DEFAULT_BRAND = "00000000-0000-0000-0000-000000000001";
 
 export async function GET(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const url = new URL(request.url);
-    const headerTenant = getTenantFromHeaders(request);
-    const brandId = url.searchParams.get("brandId") || headerTenant?.brand_id;
+    const brandId = url.searchParams.get("brandId") || tenant.brand_id;
     const status = url.searchParams.get("status"); // pending/in_progress/completed
     const targetTable = url.searchParams.get("targetTable");
     const targetId = url.searchParams.get("targetId");
@@ -60,6 +62,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant, supabase } = ctx;
+
     const body = await request.json();
     const { title, description, type, priority, targetTable, targetId, assignedTo, dueDate } = body;
 
@@ -67,8 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
     }
 
-    const headerTenant = getTenantFromHeaders(request);
-    const tenant = headerTenant || { company_id: DEFAULT_COMPANY, brand_id: DEFAULT_BRAND, season_id: null };
+    const fallbackTenant = { company_id: DEFAULT_COMPANY, brand_id: DEFAULT_BRAND, season_id: null };
 
     const { data, error } = await supabase
       .from("todos")
@@ -85,7 +90,7 @@ export async function POST(request: Request) {
             assigned_to: assignedTo || null,
             due_date: dueDate || null,
           },
-          tenant
+          tenant.brand_id ? tenant : fallbackTenant
         )
       )
       .select()
