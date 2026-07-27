@@ -43,6 +43,7 @@ import {
   FileText,
   Target,
   TrendingDown,
+  Layers,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TenantSwitcher } from "@/components/layout/tenant-switcher";
@@ -358,6 +359,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { label: "每季复盘", href: "/season-review", icon: FileText, keywords: ["review", "复盘", "季度", "season"] },
     { label: "品牌管理", href: "/brands", icon: Building2, keywords: ["brand", "品牌"], admin: true },
     { label: "供应商", href: "/suppliers", icon: Store, keywords: ["supplier", "供应商", "工厂"], admin: true },
+    { label: "面料库", href: "/fabrics", icon: Layers, keywords: ["fabric", "面料", "物料"] },
     { label: "后台配置", href: "/admin", icon: Settings, keywords: ["admin", "后台", "设置"], admin: true },
     { label: "人员与权限", href: "/admin/people", icon: User, keywords: ["people", "人员", "用户", "权限"], admin: true },
     { label: "工序主管类型", href: "/admin/process-owner-scopes", icon: Settings, keywords: ["主管", "工序主管"] },
@@ -506,6 +508,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     { icon: FileText, label: "每季复盘", href: "/season-review" },
     { icon: Building2, label: "品牌管理", href: "/brands", admin: true },
     { icon: Store, label: "供应商", href: "/suppliers", admin: true },
+    { icon: Layers, label: "面料库", href: "/fabrics" },
     { icon: Settings, label: "后台配置", href: "/admin", admin: true },
   ];
 
