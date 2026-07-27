@@ -29,6 +29,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const updateData: Record<string, any> = { status };
     if (notes) updateData.notes = notes;
+    if (status === "completed") {
+      updateData.completed_at = new Date().toISOString();
+    } else {
+      updateData.completed_at = null;
+    }
 
     const { data: order, error: orderError } = await supabase
       .from("production_orders")

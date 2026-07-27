@@ -88,24 +88,24 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2. 销售数据
+    // 2. 销售数据（仅查询必要字段，减少传输和映射开销）
     const { data: salesData } = await supabase
       .from("sales_records")
-      .select("*")
+      .select("style_id, quantity, total_amount, sale_date, channel")
       .in("style_id", styleIds);
     const sales = (toCamelCase(salesData) || []) as any[];
 
-    // 3. 售后数据
+    // 3. 售后数据（仅统计所需字段）
     const { data: aftersalesData } = await supabase
       .from("aftersales_records")
-      .select("*")
+      .select("style_id, type")
       .in("style_id", styleIds);
     const aftersales = (toCamelCase(aftersalesData) || []) as any[];
 
-    // 4. 供应链数据
+    // 4. 供应链数据（按需查询，避免 select *）
     const [{ data: procurementData }, { data: productionData }, { data: suppliersData }] = await Promise.all([
-      supabase.from("material_procurement").select("*").in("style_id", styleIds),
-      supabase.from("production_orders").select("*").in("style_id", styleIds),
+      supabase.from("material_procurement").select("style_id, status, is_delayed").in("style_id", styleIds),
+      supabase.from("production_orders").select("style_id, status, expected_date, completed_at, company_id, brand_id").in("style_id", styleIds),
       supabase.from("suppliers").select("id, name, type, overall_rating, is_active").limit(20),
     ]);
     const procurements = (toCamelCase(procurementData) || []) as any[];
@@ -472,6 +472,10 @@ export async function GET(request: Request) {
       },
       lifecycle,
       period: { days, startDate: startDate.toISOString(), endDate: now.toISOString() },
+    }, {
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
+      },
     });
   } catch (err) {
     console.error("分析 API 失败:", err);
