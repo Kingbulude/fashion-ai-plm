@@ -388,6 +388,32 @@ export async function GET(request: Request) {
 
     const inventoryTurnover = inventoryValue > 0 ? (totalRevenue / inventoryValue) : 0;
 
+    // 14. 款式全生命周期漏斗
+    const lifecycleStages = [
+      { key: "planning", label: "企划中", statuses: ["planning"] },
+      { key: "designing", label: "设计中", statuses: ["designing"] },
+      { key: "designed", label: "设计完成", statuses: ["designed"] },
+      { key: "sampling", label: "打样中", statuses: ["sampling"] },
+      { key: "sampled", label: "封样完成", statuses: ["sampled"] },
+      { key: "producing", label: "生产中", statuses: ["producing"] },
+      { key: "produced", label: "大货完成", statuses: ["produced"] },
+      { key: "selling", label: "销售中", statuses: ["selling"] },
+      { key: "sold", label: "已售罄", statuses: ["sold", "reviewing", "archived"] },
+    ];
+    const lifecycle = lifecycleStages.map((stage) => {
+      const count = styleList.filter((s) => stage.statuses.includes(s.status)).length;
+      const prevCount = lifecycleStages
+        .slice(0, lifecycleStages.indexOf(stage))
+        .reduce((sum, st) => sum + styleList.filter((s) => st.statuses.includes(s.status)).length, 0);
+      const conversion = prevCount > 0 ? (count / prevCount) * 100 : 100;
+      return {
+        key: stage.key,
+        label: stage.label,
+        count,
+        conversion: parseFloat(conversion.toFixed(1)),
+      };
+    });
+
     return NextResponse.json({
       brand: { id: brandId, seasonId },
       kpi: {
@@ -444,6 +470,7 @@ export async function GET(request: Request) {
         deadStockValue,
         inventoryTurnover: parseFloat(inventoryTurnover.toFixed(2)),
       },
+      lifecycle,
       period: { days, startDate: startDate.toISOString(), endDate: now.toISOString() },
     });
   } catch (err) {

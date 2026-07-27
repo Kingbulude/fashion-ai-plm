@@ -32,6 +32,7 @@ import {
   Store,
   Warehouse,
   Layers,
+  Funnel,
 } from "lucide-react";
 
 const INSIGHT_CONFIG = {
@@ -283,6 +284,27 @@ export default function AnalyticsPage() {
               </Card>
             )}
 
+            {/* 款式全生命周期漏斗 */}
+            <Card className="mb-6 border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Funnel className="h-4 w-4 text-violet-500" />
+                      款式全生命周期漏斗
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">企划 → 设计 → 打样 → 生产 → 销售 → 售罄</CardDescription>
+                  </div>
+                  <Link href="/styles" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                    查看全部款式 <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <LifecycleFunnel data={analytics?.lifecycle || []} />
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* 3. 销售趋势图 */}
               <Card className="lg:col-span-2 border-0 shadow-sm">
@@ -472,13 +494,20 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Package className="h-4 w-4 text-indigo-500" />
-                    采购进度
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    齐套率 {analytics?.supplyChain?.procurementRate || 0}%
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="h-4 w-4 text-indigo-500" />
+                        采购进度
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        齐套率 {analytics?.supplyChain?.procurementRate || 0}%
+                      </CardDescription>
+                    </div>
+                    <Link href="/suppliers" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
+                      查看 <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 mb-4">
@@ -511,13 +540,20 @@ export default function AnalyticsPage() {
 
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Factory className="h-4 w-4 text-orange-500" />
-                    生产进度
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    准交率 {analytics?.supplyChain?.onTimeRate || 0}%
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Factory className="h-4 w-4 text-orange-500" />
+                        生产进度
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        准交率 {analytics?.supplyChain?.onTimeRate || 0}%
+                      </CardDescription>
+                    </div>
+                    <Link href="/production" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
+                      查看 <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 mb-4">
@@ -558,13 +594,20 @@ export default function AnalyticsPage() {
 
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Store className="h-4 w-4 text-emerald-500" />
-                    供应商概览
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    平均评分 {analytics?.supplyChain?.avgSupplierRating || 0}
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Store className="h-4 w-4 text-emerald-500" />
+                        供应商概览
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        平均评分 {analytics?.supplyChain?.avgSupplierRating || 0}
+                      </CardDescription>
+                    </div>
+                    <Link href="/suppliers" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
+                      查看 <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 mb-4">
@@ -614,10 +657,15 @@ export default function AnalyticsPage() {
               {/* 库存概览 */}
               <Card className="border-0 shadow-sm lg:col-span-1">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Warehouse className="h-4 w-4 text-blue-500" />
-                    库存概览
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Warehouse className="h-4 w-4 text-blue-500" />
+                      库存概览
+                    </CardTitle>
+                    <Link href="/styles?status=selling" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
+                      查看 <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -972,6 +1020,66 @@ function SellthroughDistribution({
                 {count} 款 <span className="text-slate-400 font-normal">({pct}%)</span>
               </span>
             </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LifecycleFunnel({ data }: { data: any[] }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-slate-400">
+        暂无款式生命周期数据
+      </div>
+    );
+  }
+
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-9 gap-1 text-center text-[10px] text-slate-400 mb-1">
+        {data.map((stage) => (
+          <span key={stage.key} className="truncate">{stage.label}</span>
+        ))}
+      </div>
+      <div className="flex items-end gap-1 h-40 px-1">
+        {data.map((stage, idx) => {
+          const heightPct = (stage.count / maxCount) * 100;
+          const colors = [
+            "from-violet-500 to-violet-400",
+            "from-indigo-500 to-indigo-400",
+            "from-blue-500 to-blue-400",
+            "from-sky-500 to-sky-400",
+            "from-cyan-500 to-cyan-400",
+            "from-teal-500 to-teal-400",
+            "from-emerald-500 to-emerald-400",
+            "from-green-500 to-green-400",
+            "from-lime-500 to-lime-400",
+          ];
+          return (
+            <Link
+              key={stage.key}
+              href={`/styles?status=${stage.key}`}
+              className="flex-1 flex flex-col items-center justify-end group relative min-w-0"
+              title={`${stage.label}: ${stage.count} 款`}
+            >
+              <div
+                className={`w-full rounded-t bg-gradient-to-t ${colors[idx % colors.length]} transition-all group-hover:opacity-90`}
+                style={{ height: `${Math.max(heightPct, 4)}%` }}
+              />
+              <div className="mt-1.5 text-xs font-semibold text-slate-700 truncate w-full text-center">
+                {stage.count}
+              </div>
+              {/* Tooltip */}
+              <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none transition-opacity">
+                <div className="font-semibold">{stage.label}</div>
+                <div>{stage.count} 款</div>
+                {idx > 0 && <div className="text-slate-400">转化率 {stage.conversion}%</div>}
+              </div>
+            </Link>
           );
         })}
       </div>
