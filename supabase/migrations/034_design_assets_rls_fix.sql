@@ -1,9 +1,30 @@
 -- ============================================
 -- 034: 修复设计资产库 RLS 策略
 -- 问题：/api/design-assets 返回 500 / 加载失败
--- 原因：原 design_assets_select 策略逻辑错误，且未正确利用 design_assets.company_id/brand_id
+-- 原因：原 design_assets_select 策略引用了不存在的 auth.current_user_company_id()，且逻辑错误
 -- 目标：补齐租户字段、重建基于 user_brands/style.brand_id 的可读策略
 -- ============================================
+
+-- 0. 兼容性：确保 get_user_brand_ids 辅助函数存在（不依赖 025/030 是否成功执行）
+CREATE OR REPLACE FUNCTION public.get_user_brand_ids()
+RETURNS TABLE(brand_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN;
+  END IF;
+  RETURN QUERY
+  SELECT ub.brand_id
+  FROM public.user_brands ub
+  WHERE ub.user_id = auth.uid();
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_user_brand_ids() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_user_brand_ids() TO authenticated;
 
 -- 1. 确保 design_assets 有租户字段
 ALTER TABLE public.design_assets
