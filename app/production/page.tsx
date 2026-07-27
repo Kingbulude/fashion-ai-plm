@@ -43,12 +43,13 @@ import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending: { label: "待排产", color: "text-slate-600", bg: "bg-slate-100", icon: Clock },
-  in_progress: { label: "生产中", color: "text-navy-700", bg: "bg-navy-100", icon: CircleDot },
-  partial_completed: { label: "部分完成", color: "text-terracotta-600", bg: "bg-terracotta-100", icon: Package },
+  cutting: { label: "裁剪中", color: "text-blue-700", bg: "bg-blue-100", icon: CircleDot },
+  sewing: { label: "缝制中", color: "text-navy-700", bg: "bg-navy-100", icon: CircleDot },
+  finishing: { label: "后整中", color: "text-terracotta-600", bg: "bg-terracotta-100", icon: Package },
   completed: { label: "已完成", color: "text-success", bg: "bg-emerald-50", icon: CheckCircle },
 };
 
-const STATUS_ORDER = ["pending", "in_progress", "partial_completed", "completed"];
+const STATUS_ORDER = ["pending", "cutting", "sewing", "finishing", "completed"];
 
 const KPI_COLORS: Record<string, { bg: string; text: string; gradient: string }> = {
   navy: { bg: "bg-navy-100", text: "text-navy-700", gradient: "from-navy-700 to-navy-900" },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { transitionStyle } from "@/lib/workflow/style-transition";
 
 export const runtime = "edge";
 
@@ -48,6 +49,16 @@ export async function PUT(request: Request, { params }: RouteContext) {
     if (qcResult !== undefined) updateData.qc_result = qcResult;
     if (approved !== undefined) updateData.approved = approved;
 
+    const { data: record, error: recordError } = await supabase
+      .from("sampling_records")
+      .select("id, style_id")
+      .eq("id", samplingId)
+      .single();
+
+    if (recordError || !record) {
+      return NextResponse.json({ error: "打样记录不存在" }, { status: 404 });
+    }
+
     const { data, error } = await supabase
       .from("sampling_records")
       .update(updateData)
@@ -55,8 +66,34 @@ export async function PUT(request: Request, { params }: RouteContext) {
       .select()
       .single();
     if (error || !data) {
-      return NextResponse.json({ error: "打样记录不存在" }, { status: 404 });
+      return NextResponse.json({ error: "更新打样记录失败" }, { status: 500 });
     }
+
+    // 打样审批通过时，自动推进款式状态到封样完成
+    if (approved === true && record.style_id) {
+      try {
+        const { data: style } = await supabase
+          .from("styles")
+          .select("status, brand_id")
+          .eq("id", record.style_id)
+          .single();
+
+        if (style && style.status === "sampling") {
+          await transitionStyle({
+            styleId: record.style_id,
+            fromStatus: "sampling",
+            toStatus: "sampled",
+            event: "sample_approved",
+            userId: ctx.user.id,
+            brandId: style.brand_id,
+            supabase,
+          });
+        }
+      } catch (err) {
+        console.error("自动推进款式状态失败:", err);
+      }
+    }
+
     return NextResponse.json(toCamelCase(data));
   } catch {
     return NextResponse.json({ error: "更新打样记录失败" }, { status: 500 });
