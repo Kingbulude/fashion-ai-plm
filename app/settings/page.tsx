@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import {
   Upload,
   Check,
@@ -684,24 +685,16 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">{item.title}</p>
                     <p className="text-xs text-muted-foreground">{item.description}</p>
                   </div>
-                  <button
-                    onClick={() =>
+                  <Switch
+                    checked={notifPrefs[item.key]}
+                    onCheckedChange={(checked) =>
                       saveNotifications({
                         ...notifPrefs,
-                        [item.key]: !notifPrefs[item.key],
+                        [item.key]: checked,
                       })
                     }
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      notifPrefs[item.key] ? "bg-navy-700" : "bg-slate-200"
-                    }`}
                     aria-label={item.title}
-                  >
-                    <span
-                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        notifPrefs[item.key] ? "translate-x-5" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
+                  />
                 </div>
               ))}
             </CardContent>
