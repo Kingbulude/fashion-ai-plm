@@ -93,6 +93,7 @@ export default function AdminPeoplePage() {
   const [data, setData] = useState<OrganizationData | null>(null);
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [processOwnerScopes, setProcessOwnerScopes] = useState<ProcessOwnerScope[]>([]);
+  const [processOwnerScopesError, setProcessOwnerScopesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -169,14 +170,21 @@ export default function AdminPeoplePage() {
   };
 
   const fetchProcessOwnerScopes = async () => {
+    setProcessOwnerScopesError(null);
     try {
       const res = await fetch("/api/process-owner-scopes");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProcessOwnerScopes(data);
+      const json = await res.json();
+      if (!res.ok) {
+        setProcessOwnerScopesError(json.error || `加载主管类型失败 (${res.status})`);
+        setProcessOwnerScopes([]);
+      } else if (Array.isArray(json)) {
+        setProcessOwnerScopes(json);
+      } else {
+        setProcessOwnerScopes([]);
       }
     } catch (error) {
       console.error("Failed to fetch process owner scopes:", error);
+      setProcessOwnerScopesError("加载主管类型失败，请检查网络连接");
     }
   };
 
@@ -225,6 +233,11 @@ export default function AdminPeoplePage() {
   const selectedPendingUser = inviteUserId
     ? (data?.pendingProfiles || []).find((p) => p.user_id === inviteUserId)
     : null;
+
+  // 优先使用 /api/organization 返回的主管类型，同时兼容单独接口失败时的回退
+  const availableProcessOwnerScopes = processOwnerScopes.length > 0
+    ? processOwnerScopes
+    : (data?.processOwnerScopes || []);
 
   const toggleInviteProcessRole = (roleId: string) => {
     setInviteProcessRoleIds((prev) =>
@@ -445,7 +458,7 @@ export default function AdminPeoplePage() {
                           .filter((r) => userProcessRoleIds.includes(r.id))
                           .map((r) => r.name);
                         const userScopeId = getUserProcessOwnerScope(profile.user_id)?.scope_id;
-                        const userScopeName = processOwnerScopes.find((s) => s.id === userScopeId)?.name;
+                        const userScopeName = availableProcessOwnerScopes.find((s) => s.id === userScopeId)?.name;
 
                         return (
                           <tr
@@ -728,12 +741,15 @@ export default function AdminPeoplePage() {
                       className="w-full h-10 px-3 rounded-lg border border-border bg-card"
                     >
                       <option value="">请选择主管类型</option>
-                      {processOwnerScopes.map((scope) => (
+                      {availableProcessOwnerScopes.map((scope) => (
                         <option key={scope.id} value={scope.id}>
                           {scope.name}
                         </option>
                       ))}
                     </select>
+                    {processOwnerScopesError && (
+                      <p className="text-xs text-red-600">{processOwnerScopesError}</p>
+                    )}
                   </div>
                 )}
 
@@ -879,15 +895,19 @@ export default function AdminPeoplePage() {
                     className="w-full h-10 px-3 rounded-lg border border-border bg-card"
                   >
                     <option value="">请选择主管类型</option>
-                    {processOwnerScopes.map((scope) => (
+                    {availableProcessOwnerScopes.map((scope) => (
                       <option key={scope.id} value={scope.id}>
                         {scope.name}
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-muted-foreground">
-                    分配后，该用户将按主管类型对应的工序段范围显示侧边栏入口
-                  </p>
+                  {processOwnerScopesError ? (
+                    <p className="text-xs text-red-600">{processOwnerScopesError}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      分配后，该用户将按主管类型对应的工序段范围显示侧边栏入口
+                    </p>
+                  )}
                 </div>
               )}
 

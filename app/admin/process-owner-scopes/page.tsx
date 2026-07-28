@@ -47,6 +47,7 @@ const processNodeOptions = [
 export default function AdminProcessOwnerScopesPage() {
   const [scopes, setScopes] = useState<ProcessOwnerScope[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingScope, setEditingScope] = useState<ProcessOwnerScope | null>(null);
@@ -62,14 +63,21 @@ export default function AdminProcessOwnerScopesPage() {
 
   const fetchScopes = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch("/api/process-owner-scopes");
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (!res.ok) {
+        setFetchError(data.error || `加载失败 (${res.status})`);
+        setScopes([]);
+      } else if (Array.isArray(data)) {
         setScopes(data);
+      } else {
+        setScopes([]);
       }
     } catch (error) {
       console.error("Failed to fetch process owner scopes:", error);
+      setFetchError("加载失败，请检查网络连接");
     } finally {
       setLoading(false);
     }
@@ -173,6 +181,13 @@ export default function AdminProcessOwnerScopesPage() {
             </Button>
           }
         />
+
+        {fetchError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+            <p className="font-medium">加载数据失败</p>
+            <p className="text-red-700 mt-1">{fetchError}</p>
+          </div>
+        )}
 
         <AdminSectionCard title="主管类型列表" titleIcon={Shield}>
           {loading ? (

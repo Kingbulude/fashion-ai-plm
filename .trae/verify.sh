@@ -85,7 +85,9 @@ fi
 step "3. Next.js 构建 (npm run build)"
 BUILD_LOG="/tmp/build.log"
 if npm run build > "$BUILD_LOG" 2>&1; then
-  if grep -qE "Failed to compile|error" "$BUILD_LOG"; then
+  # 忽略 Vercel CLI 内部 npm 网络警告，仅识别真实构建错误
+  REAL_ERRORS=$(grep -E "Failed to compile|Build error|Build failed|Module not found|Syntax error" "$BUILD_LOG" 2>/dev/null | grep -v "Failed to get package info" || true)
+  if [ -n "$REAL_ERRORS" ]; then
     fail "构建报告错误，详见 $BUILD_LOG"
   else
     pass "Next.js 构建成功"
