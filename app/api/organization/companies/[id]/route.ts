@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -48,7 +49,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "没有可更新的字段" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    // 使用 service role 更新公司信息，避免 companies 表 RLS 限制导致保存失败
+    const adminClient = getServiceRoleClient();
+    if (!isServiceRoleConfigured) {
+      console.error("[company-update] SUPABASE_SERVICE_ROLE_KEY 未配置，无法更新公司信息");
+      return NextResponse.json(
+        { error: "Service role key 未配置", detail: "请配置 SUPABASE_SERVICE_ROLE_KEY 环境变量以使用公司信息管理功能" },
+        { status: 500 }
+      );
+    }
+
+    const { data, error } = await adminClient
       .from("companies")
       .update(updatePayload)
       .eq("id", id)

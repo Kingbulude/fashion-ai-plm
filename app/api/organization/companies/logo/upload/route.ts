@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -12,9 +13,9 @@ export async function POST(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
 
-    const { data: profile } = await supabase
+    // 鉴权：仅 BOSS/ADMIN 可上传
+    const { data: profile } = await ctx.supabase
       .from("profiles")
       .select("role_level, company_id")
       .eq("user_id", ctx.user.id)
@@ -46,9 +47,18 @@ export async function POST(request: Request) {
 
     const fileName = `${profile.company_id}/${Date.now()}.${fileExt}`;
 
-    await createBucketIfNotExists(supabase);
+    // Storage 创建 bucket / 上传需要 service role 权限
+    const adminSupabase = getServiceRoleClient();
+    if (!isServiceRoleConfigured) {
+      console.error("[company-logo-upload] SUPABASE_SERVICE_ROLE_KEY 未配置，无法上传 Logo");
+      return NextResponse.json(
+        { error: "Service role key 未配置", detail: "请配置 SUPABASE_SERVICE_ROLE_KEY 环境变量以使用 Logo 上传功能" },
+        { status: 500 }
+      );
+    }
+    await createBucketIfNotExists(adminSupabase);
 
-    const { error } = await supabase.storage
+    const { error } = await adminSupabase.storage
       .from(LOGO_BUCKET)
       .upload(fileName, file, {
         cacheControl: "86400",
@@ -58,29 +68,43 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("公司 Logo 上传失败:", error);
-      return NextResponse.json({ error: "上传失败" }, { status: 500 });
+      return NextResponse.json(
+        { error: "上传失败", detail: error.message, code: error.name },
+        { status: 500 }
+      );
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = adminSupabase.storage
       .from(LOGO_BUCKET)
       .getPublicUrl(fileName);
 
     return NextResponse.json({ url: urlData.publicUrl, path: fileName });
-  } catch (error) {
+  } catch (error: any) {
     console.error("公司 Logo 上传异常:", error);
-    return NextResponse.json({ error: "上传失败" }, { status: 500 });
+    return NextResponse.json(
+      { error: "上传失败", detail: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
 
 async function createBucketIfNotExists(supabase: SupabaseClient): Promise<void> {
-  const { data: buckets } = await supabase.storage.listBuckets();
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("列出 Storage buckets 失败:", listError);
+    throw listError;
+  }
   const bucketExists = buckets?.some((b) => b.name === LOGO_BUCKET);
 
   if (!bucketExists) {
-    await supabase.storage.createBucket(LOGO_BUCKET, {
+    const { error } = await supabase.storage.createBucket(LOGO_BUCKET, {
       public: true,
       fileSizeLimit: 2097152,
       allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
     });
+    if (error) {
+      console.error("创建 company-logos bucket 失败:", error);
+      throw error;
+    }
   }
 }

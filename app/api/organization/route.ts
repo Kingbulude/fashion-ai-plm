@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -9,10 +10,24 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
+
+    // 人员与权限页面仅 BOSS/ADMIN 可访问，使用 service role 读取全公司成员
+    // 避免部分 Supabase 环境中 RLS 策略未生效导致只返回当前用户
+    if (ctx.roleLevel !== RoleLevel.BOSS && ctx.roleLevel !== RoleLevel.ADMIN) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const adminClient = getServiceRoleClient();
+    if (!isServiceRoleConfigured) {
+      console.error("[organization] SUPABASE_SERVICE_ROLE_KEY 未配置，无法读取全公司成员");
+      return NextResponse.json(
+        { error: "Service role key 未配置", detail: "请配置 SUPABASE_SERVICE_ROLE_KEY 环境变量以使用人员管理功能" },
+        { status: 500 }
+      );
+    }
 
     // 获取用户的公司
-    const { data: currentProfile } = await supabase
+    const { data: currentProfile } = await adminClient
       .from("profiles")
       .select("company_id, role_level")
       .eq("user_id", ctx.user.id)
@@ -25,14 +40,14 @@ export async function GET(request: Request) {
     }
 
     // 获取公司信息
-    const { data: company } = await supabase
+    const { data: company } = await adminClient
       .from("companies")
       .select("*")
       .eq("id", companyId)
       .single();
 
     // 获取品牌列表
-    const { data: brands } = await supabase
+    const { data: brands } = await adminClient
       .from("brands")
       .select("*")
       .eq("company_id", companyId);
@@ -41,7 +56,7 @@ export async function GET(request: Request) {
     const selectProfiles = async (filter: { company_id?: string; company_id_is_null?: boolean }) => {
       const baseSelect =
         "user_id, name, avatar_url, role, role_level, company_id, brand_id";
-      let query = supabase.from("profiles").select(baseSelect);
+      let query = adminClient.from("profiles").select(baseSelect);
       if (filter.company_id_is_null) {
         query = query.is("company_id", null);
       } else if (filter.company_id) {
@@ -58,7 +73,7 @@ export async function GET(request: Request) {
 
       if (data.length > 0) {
         try {
-          const emailResult = await supabase
+          const emailResult = await adminClient
             .from("profiles")
             .select("user_id, email")
             .in(
@@ -119,25 +134,26 @@ export async function GET(request: Request) {
     }
 
     // 获取用户-品牌关联
-    const { data: userBrands } = await supabase
+    const { data: userBrands } = await adminClient
       .from("user_brands")
-      .select("user_id, brand_id, role_level");
+      .select("user_id, brand_id, role_level")
+      .in("brand_id", brands?.map((b) => b.id) || []);
 
     // 获取用户-工序角色关联（按公司隔离）
-    const { data: userProcessRoles } = await supabase
+    const { data: userProcessRoles } = await adminClient
       .from("user_process_roles")
       .select("user_id, process_role_id")
       .eq("company_id", companyId);
 
     // 获取工序主管类型（按公司隔离）
-    const { data: processOwnerScopes } = await supabase
+    const { data: processOwnerScopes } = await adminClient
       .from("process_owner_scopes")
       .select("id, key, name, description, process_nodes")
       .eq("is_active", true)
       .eq("company_id", companyId);
 
     // 获取用户-主管类型关联（按公司隔离）
-    const { data: userProcessOwnerScopes } = await supabase
+    const { data: userProcessOwnerScopes } = await adminClient
       .from("user_process_owner_scopes")
       .select("user_id, scope_id, brand_id")
       .eq("company_id", companyId);
