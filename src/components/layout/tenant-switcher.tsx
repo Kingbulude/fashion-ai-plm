@@ -46,7 +46,15 @@ export function TenantSwitcher() {
     <div className="flex items-center gap-1 bg-white/60 backdrop-blur-sm border border-slate-200 rounded-lg p-1">
       {/* 公司 - 当前只读展示，多公司切换是后期功能 */}
       <div className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-600">
-        <Building2 className="h-4 w-4 text-slate-400" />
+        {currentCompany?.logo_url ? (
+          <img
+            src={currentCompany.logo_url}
+            alt={currentCompany.name}
+            className="h-5 w-5 rounded object-contain"
+          />
+        ) : (
+          <Building2 className="h-4 w-4 text-slate-400" />
+        )}
         <span className="font-medium">{currentCompany?.name || "未选择公司"}</span>
       </div>
 
@@ -55,7 +63,15 @@ export function TenantSwitcher() {
       {/* 品牌切换器 */}
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 text-sm hover:bg-slate-100 rounded transition-colors">
-          <Sparkles className="h-4 w-4 text-amber-500" />
+          {currentBrand?.logo_url ? (
+            <img
+              src={currentBrand.logo_url}
+              alt={currentBrand.name}
+              className="h-5 w-5 rounded object-contain"
+            />
+          ) : (
+            <Sparkles className="h-4 w-4 text-amber-500" />
+          )}
           <span className="font-medium text-slate-700">{currentBrand?.name || "选择品牌"}</span>
           <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
         </DropdownMenuTrigger>
