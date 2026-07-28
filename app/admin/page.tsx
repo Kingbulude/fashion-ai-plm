@@ -72,6 +72,15 @@ const accentStyles = {
 
 const adminModules: AdminModule[] = [
   {
+    id: "company",
+    title: "公司信息",
+    description: "修改集团/公司名称、Logo 等基础企业信息。",
+    href: "/admin/company",
+    icon: Building2,
+    accent: "navy",
+    active: true,
+  },
+  {
     id: "people",
     title: "人员与权限",
     description: "管理公司成员、角色层级和品牌分配，控制谁能看到什么。",
@@ -85,7 +94,7 @@ const adminModules: AdminModule[] = [
     title: "品牌管理",
     description: "设置品牌名称、logo、季次等公司品牌资产与基础信息。",
     href: "/brands",
-    icon: Building2,
+    icon: Sparkles,
     accent: "terracotta",
     active: true,
   },

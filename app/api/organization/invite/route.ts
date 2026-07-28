@@ -70,6 +70,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "请选择角色层级" }, { status: 400 });
     }
 
+    // BOSS 是独立公司所有者，不继承邀请人公司
+    const isBossInvite = newRoleLevel === RoleLevel.BOSS;
+
     // 通过 Supabase Admin API 按邮箱查询用户
     const { data: listData } = await adminClient.auth.admin.listUsers();
     const users = listData?.users || [];
@@ -121,14 +124,22 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (existingProfile?.company_id && existingProfile.company_id !== companyId) {
+    // BOSS 邀请不绑定公司，但如果该用户已有公司归属，则不允许覆盖
+    if (isBossInvite && existingProfile?.company_id) {
+      return NextResponse.json(
+        { error: "该用户已属于其他公司，不能邀请为独立 BOSS" },
+        { status: 400 }
+      );
+    }
+
+    if (!isBossInvite && existingProfile?.company_id && existingProfile.company_id !== companyId) {
       return NextResponse.json(
         { error: "该用户已属于其他公司，请联系对方公司管理员移除后再邀请" },
         { status: 400 }
       );
     }
 
-    if (existingProfile?.company_id === companyId) {
+    if (!isBossInvite && existingProfile?.company_id === companyId) {
       return NextResponse.json(
         { error: "该用户已是公司成员，无需重复邀请" },
         { status: 400 }
@@ -142,7 +153,7 @@ export async function POST(request: Request) {
         name: name || targetUser.user_metadata?.name || email.split("@")[0],
         email: email.toLowerCase(),
         role_level: newRoleLevel,
-        company_id: companyId,
+        company_id: isBossInvite ? null : companyId,
         role: newRoleLevel,
         updated_at: new Date().toISOString(),
       },
@@ -151,8 +162,8 @@ export async function POST(request: Request) {
 
     if (profileError) throw profileError;
 
-    // 5. 分配品牌权限
-    if (brandIds && Array.isArray(brandIds) && brandIds.length > 0) {
+    // 5. 分配品牌权限（BOSS 不绑定任何品牌）
+    if (!isBossInvite && brandIds && Array.isArray(brandIds) && brandIds.length > 0) {
       const insertBrands = brandIds.map((brandId: string) => ({
         user_id: userId,
         brand_id: brandId,
@@ -164,8 +175,8 @@ export async function POST(request: Request) {
       if (brandError) throw brandError;
     }
 
-    // 6. 分配工序角色
-    if (processRoleIds && Array.isArray(processRoleIds) && processRoleIds.length > 0) {
+    // 6. 分配工序角色（BOSS 不绑定）
+    if (!isBossInvite && processRoleIds && Array.isArray(processRoleIds) && processRoleIds.length > 0) {
       const insertRoles = processRoleIds.map((processRoleId: string) => ({
         user_id: userId,
         process_role_id: processRoleId,
@@ -178,8 +189,8 @@ export async function POST(request: Request) {
       if (roleError) throw roleError;
     }
 
-    // 7. 分配主管类型
-    if (processOwnerScopeId) {
+    // 7. 分配主管类型（BOSS 不绑定）
+    if (!isBossInvite && processOwnerScopeId) {
       const { error: scopeError } = await adminClient
         .from("user_process_owner_scopes")
         .upsert(

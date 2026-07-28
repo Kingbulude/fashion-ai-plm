@@ -14,16 +14,24 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const brandId = url.searchParams.get("brandId");
 
-    if (!brandId) {
-      return NextResponse.json({ data: [] });
-    }
-
-    const { data: seasons, error } = await supabase
+    let query = supabase
       .from("seasons")
       .select("*")
-      .eq("brand_id", brandId)
       .order("year", { ascending: false })
       .order("season_type", { ascending: false });
+
+    if (brandId) {
+      query = query.eq("brand_id", brandId);
+    } else {
+      // 未传 brandId 时，返回当前用户所在公司的所有季节
+      query = query.filter(
+        "brand_id",
+        "in",
+        `(SELECT id FROM brands WHERE company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))`
+      );
+    }
+
+    const { data: seasons, error } = await query;
 
     if (error) {
       console.error("获取季节列表失败:", error);
