@@ -127,42 +127,42 @@ function LoginForm() {
   return (
     <div className="min-h-screen w-full flex bg-sand-50">
       {/* 左侧品牌区 */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-terracotta-500/20 via-transparent to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-navy-500/10 to-transparent" />
-        <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-terracotta-400/10 blur-3xl" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-navy-400/10 blur-3xl" />
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sand-50 via-white to-sand-100 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-terracotta-200/40 via-transparent to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-96 bg-gradient-to-t from-navy-100/30 to-transparent" />
+        <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-terracotta-200/20 blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-navy-200/20 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-12 h-12 rounded-xl gradient-navy flex items-center justify-center shadow-premium border border-white/10">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">StyleForge</h1>
-              <p className="text-sm text-sand-200/70">服装AI全链路品牌管理系统</p>
+              <h1 className="text-2xl font-bold text-navy-900">StyleForge</h1>
+              <p className="text-sm text-navy-600/80">服装AI全链路品牌管理系统</p>
             </div>
           </div>
-          
-          <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+
+          <h2 className="text-4xl font-bold text-navy-900 mb-4 leading-tight">
             从设计到上市
             <br />
-            <span className="bg-gradient-to-r from-terracotta-300 to-sand-200 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-terracotta-500 to-navy-700 bg-clip-text text-transparent">
               一站式款式管理
             </span>
           </h2>
-          <p className="text-sand-200/80 text-lg mb-12 max-w-md">
+          <p className="text-navy-700/80 text-lg mb-12 max-w-md">
             轻资产服装品牌的全链路解决方案，让每一款产品从创意到落地都清晰可控。
           </p>
-          
+
           <div className="space-y-5">
             {features.map((feature, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+              <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-sand-200/80 shadow-sm">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-terracotta-400 to-terracotta-600 flex items-center justify-center flex-shrink-0 shadow-premium">
                   <feature.icon className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-white font-medium">{feature.title}</h3>
-                  <p className="text-sand-200/70 text-sm">{feature.desc}</p>
+                  <h3 className="text-navy-900 font-medium">{feature.title}</h3>
+                  <p className="text-navy-600/80 text-sm">{feature.desc}</p>
                 </div>
               </div>
             ))}
