@@ -340,6 +340,12 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     profile.roleLevel === RoleLevel.BOSS ||
     profile.roleLevel === RoleLevel.ADMIN;
 
+  // 品牌负责人可跨工序查看，能看到全部工序菜单（但后台配置仍仅限 BOSS/ADMIN）
+  const isManager =
+    isBossOrAdmin ||
+    userRole === RoleLevel.BRAND_MANAGER ||
+    profile.roleLevel === RoleLevel.BRAND_MANAGER;
+
   // 全局可搜索页面
   const searchItems: SearchItem[] = [
     { label: "工作台", href: "/dashboard", icon: LayoutDashboard, keywords: ["dashboard", "工作台", "首页"] },
@@ -522,13 +528,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const navItems = allNavItems.filter((item) => {
     if (item.admin && !isBossOrAdmin) return false;
 
-    // BOSS/ADMIN 或通配权限，显示全部
-    if (isBossOrAdmin || accessibleProcessNodes.includes("*")) return true;
+    // BOSS/ADMIN/品牌负责人 或通配权限，显示全部工序菜单
+    if (isManager || accessibleProcessNodes.includes("*")) return true;
 
     // 未配置 node 的通用页面默认显示
     if (!item.node) return true;
 
-    // 按可访问工序节点过滤（由工序角色 + 工序主管类型合并计算）
+    // 工序负责人/执行者按绑定的工序节点过滤
     return accessibleProcessNodes.includes(item.node);
   });
 

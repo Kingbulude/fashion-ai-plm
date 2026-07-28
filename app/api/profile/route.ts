@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/db/client";
 import { logOperation } from "@/lib/auth/audit";
-import { RoleLevelLabels } from "@/lib/auth/rbac";
+import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
@@ -103,14 +103,19 @@ export async function GET(request: Request) {
     }
 
     let brandName = "TEPNIX步戌";
+    let companyId = data?.company_id;
     if (data?.brand_id) {
       const { data: brand, error: brandError } = await supabase
         .from("brands")
-        .select("name")
+        .select("name, company_id")
         .eq("id", data.brand_id)
         .single();
       if (!brandError && brand?.name) {
         brandName = brand.name;
+      }
+      // 兼容历史数据：profile.company_id 为空时从 brand 推导
+      if (!companyId && brand?.company_id) {
+        companyId = brand.company_id;
       }
     }
 
@@ -119,7 +124,7 @@ export async function GET(request: Request) {
       .from("user_process_roles")
       .select("process_role_id, process_roles(*)")
       .eq("user_id", userId)
-      .eq("company_id", data?.company_id || "");
+      .eq("company_id", companyId || "");
 
     const processRoles = ((userProcessRoles || [])
       .map((ur: any) => ur.process_roles)
@@ -131,7 +136,7 @@ export async function GET(request: Request) {
       .from("user_process_owner_scopes")
       .select("process_owner_scopes(*)")
       .eq("user_id", userId)
-      .eq("company_id", data?.company_id || "");
+      .eq("company_id", companyId || "");
 
     const processOwnerScopes = ((userProcessOwnerScopes || [])
       .map((us: any) => us.process_owner_scopes)
@@ -139,10 +144,17 @@ export async function GET(request: Request) {
       .filter((s: any) => s.is_active !== false);
 
     // 构建职位权限展示文本
+    // 当 PROCESS_OWNER 且绑定了具体主管类型时，用主管类型名称替代通用"工序负责人"
     const roleTitles: string[] = [];
+    const hasProcessOwnerScope = processOwnerScopes.length > 0;
+
     if (data?.role_level && RoleLevelLabels[data.role_level]) {
-      roleTitles.push(RoleLevelLabels[data.role_level]);
+      const baseLabel = RoleLevelLabels[data.role_level];
+      if (data.role_level !== RoleLevel.PROCESS_OWNER || !hasProcessOwnerScope) {
+        roleTitles.push(baseLabel);
+      }
     }
+
     processOwnerScopes.forEach((scope: any) => {
       if (scope.name && !roleTitles.includes(scope.name)) roleTitles.push(scope.name);
     });

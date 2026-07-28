@@ -12,11 +12,29 @@ export async function GET(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("user_id, name, email, avatar_url, company_id, role_level")
+      .select("user_id, name, email, avatar_url, company_id, brand_id, role_level")
       .eq("user_id", user.id)
       .single();
 
-    if (!profile?.company_id) {
+    let companyId = profile?.company_id;
+
+    // 兼容历史数据：profile.company_id 为空时尝试从 brand 推导
+    if (!companyId && profile?.brand_id) {
+      try {
+        const { data: brand } = await supabase
+          .from("brands")
+          .select("company_id")
+          .eq("id", profile.brand_id)
+          .single();
+        if (brand?.company_id) companyId = brand.company_id;
+      } catch {
+        // 忽略推导失败
+      }
+    }
+
+    const roleLevel = profile?.role_level;
+
+    if (!companyId) {
       return NextResponse.json({
         profile: { ...profile, role_level: null },
         roleLevel: null,
@@ -24,14 +42,12 @@ export async function GET(request: Request) {
       });
     }
 
-    const roleLevel = profile.role_level;
-
     let allowedBrandIds: string[] = [];
     if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
       const { data: brands } = await supabase
         .from("brands")
         .select("id")
-        .eq("company_id", profile.company_id);
+        .eq("company_id", companyId);
       allowedBrandIds = (brands || []).map((b: any) => b.id);
     } else {
       const { data: ub } = await supabase
@@ -46,7 +62,7 @@ export async function GET(request: Request) {
       .from("user_process_roles")
       .select("process_role_id, process_roles(*)")
       .eq("user_id", user.id)
-      .eq("company_id", profile.company_id);
+      .eq("company_id", companyId);
 
     const processRoles = ((userProcessRoles || [])
       .map((ur: any) => ur.process_roles)
@@ -58,7 +74,7 @@ export async function GET(request: Request) {
       .from("user_process_owner_scopes")
       .select("process_owner_scopes(*)")
       .eq("user_id", user.id)
-      .eq("company_id", profile.company_id);
+      .eq("company_id", companyId);
 
     const processOwnerScope = ((userProcessOwnerScopes || [])
       .map((us: any) => us.process_owner_scopes)
@@ -88,10 +104,10 @@ export async function GET(request: Request) {
     let accessibleAISkills: any[] = [];
     if (roleLevel === RoleLevel.BOSS || roleLevel === RoleLevel.ADMIN) {
       const { data: allSkills } = await supabase
-        .from("ai_skills")
-        .select("*")
-        .eq("is_active", true)
-        .eq("company_id", profile.company_id);
+          .from("ai_skills")
+          .select("*")
+          .eq("is_active", true)
+          .eq("company_id", companyId);
       accessibleAISkills = allSkills || [];
     } else {
       const aiSkillIdSet = new Set<string>();
@@ -127,7 +143,7 @@ export async function GET(request: Request) {
           .select("*")
           .in("id", Array.from(aiSkillIdSet))
           .eq("is_active", true)
-          .eq("company_id", profile.company_id);
+          .eq("company_id", companyId);
         accessibleAISkills = skills || [];
       }
     }
