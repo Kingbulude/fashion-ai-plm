@@ -114,13 +114,53 @@ export async function GET(request: Request) {
       }
     }
 
+    // 加载横向工序角色（按公司隔离）
+    const { data: userProcessRoles } = await supabase
+      .from("user_process_roles")
+      .select("process_role_id, process_roles(*)")
+      .eq("user_id", userId)
+      .eq("company_id", data?.company_id || "");
+
+    const processRoles = ((userProcessRoles || [])
+      .map((ur: any) => ur.process_roles)
+      .filter(Boolean) as any[])
+      .filter((r: any) => r.is_active !== false);
+
+    // 加载工序主管类型（按公司隔离）
+    const { data: userProcessOwnerScopes } = await supabase
+      .from("user_process_owner_scopes")
+      .select("process_owner_scopes(*)")
+      .eq("user_id", userId)
+      .eq("company_id", data?.company_id || "");
+
+    const processOwnerScopes = ((userProcessOwnerScopes || [])
+      .map((us: any) => us.process_owner_scopes)
+      .filter(Boolean) as any[])
+      .filter((s: any) => s.is_active !== false);
+
+    // 构建职位权限展示文本
+    const roleTitles: string[] = [];
+    if (data?.role_level && RoleLevelLabels[data.role_level]) {
+      roleTitles.push(RoleLevelLabels[data.role_level]);
+    }
+    processOwnerScopes.forEach((scope: any) => {
+      if (scope.name && !roleTitles.includes(scope.name)) roleTitles.push(scope.name);
+    });
+    processRoles.forEach((role: any) => {
+      if (role.name && !roleTitles.includes(role.name)) roleTitles.push(role.name);
+    });
+
+    const roleDisplay = roleTitles.length > 0 ? roleTitles.join(" / ") : "未设置";
+
     return NextResponse.json({
       name: data?.name || "用户",
       email: userEmail || "",
       avatarUrl: data?.avatar_url || null,
-      role: (data?.role_level && RoleLevelLabels[data.role_level]) || data?.role || "未设置",
+      role: roleDisplay,
       roleLevel: data?.role_level || null,
       brandName,
+      processRoles: processRoles.map((r: any) => ({ id: r.id, name: r.name, processNode: r.process_node })),
+      processOwnerScopes: processOwnerScopes.map((s: any) => ({ id: s.id, name: s.name, processNodes: s.process_nodes })),
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
