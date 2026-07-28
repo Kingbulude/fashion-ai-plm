@@ -94,6 +94,9 @@ export interface TenantContextValue {
   // 工序主管类型
   processOwnerScope: ProcessOwnerScope | null;
 
+  // 可访问工序节点（由工序角色 + 工序主管类型合并计算）
+  accessibleProcessNodes: string[];
+
   // AI Skills
   accessibleAISkills: AISkill[];
 
@@ -136,6 +139,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [accessibleRoutes, setAccessibleRoutes] = useState<string[]>([]);
   const [processOwnerScope, setProcessOwnerScope] = useState<ProcessOwnerScope | null>(null);
+  const [accessibleProcessNodes, setAccessibleProcessNodes] = useState<string[]>([]);
   const [accessibleAISkills, setAccessibleAISkills] = useState<AISkill[]>([]);
 
   // 1. 加载可用的公司/品牌/季节
@@ -168,6 +172,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         meRes.processOwnerScope && meRes.processOwnerScope.is_active !== false
           ? meRes.processOwnerScope
           : null;
+      const loadedAccessibleProcessNodes: string[] = meRes.accessibleProcessNodes || [];
       const loadedAccessibleAISkills: AISkill[] = (meRes.accessibleAISkills || []).filter(
         (s: any) => s && s.is_active !== false
       );
@@ -185,6 +190,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setProcessRoles(loadedProcessRoles);
       setAccessibleRoutes(loadedAccessibleRoutes);
       setProcessOwnerScope(loadedProcessOwnerScope);
+      setAccessibleProcessNodes(loadedAccessibleProcessNodes);
       setAccessibleAISkills(loadedAccessibleAISkills);
 
       // 2. 确定当前选中的 ID（优先级：URL > localStorage > 默认）
@@ -356,6 +362,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     processRoles,
     accessibleRoutes,
     processOwnerScope,
+    accessibleProcessNodes,
     accessibleAISkills,
     refresh: loadTenants,
   };

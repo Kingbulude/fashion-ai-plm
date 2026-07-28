@@ -42,6 +42,7 @@ import {
   FileText,
   Target,
   TrendingDown,
+  TrendingUp,
   Layers,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -150,9 +151,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     currentSeason,
     isAdmin,
     userRole,
-    processRoles,
-    accessibleRoutes,
-    processOwnerScope,
+    accessibleProcessNodes,
     isLoading,
   } = useTenant();
 
@@ -493,19 +492,30 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const allNavItems = [
     { icon: LayoutDashboard, label: "工作台", href: "/dashboard" },
     { icon: BarChart3, label: "智能调度", href: "/" },
+    // 企划
     { icon: Sparkles, label: "企划中心", href: "/planning", node: "planning" },
-    { icon: Palette, label: "灵感白板", href: "/inspiration" },
-    { icon: Wand2, label: "AI智能体中心", href: "/ai-workspace" },
-    { icon: Brain, label: "AI审核中心", href: "/ai-review", node: "testing" },
-    { icon: Target, label: "测款中心", href: "/testing", node: "testing" },
-    { icon: Shirt, label: "款式管理", href: "/styles", node: "sampling" },
-    { icon: Palette, label: "设计资产", href: "/design", node: "design" },
-    { icon: Factory, label: "生产管理", href: "/production", node: "stocking" },
-    { icon: BarChart3, label: "经营反馈", href: "/analytics" },
+    // 设计
+    { icon: Palette, label: "设计中心", href: "/design", node: "design" },
     { icon: TrendingDown, label: "设计反馈", href: "/design-feedback", node: "design" },
+    // 打样
+    { icon: Shirt, label: "打样管理", href: "/styles", node: "sampling" },
+    // 测款
+    { icon: Target, label: "测款中心", href: "/testing", node: "testing" },
+    { icon: Brain, label: "AI审核中心", href: "/ai-review", node: "testing" },
+    // 采购
+    { icon: Store, label: "采购管理", href: "/suppliers", node: "procurement" },
+    { icon: Layers, label: "面料库", href: "/fabrics", node: "procurement" },
+    // 生产/备货
+    { icon: Factory, label: "生产管理", href: "/production", node: "stocking" },
+    // 销售
+    { icon: TrendingUp, label: "销售管理", href: "/sales", node: "sales" },
+    // 售后
+    { icon: Bell, label: "售后管理", href: "/aftersales", node: "aftersales" },
+    // 通用
+    { icon: BarChart3, label: "经营反馈", href: "/analytics" },
+    { icon: Wand2, label: "AI智能体中心", href: "/ai-workspace" },
+    { icon: Palette, label: "灵感白板", href: "/inspiration" },
     { icon: FileText, label: "每季复盘", href: "/season-review" },
-    { icon: Store, label: "供应商", href: "/suppliers", admin: true },
-    { icon: Layers, label: "面料库", href: "/fabrics" },
     { icon: Settings, label: "后台配置", href: "/admin", admin: true },
   ];
 
@@ -513,21 +523,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     if (item.admin && !isBossOrAdmin) return false;
 
     // BOSS/ADMIN 或通配权限，显示全部
-    if (isBossOrAdmin || accessibleRoutes.includes("*")) return true;
+    if (isBossOrAdmin || accessibleProcessNodes.includes("*")) return true;
 
     // 未配置 node 的通用页面默认显示
     if (!item.node) return true;
 
-    // 工序负责人按主管类型的 process_nodes 过滤
-    if (userRole === RoleLevel.PROCESS_OWNER && processOwnerScope) {
-      return processOwnerScope.process_nodes.includes(item.node);
-    }
-
-    // 根据横向工序角色的 route_permissions 或 process_node 判断
-    const routeAllowed = accessibleRoutes.some((route) => item.href === route || item.href.startsWith(`${route}/`));
-    const nodeAllowed = processRoles.some((r) => r.process_node === item.node);
-
-    return routeAllowed || nodeAllowed;
+    // 按可访问工序节点过滤（由工序角色 + 工序主管类型合并计算）
+    return accessibleProcessNodes.includes(item.node);
   });
 
   const isActive = (href: string) => {
