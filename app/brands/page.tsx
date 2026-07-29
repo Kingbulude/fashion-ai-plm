@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon, Sparkles, Shirt } from "lucide-react";
+import { Plus, Building2, Users, Calendar, Trash2, Pencil, Loader2, Upload, ImageIcon, Sparkles, Shirt } from "lucide-react";
 import { RoleLevelLabels } from "@/lib/auth/rbac";
 import { useTenant } from "@/lib/auth/tenant-context";
 
@@ -77,6 +77,17 @@ export default function BrandsPage() {
   const [seasonStart, setSeasonStart] = useState("");
   const [seasonEnd, setSeasonEnd] = useState("");
   const [seasonSaving, setSeasonSaving] = useState(false);
+
+  const [editSeasonOpen, setEditSeasonOpen] = useState(false);
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+  const [editSeasonName, setEditSeasonName] = useState("");
+  const [editSeasonType, setEditSeasonType] = useState<"SS" | "FW">("SS");
+  const [editSeasonYear, setEditSeasonYear] = useState<number>(new Date().getFullYear() + 1);
+  const [editSeasonStart, setEditSeasonStart] = useState("");
+  const [editSeasonEnd, setEditSeasonEnd] = useState("");
+  const [editSeasonStatus, setEditSeasonStatus] = useState<string>("active");
+  const [editSeasonSaving, setEditSeasonSaving] = useState(false);
+  const [editSeasonDeleting, setEditSeasonDeleting] = useState(false);
 
   const { refresh: refreshTenant } = useTenant();
 
@@ -289,19 +300,83 @@ export default function BrandsPage() {
     }
   };
 
-  const handleToggleSeasonLock = async (seasonId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "active" ? "locked" : "active";
+  const handleEditSeasonClick = (season: Season) => {
+    setEditingSeason(season);
+    setEditSeasonName(season.name || "");
+    setEditSeasonType((season.season_type as "SS" | "FW") || "SS");
+    setEditSeasonYear(season.year || new Date().getFullYear() + 1);
+    setEditSeasonStart(season.start_date || "");
+    setEditSeasonEnd(season.end_date || "");
+    setEditSeasonStatus(season.status || "active");
+    setEditSeasonOpen(true);
+  };
+
+  const resetEditSeasonForm = () => {
+    setEditingSeason(null);
+    setEditSeasonName("");
+    setEditSeasonType("SS");
+    setEditSeasonYear(new Date().getFullYear() + 1);
+    setEditSeasonStart("");
+    setEditSeasonEnd("");
+    setEditSeasonStatus("active");
+    setEditSeasonOpen(false);
+  };
+
+  const handleSaveSeasonEdit = async () => {
+    if (!editingSeason || !selectedBrand) return;
+    if (!editSeasonName.trim() || !editSeasonStart || !editSeasonEnd) return;
+    setEditSeasonSaving(true);
     try {
-      await fetch("/api/seasons", {
+      const res = await fetch("/api/seasons", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: seasonId, status: newStatus }),
+        body: JSON.stringify({
+          id: editingSeason.id,
+          name: editSeasonName.trim(),
+          seasonType: editSeasonType,
+          year: editSeasonYear,
+          startDate: editSeasonStart,
+          endDate: editSeasonEnd,
+          status: editSeasonStatus,
+        }),
       });
-      if (selectedBrand) {
+      if (res.ok) {
+        resetEditSeasonForm();
         fetchSeasons(selectedBrand.id);
+        await refreshTenant();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "保存季次失败");
       }
     } catch (error) {
-      console.error("Failed to toggle season:", error);
+      console.error("Failed to update season:", error);
+      alert("保存季次失败");
+    } finally {
+      setEditSeasonSaving(false);
+    }
+  };
+
+  const handleDeleteSeason = async () => {
+    if (!editingSeason || !selectedBrand) return;
+    if (!window.confirm("确定要删除该季次吗？删除后不可恢复，关联的企划、款式等数据可能受影响。")) {
+      return;
+    }
+    setEditSeasonDeleting(true);
+    try {
+      const res = await fetch(`/api/seasons?id=${editingSeason.id}`, { method: "DELETE" });
+      if (res.ok) {
+        resetEditSeasonForm();
+        fetchSeasons(selectedBrand.id);
+        await refreshTenant();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "删除季次失败");
+      }
+    } catch (error) {
+      console.error("Failed to delete season:", error);
+      alert("删除季次失败");
+    } finally {
+      setEditSeasonDeleting(false);
     }
   };
 
@@ -447,18 +522,22 @@ export default function BrandsPage() {
                   seasons.map(season => (
                     <div key={season.id} className="p-4 rounded-xl border border-border bg-sand-50/40 hover:bg-sand-50/80 transition-colors">
                       <div className="flex items-center justify-between gap-3 mb-2">
-                        <span className="font-medium text-sm text-foreground truncate">{season.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm text-foreground truncate">{season.name}</span>
+                          {season.status === "active" ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200">可编辑</span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-terracotta-100 text-terracotta-700 border border-terracotta-200">已锁定</span>
+                          )}
+                        </div>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleToggleSeasonLock(season.id, season.status)}
+                          onClick={() => handleEditSeasonClick(season)}
                           className="h-8 px-2.5 text-xs flex-shrink-0"
                         >
-                          {season.status === "active" ? (
-                            <><Unlock className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /><span className="text-emerald-700">可编辑</span></>
-                          ) : (
-                            <><Lock className="h-3.5 w-3.5 mr-1.5 text-terracotta-500" /><span className="text-terracotta-600">已锁定</span></>
-                          )}
+                          <Pencil className="h-3.5 w-3.5 mr-1.5 text-navy-700" />
+                          <span className="text-navy-700">编辑</span>
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mb-3">
@@ -711,6 +790,111 @@ export default function BrandsPage() {
                 {seasonSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 创建
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 编辑季次弹窗 */}
+        <Dialog open={editSeasonOpen} onOpenChange={setEditSeasonOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>编辑季次</DialogTitle>
+              <DialogDescription>
+                {editingSeason ? `修改 ${editingSeason.name} 的基础信息` : "编辑季次"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-season-name">季次名称</Label>
+                <Input
+                  id="edit-season-name"
+                  value={editSeasonName}
+                  onChange={(e) => setEditSeasonName(e.target.value)}
+                  placeholder="例如：27SS"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-season-type">季节类型</Label>
+                  <select
+                    id="edit-season-type"
+                    value={editSeasonType}
+                    onChange={(e) => setEditSeasonType(e.target.value as "SS" | "FW")}
+                    className="w-full h-10 text-sm px-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="SS">春夏 SS</option>
+                    <option value="FW">秋冬 FW</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-season-year">年份</Label>
+                  <Input
+                    id="edit-season-year"
+                    type="number"
+                    value={editSeasonYear}
+                    onChange={(e) => setEditSeasonYear(Number(e.target.value))}
+                    min={2000}
+                    max={2100}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-season-start">开始日期</Label>
+                  <Input
+                    id="edit-season-start"
+                    type="date"
+                    value={editSeasonStart}
+                    onChange={(e) => setEditSeasonStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-season-end">结束日期</Label>
+                  <Input
+                    id="edit-season-end"
+                    type="date"
+                    value={editSeasonEnd}
+                    onChange={(e) => setEditSeasonEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-season-status">状态</Label>
+                <select
+                  id="edit-season-status"
+                  value={editSeasonStatus}
+                  onChange={(e) => setEditSeasonStatus(e.target.value)}
+                  className="w-full h-10 text-sm px-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="active">可编辑</option>
+                  <option value="locked">已锁定</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={handleDeleteSeason}
+                disabled={editSeasonDeleting || editSeasonSaving || !editingSeason}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                {editSeasonDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                删除
+              </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button variant="outline" onClick={() => setEditSeasonOpen(false)} disabled={editSeasonSaving || editSeasonDeleting}>
+                  取消
+                </Button>
+                <Button
+                  onClick={handleSaveSeasonEdit}
+                  disabled={editSeasonSaving || editSeasonDeleting || !editSeasonName.trim() || !editSeasonStart || !editSeasonEnd || !editingSeason}
+                  className="bg-terracotta-500 hover:bg-terracotta-600 text-white"
+                >
+                  {editSeasonSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  保存
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

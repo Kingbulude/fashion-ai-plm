@@ -9,10 +9,24 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
+    const { supabase, tenant } = ctx;
 
     const url = new URL(request.url);
     const brandId = url.searchParams.get("brandId");
+    const companyId = url.searchParams.get("companyId") || tenant.company_id;
+
+    let brandIds: string[] = [];
+
+    if (brandId) {
+      brandIds = [brandId];
+    } else if (companyId) {
+      // 先查询该公司下可见的品牌列表（RLS 会自动过滤权限）
+      const { data: brands } = await supabase
+        .from("brands")
+        .select("id")
+        .eq("company_id", companyId);
+      brandIds = (brands || []).map((b) => b.id);
+    }
 
     let query = supabase
       .from("seasons")
@@ -20,15 +34,11 @@ export async function GET(request: Request) {
       .order("year", { ascending: false })
       .order("season_type", { ascending: false });
 
-    if (brandId) {
-      query = query.eq("brand_id", brandId);
+    if (brandIds.length > 0) {
+      query = query.in("brand_id", brandIds);
     } else {
-      // 未传 brandId 时，返回当前用户所在公司的所有季节
-      query = query.filter(
-        "brand_id",
-        "in",
-        `(SELECT id FROM brands WHERE company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))`
-      );
+      // 没有任何可访问品牌时，返回空结果
+      return NextResponse.json({ data: [] });
     }
 
     const { data: seasons, error } = await query;

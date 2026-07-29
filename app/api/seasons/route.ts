@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   }
 }
 
-// 锁定季次（仅老板/管理员/品牌负责人）
+// 更新季次（仅老板/管理员/品牌负责人）
 export async function PUT(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
@@ -106,18 +106,41 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, status } = body;
+    const { id, name, seasonType, year, startDate, endDate, status } = body;
 
-    if (!id || !status) {
-      return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "缺少季次 ID" }, { status: 400 });
+    }
+
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (name !== undefined) updateData.name = name;
+    if (seasonType !== undefined) updateData.season_type = seasonType;
+    if (year !== undefined) updateData.year = year;
+    if (startDate !== undefined) updateData.start_date = startDate;
+    if (endDate !== undefined) updateData.end_date = endDate;
+    if (status !== undefined) updateData.status = status;
+
+    // 如果要将某个季次设为 active，先把同品牌其他 active 季次锁定
+    if (status === "active") {
+      const { data: targetSeason } = await supabase
+        .from("seasons")
+        .select("brand_id")
+        .eq("id", id)
+        .single();
+      if (targetSeason?.brand_id) {
+        await supabase
+          .from("seasons")
+          .update({ status: "locked" })
+          .eq("brand_id", targetSeason.brand_id)
+          .eq("status", "active");
+      }
     }
 
     const { data, error } = await supabase
       .from("seasons")
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();
@@ -128,5 +151,41 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Failed to update season:", error);
     return NextResponse.json({ error: "Failed to update season" }, { status: 500 });
+  }
+}
+
+// 删除季次（仅老板/管理员/品牌负责人）
+export async function DELETE(request: Request) {
+  try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { supabase } = ctx;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role_level")
+      .eq("user_id", ctx.user.id)
+      .single();
+
+    const allowedRoles = [RoleLevel.BOSS, RoleLevel.ADMIN, RoleLevel.BRAND_MANAGER];
+    if (!allowedRoles.includes(profile?.role_level as RoleLevel)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "缺少季次 ID" }, { status: 400 });
+    }
+
+    const { error } = await supabase.from("seasons").delete().eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete season:", error);
+    return NextResponse.json({ error: "Failed to delete season" }, { status: 500 });
   }
 }
