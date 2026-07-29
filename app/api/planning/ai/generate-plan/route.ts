@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray, generateJson } from "@/lib/ai/json-generation";
+import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
 
@@ -64,8 +65,14 @@ function buildFallback(season: string, theme: string, _category: string, baseCos
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+    const { tenant } = ctx;
+
     const supabase = createServerSupabaseClient(request);
-    const { season, theme, category, targetCost } = await request.json();
+    const { season, theme, category, targetCost, seasonId } = await request.json();
+
+    const effectiveSeasonId = seasonId || tenant.season_id || null;
 
     let brandDna: any = {
       brand_name: "StyleForge",
@@ -75,8 +82,13 @@ export async function POST(request: Request) {
       core_values: ["品质至上", "创新设计"],
     };
 
+    // 按当前品牌读取品牌基因，实现品牌-企划双向打通
     try {
-      const { data } = await supabase.from("brand_dna").select("*").limit(1).single();
+      let query = supabase.from("brand_dna").select("*");
+      if (tenant.brand_id) {
+        query = query.eq("brand_id", tenant.brand_id);
+      }
+      const { data } = await query.limit(1).single();
       if (data) brandDna = data;
     } catch {}
 
@@ -168,16 +180,22 @@ ${fabricItems.map(f => `- ${f.name}: ${f.price}`).join("\n")}
       overallConfidence,
     };
 
-    const newPlan = await supabase.from("planning").insert([{
-      season,
-      theme,
-      category,
-      targetCost: baseCost,
-      priceRange: `${comprehensivePlan.priceRange.min}-${comprehensivePlan.priceRange.max}`,
-      targetAudience: brandDna.target_audience,
-      timeline: `${String(season).split("SS")[0]}年${String(season).includes("SS") ? "春夏" : "秋冬"}上市`,
-      brandStory: comprehensivePlan.executiveSummary,
-    }]).select().single();
+    const planPayload = withTenant(
+      {
+        season,
+        theme,
+        category,
+        targetCost: baseCost,
+        priceRange: `${comprehensivePlan.priceRange.min}-${comprehensivePlan.priceRange.max}`,
+        targetAudience: brandDna.target_audience,
+        timeline: `${String(season).split("SS")[0]}年${String(season).includes("SS") ? "春夏" : "秋冬"}上市`,
+        brandStory: comprehensivePlan.executiveSummary,
+        season_id: effectiveSeasonId,
+      },
+      tenant
+    );
+
+    const newPlan = await supabase.from("planning").insert(planPayload).select().single();
 
     if (newPlan.data) {
       comprehensivePlan.planId = newPlan.data.id;
@@ -192,6 +210,7 @@ ${fabricItems.map(f => `- ${f.name}: ${f.price}`).join("\n")}
 
     return NextResponse.json(comprehensivePlan);
   } catch (err) {
+    console.error("[generate-plan] error:", err);
     return NextResponse.json({ error: "AI统筹企划失败" }, { status: 500 });
   }
 }

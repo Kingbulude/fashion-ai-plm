@@ -6,6 +6,8 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useTenant } from "@/lib/auth/tenant-context";
+import { useApi } from "@/lib/api/use-api";
 import {
   Brain,
   Search,
@@ -22,6 +24,7 @@ import {
   ShoppingBag,
   Shirt,
   DollarSign,
+  Calendar,
 } from "lucide-react";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 
@@ -109,6 +112,9 @@ const SKILLS: Skill[] = [
 ];
 
 export default function PlanningPage() {
+  const { currentBrand, currentSeason } = useTenant();
+  const api = useApi();
+
   const [activeSkill, setActiveSkill] = useState<Skill>(SKILLS[0]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +124,7 @@ export default function PlanningPage() {
   const [planOpen, setPlanOpen] = useState(false);
   const [planGenerating, setPlanGenerating] = useState(false);
   const [planForm, setPlanForm] = useState({
-    season: "",
+    season: currentSeason?.name || "",
     theme: "",
     category: "女装",
     targetCost: "",
@@ -275,6 +281,13 @@ export default function PlanningPage() {
   };
 
   // AI 一键生成综合企划
+  // 切换季次时，自动同步企划表单中的季节字段
+  useEffect(() => {
+    if (currentSeason?.name) {
+      setPlanForm(prev => ({ ...prev, season: currentSeason.name }));
+    }
+  }, [currentSeason?.id]);
+
   const handleGeneratePlan = async () => {
     if (!planForm.theme.trim()) {
       setPlanError("请输入企划主题");
@@ -284,21 +297,13 @@ export default function PlanningPage() {
     setPlanError("");
     setComprehensivePlan(null);
     try {
-      const res = await fetch("/api/planning/ai/generate-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          season: planForm.season || undefined,
-          theme: planForm.theme,
-          category: planForm.category,
-          targetCost: planForm.targetCost ? Number(planForm.targetCost) : undefined,
-        }),
+      const data = await api.post("/api/planning/ai/generate-plan", {
+        season: planForm.season || undefined,
+        theme: planForm.theme,
+        category: planForm.category,
+        targetCost: planForm.targetCost ? Number(planForm.targetCost) : undefined,
+        seasonId: currentSeason?.id,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "生成失败");
-      }
-      const data = await res.json();
       setComprehensivePlan(data);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "生成失败";
@@ -330,6 +335,12 @@ export default function PlanningPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {currentSeason && (
+                  <Badge variant="secondary" className="bg-white/80 text-slate-700 border-slate-200 gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {currentBrand?.name} · {currentSeason.name}
+                  </Badge>
+                )}
                 {isCompleted && (
                   <Badge className="bg-green-50 text-green-700 border-green-200">
                     <CheckCircle2 className="h-3 w-3 mr-1" />

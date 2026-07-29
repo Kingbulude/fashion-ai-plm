@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon } from "lucide-react";
+import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon, Sparkles, Shirt } from "lucide-react";
 import { RoleLevelLabels } from "@/lib/auth/rbac";
 
 interface Brand {
@@ -400,9 +401,25 @@ export default function BrandsPage() {
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mb-3">
                         {season.start_date} ~ {season.end_date}
                       </p>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/planning?brandId=${selectedBrand.id}&seasonId=${season.id}`}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white border border-border hover:border-navy-300 hover:text-navy-700 transition-colors"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          企划
+                        </Link>
+                        <Link
+                          href={`/styles?brandId=${selectedBrand.id}&seasonId=${season.id}`}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white border border-border hover:border-navy-300 hover:text-navy-700 transition-colors"
+                        >
+                          <Shirt className="h-3 w-3" />
+                          款式
+                        </Link>
+                      </div>
                     </div>
                   ))
                 )}
