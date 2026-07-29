@@ -262,7 +262,12 @@ export async function POST(request: Request) {
         .update(updatePayload)
         .eq("user_id", userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        return NextResponse.json(
+          { error: "更新用户资料失败", detail: profileError.message, code: profileError.code },
+          { status: 500 }
+        );
+      }
     }
 
     // 分配待选用户到公司（company_id 为 null 时）
@@ -278,18 +283,31 @@ export async function POST(request: Request) {
         .update({ company_id: companyId, updated_at: new Date().toISOString() })
         .eq("user_id", userId);
 
-      if (assignCompanyError) throw assignCompanyError;
+      if (assignCompanyError) {
+        return NextResponse.json(
+          { error: "分配公司失败", detail: assignCompanyError.message, code: assignCompanyError.code },
+          { status: 500 }
+        );
+      }
     }
 
     // 更新用户-品牌关联（先删除旧的，再插入新的）
     if (brandIds && Array.isArray(brandIds)) {
-      await adminClient
+      const { error: deleteBrandsError } = await adminClient
         .from("user_brands")
         .delete()
         .eq("user_id", userId);
 
-      if (brandIds.length > 0) {
-        const insertData = brandIds.map((brandId: string) => ({
+      if (deleteBrandsError) {
+        return NextResponse.json(
+          { error: "清空品牌关联失败", detail: deleteBrandsError.message, code: deleteBrandsError.code },
+          { status: 500 }
+        );
+      }
+
+      const validBrandIds = Array.from(new Set(brandIds)).filter((id) => typeof id === "string" && id.length > 0);
+      if (validBrandIds.length > 0) {
+        const insertData = validBrandIds.map((brandId: string) => ({
           user_id: userId,
           brand_id: brandId,
           role_level: newRoleLevel || RoleLevel.EXECUTOR,
@@ -299,20 +317,35 @@ export async function POST(request: Request) {
           .from("user_brands")
           .insert(insertData);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          return NextResponse.json(
+            { error: "保存品牌关联失败", detail: insertError.message, code: insertError.code },
+            { status: 500 }
+          );
+        }
       }
     }
 
     // 更新用户-工序角色关联（仅限当前公司）
     if (processRoleIds && Array.isArray(processRoleIds)) {
-      await adminClient
+      const { error: deleteRolesError } = await adminClient
         .from("user_process_roles")
         .delete()
         .eq("user_id", userId)
         .eq("company_id", companyId);
 
-      if (processRoleIds.length > 0) {
-        const insertData = processRoleIds.map((processRoleId: string) => ({
+      if (deleteRolesError) {
+        return NextResponse.json(
+          { error: "清空工序角色失败", detail: deleteRolesError.message, code: deleteRolesError.code },
+          { status: 500 }
+        );
+      }
+
+      const validProcessRoleIds = Array.from(new Set(processRoleIds)).filter(
+        (id) => typeof id === "string" && id.length > 0
+      );
+      if (validProcessRoleIds.length > 0) {
+        const insertData = validProcessRoleIds.map((processRoleId: string) => ({
           user_id: userId,
           process_role_id: processRoleId,
           company_id: companyId,
@@ -323,17 +356,29 @@ export async function POST(request: Request) {
           .from("user_process_roles")
           .insert(insertData);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          return NextResponse.json(
+            { error: "保存工序角色失败", detail: insertError.message, code: insertError.code },
+            { status: 500 }
+          );
+        }
       }
     }
 
     // 更新用户-主管类型关联（仅限当前公司）
     if (processOwnerScopeId !== undefined) {
-      await adminClient
+      const { error: deleteScopeError } = await adminClient
         .from("user_process_owner_scopes")
         .delete()
         .eq("user_id", userId)
         .eq("company_id", companyId);
+
+      if (deleteScopeError) {
+        return NextResponse.json(
+          { error: "清空主管类型失败", detail: deleteScopeError.message, code: deleteScopeError.code },
+          { status: 500 }
+        );
+      }
 
       if (processOwnerScopeId) {
         const { error: scopeError } = await adminClient
@@ -345,13 +390,22 @@ export async function POST(request: Request) {
             assigned_by: ctx.user.id,
           });
 
-        if (scopeError) throw scopeError;
+        if (scopeError) {
+          return NextResponse.json(
+            { error: "保存主管类型失败", detail: scopeError.message, code: scopeError.code },
+            { status: 500 }
+          );
+        }
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to assign role:", error);
-    return NextResponse.json({ error: "Failed to assign role" }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "Failed to assign role", detail },
+      { status: 500 }
+    );
   }
 }

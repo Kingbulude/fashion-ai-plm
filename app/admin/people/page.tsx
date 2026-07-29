@@ -285,7 +285,7 @@ export default function AdminPeoplePage() {
         });
         await fetchOrganization();
       } else {
-        alert(json.error || "添加失败");
+        alert(json.detail || json.error || "添加失败");
       }
     } catch (error) {
       console.error("Failed to assign user:", error);
@@ -335,7 +335,7 @@ export default function AdminPeoplePage() {
         });
         await fetchOrganization();
       } else {
-        setInviteEmailError(json.error || "邀请失败");
+        setInviteEmailError(json.detail || json.error || "邀请失败");
       }
     } catch (error) {
       console.error("Failed to invite by email:", error);
@@ -379,7 +379,7 @@ export default function AdminPeoplePage() {
       } else {
         const err = await res.json().catch(() => ({}));
         console.error("Failed to save user:", err);
-        alert(err.error || "保存失败");
+        alert(err.detail || err.error || "保存失败");
       }
     } catch (error) {
       console.error("Failed to save user:", error);
