@@ -69,6 +69,14 @@ export default function BrandsPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [newSeasonOpen, setNewSeasonOpen] = useState(false);
+  const [seasonName, setSeasonName] = useState("");
+  const [seasonType, setSeasonType] = useState<"SS" | "FW">("SS");
+  const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear() + 1);
+  const [seasonStart, setSeasonStart] = useState("");
+  const [seasonEnd, setSeasonEnd] = useState("");
+  const [seasonSaving, setSeasonSaving] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -100,10 +108,12 @@ export default function BrandsPage() {
   const fetchSeasons = async (brandId: string) => {
     try {
       const res = await fetch(`/api/seasons?brand_id=${brandId}`);
-      const data = await res.json();
-      setSeasons(Array.isArray(data) ? data : []);
+      const payload = await res.json();
+      const list = Array.isArray(payload) ? payload : payload?.data;
+      setSeasons(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Failed to fetch seasons:", error);
+      setSeasons([]);
     }
   };
 
@@ -122,6 +132,46 @@ export default function BrandsPage() {
       }
     } catch (error) {
       console.error("Failed to create brand:", error);
+    }
+  };
+
+  const resetSeasonForm = () => {
+    setSeasonName("");
+    setSeasonType("SS");
+    setSeasonYear(new Date().getFullYear() + 1);
+    setSeasonStart("");
+    setSeasonEnd("");
+  };
+
+  const handleCreateSeason = async () => {
+    if (!selectedBrand || !seasonName.trim() || !seasonStart || !seasonEnd) return;
+    setSeasonSaving(true);
+    try {
+      const res = await fetch("/api/seasons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandId: selectedBrand.id,
+          name: seasonName.trim(),
+          seasonType,
+          year: seasonYear,
+          startDate: seasonStart,
+          endDate: seasonEnd,
+        }),
+      });
+      if (res.ok) {
+        setNewSeasonOpen(false);
+        resetSeasonForm();
+        fetchSeasons(selectedBrand.id);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "创建季次失败");
+      }
+    } catch (error) {
+      console.error("Failed to create season:", error);
+      alert("创建季次失败");
+    } finally {
+      setSeasonSaving(false);
     }
   };
 
@@ -371,12 +421,20 @@ export default function BrandsPage() {
             {/* 季次管理 */}
             <Card className="card-premium flex flex-col">
               <CardHeader className="px-6 py-5 border-b border-border/60">
-                <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-terracotta-400 to-terracotta-600 flex items-center justify-center shadow-sm">
-                    <Calendar className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="truncate">{selectedBrand ? `${selectedBrand.name} - 季次` : "季次管理"}</span>
-                </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-terracotta-400 to-terracotta-600 flex items-center justify-center shadow-sm">
+                      <Calendar className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="truncate">{selectedBrand ? `${selectedBrand.name} - 季次` : "季次管理"}</span>
+                  </CardTitle>
+                  {selectedBrand && (
+                    <Button size="sm" onClick={() => setNewSeasonOpen(true)} className="bg-terracotta-500 hover:bg-terracotta-600 text-white flex-shrink-0">
+                      <Plus className="h-4 w-4 mr-1" />
+                      新建季次
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-6 space-y-3">
                 {!selectedBrand ? (
@@ -569,6 +627,87 @@ export default function BrandsPage() {
               <Button onClick={handleSaveEdit} disabled={editSaving || !editName.trim()} className="bg-navy-700 hover:bg-navy-800 text-white">
                 {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 保存
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 新建季次弹窗 */}
+        <Dialog open={newSeasonOpen} onOpenChange={setNewSeasonOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>新建季次</DialogTitle>
+              <DialogDescription>
+                {selectedBrand ? `为 ${selectedBrand.name} 创建新季次，例如 27SS` : "选择品牌后创建季次"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="season-name">季次名称</Label>
+                <Input
+                  id="season-name"
+                  value={seasonName}
+                  onChange={(e) => setSeasonName(e.target.value)}
+                  placeholder="例如：27SS"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="season-type">季节类型</Label>
+                  <select
+                    id="season-type"
+                    value={seasonType}
+                    onChange={(e) => setSeasonType(e.target.value as "SS" | "FW")}
+                    className="w-full h-10 text-sm px-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="SS">春夏 SS</option>
+                    <option value="FW">秋冬 FW</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="season-year">年份</Label>
+                  <Input
+                    id="season-year"
+                    type="number"
+                    value={seasonYear}
+                    onChange={(e) => setSeasonYear(Number(e.target.value))}
+                    min={2000}
+                    max={2100}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="season-start">开始日期</Label>
+                  <Input
+                    id="season-start"
+                    type="date"
+                    value={seasonStart}
+                    onChange={(e) => setSeasonStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="season-end">结束日期</Label>
+                  <Input
+                    id="season-end"
+                    type="date"
+                    value={seasonEnd}
+                    onChange={(e) => setSeasonEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setNewSeasonOpen(false)} disabled={seasonSaving}>
+                取消
+              </Button>
+              <Button
+                onClick={handleCreateSeason}
+                disabled={seasonSaving || !seasonName.trim() || !seasonStart || !seasonEnd || !selectedBrand}
+                className="bg-terracotta-500 hover:bg-terracotta-600 text-white"
+              >
+                {seasonSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                创建
               </Button>
             </DialogFooter>
           </DialogContent>
