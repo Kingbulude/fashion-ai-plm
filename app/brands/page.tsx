@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Building2, Users, Calendar, Lock, Unlock, Trash2, Pencil, Loader2, Upload, ImageIcon, Sparkles, Shirt } from "lucide-react";
 import { RoleLevelLabels } from "@/lib/auth/rbac";
+import { useTenant } from "@/lib/auth/tenant-context";
 
 interface Brand {
   id: string;
@@ -77,6 +78,8 @@ export default function BrandsPage() {
   const [seasonEnd, setSeasonEnd] = useState("");
   const [seasonSaving, setSeasonSaving] = useState(false);
 
+  const { refresh: refreshTenant } = useTenant();
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -129,6 +132,7 @@ export default function BrandsPage() {
         setNewBrandName("");
         setShowNewBrand(false);
         fetchData();
+        await refreshTenant();
       }
     } catch (error) {
       console.error("Failed to create brand:", error);
@@ -163,6 +167,7 @@ export default function BrandsPage() {
         setNewSeasonOpen(false);
         resetSeasonForm();
         fetchSeasons(selectedBrand.id);
+        await refreshTenant();
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "创建季次失败");
@@ -318,33 +323,7 @@ export default function BrandsPage() {
             </div>
             <p className="text-sm text-muted-foreground ml-[52px]">管理品牌、用户角色和季次配置</p>
           </div>
-          <Button onClick={() => setShowNewBrand(!showNewBrand)} className="bg-navy-700 hover:bg-navy-800 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            新建品牌
-          </Button>
         </div>
-
-        {showNewBrand && (
-          <Card className="card-premium mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row items-end gap-4">
-                <div className="flex-1 space-y-2 w-full">
-                  <Label htmlFor="brand-name" className="font-medium">品牌名称</Label>
-                  <Input
-                    id="brand-name"
-                    value={newBrandName}
-                    onChange={e => setNewBrandName(e.target.value)}
-                    placeholder="例如：TEPNIX步戌"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button onClick={handleCreateBrand} className="bg-navy-700 hover:bg-navy-800 text-white">创建</Button>
-                  <Button variant="outline" onClick={() => setShowNewBrand(false)}>取消</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {loading ? (
           <div className="py-32 text-center text-muted-foreground">加载中...</div>
@@ -353,14 +332,37 @@ export default function BrandsPage() {
             {/* 品牌列表 */}
             <Card className="card-premium flex flex-col">
               <CardHeader className="px-6 py-5 border-b border-border/60">
-                <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center shadow-sm">
-                    <Building2 className="h-4 w-4 text-white" />
-                  </div>
-                  品牌列表
-                </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center shadow-sm">
+                      <Building2 className="h-4 w-4 text-white" />
+                    </div>
+                    品牌列表
+                  </CardTitle>
+                  <Button size="sm" onClick={() => setShowNewBrand(!showNewBrand)} className="bg-navy-700 hover:bg-navy-800 text-white flex-shrink-0">
+                    <Plus className="h-4 w-4 mr-1" />
+                    新建品牌
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-6 space-y-3">
+                {showNewBrand && (
+                  <div className="p-4 rounded-xl border border-navy-200 bg-navy-50/40 space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="brand-name" className="font-medium">品牌名称</Label>
+                      <Input
+                        id="brand-name"
+                        value={newBrandName}
+                        onChange={e => setNewBrandName(e.target.value)}
+                        placeholder="例如：TEPNIX步戌"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={handleCreateBrand} className="bg-navy-700 hover:bg-navy-800 text-white">创建</Button>
+                      <Button variant="outline" onClick={() => setShowNewBrand(false)}>取消</Button>
+                    </div>
+                  </div>
+                )}
                 {brands.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">暂无品牌</p>
                 ) : (
