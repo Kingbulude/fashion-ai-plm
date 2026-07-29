@@ -4,6 +4,12 @@
 --       全局唯一 key 会导致非默认公司无法插入同名预设。
 -- ============================================
 
+-- 先补齐 company_id 字段（兼容尚未执行 017 迁移的环境）
+ALTER TABLE process_owner_scopes
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_process_owner_scopes_company_id ON process_owner_scopes(company_id);
+
 -- 安全函数：捕获对象不存在等错误
 CREATE OR REPLACE FUNCTION rls_safe_execute(p_sql TEXT)
 RETURNS void AS $$
