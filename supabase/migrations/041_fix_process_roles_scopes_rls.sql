@@ -15,7 +15,7 @@ RETURNS void AS $$
 BEGIN
   EXECUTE p_sql;
 EXCEPTION
-  WHEN undefined_table OR undefined_column OR undefined_function OR duplicate_object OR insufficient_privilege THEN
+  WHEN undefined_table OR undefined_column OR undefined_function OR duplicate_object OR duplicate_table OR insufficient_privilege THEN
     RAISE NOTICE 'rls_safe_execute skipped (%): %', SQLSTATE, p_sql;
 END $$ LANGUAGE plpgsql;
 
