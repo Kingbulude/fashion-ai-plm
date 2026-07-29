@@ -257,15 +257,15 @@ export default function BrandsPage() {
     <SidebarLayout>
       <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
         {/* 顶部标题栏 */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
-                <Building2 className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
+                <Building2 className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight">品牌管理</h1>
             </div>
-            <p className="text-sm text-muted-foreground ml-10">管理品牌、用户角色和季次配置</p>
+            <p className="text-sm text-muted-foreground ml-[52px]">管理品牌、用户角色和季次配置</p>
           </div>
           <Button onClick={() => setShowNewBrand(!showNewBrand)} className="bg-navy-700 hover:bg-navy-800 text-white">
             <Plus className="h-4 w-4 mr-2" />
@@ -274,8 +274,8 @@ export default function BrandsPage() {
         </div>
 
         {showNewBrand && (
-          <Card className="card-premium mb-6">
-            <CardContent className="pt-6">
+          <Card className="card-premium mb-8">
+            <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-end gap-4">
                 <div className="flex-1 space-y-2 w-full">
                   <Label htmlFor="brand-name" className="font-medium">品牌名称</Label>
@@ -300,21 +300,23 @@ export default function BrandsPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 品牌列表 */}
-            <Card className="card-premium">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                  <Building2 className="h-4 w-4 text-navy-700" />
+            <Card className="card-premium flex flex-col">
+              <CardHeader className="px-6 py-5 border-b border-border/60">
+                <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center shadow-sm">
+                    <Building2 className="h-4 w-4 text-white" />
+                  </div>
                   品牌列表
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="p-6 space-y-3">
                 {brands.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">暂无品牌</p>
                 ) : (
                   brands.map(brand => (
                     <div
                       key={brand.id}
-                      className={`group p-3 rounded-xl cursor-pointer transition-all border ${
+                      className={`group p-4 rounded-xl cursor-pointer transition-all border ${
                         selectedBrand?.id === brand.id
                           ? "bg-navy-50 border-navy-200 shadow-sm"
                           : "bg-sand-50/40 border-transparent hover:border-border hover:bg-sand-50"
@@ -324,17 +326,17 @@ export default function BrandsPage() {
                         fetchSeasons(brand.id);
                       }}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-600 to-terracotta-400 flex items-center justify-center text-white font-bold shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-navy-600 to-terracotta-400 flex items-center justify-center text-white font-bold shadow-sm flex-shrink-0">
                           {(brand.name || "?").charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-foreground truncate">{brand.name || "未命名品牌"}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {getUserBrandsCount(brand.id)} 人关联
                           </p>
                         </div>
-                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -366,33 +368,35 @@ export default function BrandsPage() {
             </Card>
 
             {/* 季次管理 */}
-            <Card className="card-premium">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                  <Calendar className="h-4 w-4 text-navy-700" />
-                  {selectedBrand ? `${selectedBrand.name} - 季次` : "季次管理"}
+            <Card className="card-premium flex flex-col">
+              <CardHeader className="px-6 py-5 border-b border-border/60">
+                <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-terracotta-400 to-terracotta-600 flex items-center justify-center shadow-sm">
+                    <Calendar className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="truncate">{selectedBrand ? `${selectedBrand.name} - 季次` : "季次管理"}</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="p-6 space-y-3">
                 {!selectedBrand ? (
                   <p className="text-sm text-muted-foreground text-center py-4">请选择品牌</p>
                 ) : seasons.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">暂无季次</p>
                 ) : (
                   seasons.map(season => (
-                    <div key={season.id} className="p-3 rounded-xl border border-border bg-sand-50/40">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm text-foreground">{season.name}</span>
+                    <div key={season.id} className="p-4 rounded-xl border border-border bg-sand-50/40 hover:bg-sand-50/80 transition-colors">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className="font-medium text-sm text-foreground truncate">{season.name}</span>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleToggleSeasonLock(season.id, season.status)}
-                          className="h-8 text-xs"
+                          className="h-8 px-2.5 text-xs flex-shrink-0"
                         >
                           {season.status === "active" ? (
-                            <><Unlock className="h-3 w-3 mr-1 text-emerald-600" /><span className="text-emerald-700">可编辑</span></>
+                            <><Unlock className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /><span className="text-emerald-700">可编辑</span></>
                           ) : (
-                            <><Lock className="h-3 w-3 mr-1 text-terracotta-500" /><span className="text-terracotta-600">已锁定</span></>
+                            <><Lock className="h-3.5 w-3.5 mr-1.5 text-terracotta-500" /><span className="text-terracotta-600">已锁定</span></>
                           )}
                         </Button>
                       </div>
@@ -406,23 +410,25 @@ export default function BrandsPage() {
             </Card>
 
             {/* 用户管理 */}
-            <Card className="card-premium">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 section-title !before:hidden">
-                  <Users className="h-4 w-4 text-navy-700" />
+            <Card className="card-premium flex flex-col">
+              <CardHeader className="px-6 py-5 border-b border-border/60">
+                <CardTitle className="text-base flex items-center gap-3 section-title !before:hidden">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-sm">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
                   用户角色
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
+              <CardContent className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
                 {profiles.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">暂无用户</p>
                 ) : (
                   profiles.map(profile => {
                     const ubList = getUserBrands(profile.user_id);
                     return (
-                      <div key={profile.user_id} className="p-3 rounded-xl border border-border bg-sand-50/40">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Avatar className="h-9 w-9 rounded-full border-2 border-white shadow-sm">
+                      <div key={profile.user_id} className="p-4 rounded-xl border border-border bg-sand-50/40 hover:bg-sand-50/80 transition-colors">
+                        <div className="flex items-center gap-4 mb-3">
+                          <Avatar className="h-10 w-10 rounded-full border-2 border-white shadow-sm flex-shrink-0">
                             {profile.avatar_url ? (
                               <AvatarImage src={profile.avatar_url} alt={profile.name || ""} />
                             ) : (
@@ -433,7 +439,7 @@ export default function BrandsPage() {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{profile.name || "未命名"}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {ubList.length} 个品牌关联
                             </p>
                           </div>
@@ -444,7 +450,7 @@ export default function BrandsPage() {
                             const brandIds = ubList.map(ub => ub.brand_id);
                             handleAssignRole(profile.user_id, e.target.value, brandIds);
                           }}
-                          className="w-full h-9 text-xs px-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                          className="w-full h-10 text-sm px-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                         >
                           {Object.entries(RoleLevelLabels).map(([value, label]) => (
                             <option key={value} value={value}>
