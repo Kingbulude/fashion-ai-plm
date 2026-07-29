@@ -183,23 +183,50 @@ export async function POST(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
 
     // 检查是否有权限分配（仅老板/管理员）
-    const { data: currentProfile } = await supabase
+    // 与 GET 保持一致：人员管理操作统一使用 service role，避免 RLS 因 company_id 为空拦截
+    const adminClient = getServiceRoleClient();
+    if (!isServiceRoleConfigured) {
+      return NextResponse.json(
+        { error: "Service role key 未配置", detail: "请配置 SUPABASE_SERVICE_ROLE_KEY 环境变量以使用人员管理功能" },
+        { status: 500 }
+      );
+    }
+
+    const { data: currentProfile } = await adminClient
       .from("profiles")
-      .select("role_level, company_id")
+      .select("role_level, company_id, brand_id")
       .eq("user_id", ctx.user.id)
       .single();
 
     const roleLevel = currentProfile?.role_level;
-    const companyId = currentProfile?.company_id;
+    let companyId = currentProfile?.company_id;
+
     if (roleLevel !== RoleLevel.BOSS && roleLevel !== RoleLevel.ADMIN) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // 兼容旧数据：company_id 为空时从 brand 推导
+    if (!companyId && currentProfile?.brand_id) {
+      const { data: brand } = await adminClient
+        .from("brands")
+        .select("company_id")
+        .eq("id", currentProfile.brand_id)
+        .single();
+      if (brand?.company_id) companyId = brand.company_id;
+    }
+
     if (!companyId) {
       return NextResponse.json({ error: "当前用户未绑定公司" }, { status: 400 });
+    }
+
+    // 同步回填自己的 company_id，避免后续 RLS 查询异常
+    if (!currentProfile?.company_id && companyId) {
+      await adminClient
+        .from("profiles")
+        .update({ company_id: companyId, updated_at: new Date().toISOString() })
+        .eq("user_id", ctx.user.id);
     }
 
     const body = await request.json();
@@ -211,7 +238,7 @@ export async function POST(request: Request) {
 
     // 校验不能修改 BOSS 账号（除 BOSS 自己外）
     if (userId !== ctx.user.id) {
-      const { data: targetProfile } = await supabase
+      const { data: targetProfile } = await adminClient
         .from("profiles")
         .select("role_level")
         .eq("user_id", userId)
@@ -230,7 +257,7 @@ export async function POST(request: Request) {
       if (newRoleLevel !== undefined) updatePayload.role_level = newRoleLevel;
       if (name !== undefined) updatePayload.name = name;
 
-      const { error: profileError } = await supabase
+      const { error: profileError } = await adminClient
         .from("profiles")
         .update(updatePayload)
         .eq("user_id", userId);
@@ -239,14 +266,14 @@ export async function POST(request: Request) {
     }
 
     // 分配待选用户到公司（company_id 为 null 时）
-    const { data: targetProfile } = await supabase
+    const { data: targetProfile } = await adminClient
       .from("profiles")
       .select("company_id")
       .eq("user_id", userId)
       .single();
 
     if (!targetProfile?.company_id) {
-      const { error: assignCompanyError } = await supabase
+      const { error: assignCompanyError } = await adminClient
         .from("profiles")
         .update({ company_id: companyId, updated_at: new Date().toISOString() })
         .eq("user_id", userId);
@@ -256,7 +283,7 @@ export async function POST(request: Request) {
 
     // 更新用户-品牌关联（先删除旧的，再插入新的）
     if (brandIds && Array.isArray(brandIds)) {
-      await supabase
+      await adminClient
         .from("user_brands")
         .delete()
         .eq("user_id", userId);
@@ -268,7 +295,7 @@ export async function POST(request: Request) {
           role_level: newRoleLevel || RoleLevel.EXECUTOR,
         }));
 
-        const { error: insertError } = await supabase
+        const { error: insertError } = await adminClient
           .from("user_brands")
           .insert(insertData);
 
@@ -278,7 +305,7 @@ export async function POST(request: Request) {
 
     // 更新用户-工序角色关联（仅限当前公司）
     if (processRoleIds && Array.isArray(processRoleIds)) {
-      await supabase
+      await adminClient
         .from("user_process_roles")
         .delete()
         .eq("user_id", userId)
@@ -292,7 +319,7 @@ export async function POST(request: Request) {
           assigned_by: ctx.user.id,
         }));
 
-        const { error: insertError } = await supabase
+        const { error: insertError } = await adminClient
           .from("user_process_roles")
           .insert(insertData);
 
@@ -302,14 +329,14 @@ export async function POST(request: Request) {
 
     // 更新用户-主管类型关联（仅限当前公司）
     if (processOwnerScopeId !== undefined) {
-      await supabase
+      await adminClient
         .from("user_process_owner_scopes")
         .delete()
         .eq("user_id", userId)
         .eq("company_id", companyId);
 
       if (processOwnerScopeId) {
-        const { error: scopeError } = await supabase
+        const { error: scopeError } = await adminClient
           .from("user_process_owner_scopes")
           .insert({
             user_id: userId,
