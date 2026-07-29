@@ -79,6 +79,14 @@ async function resolveAdminCompanyId(request: Request) {
     return { error: NextResponse.json({ error: "当前用户未绑定公司" }, { status: 400 }) };
   }
 
+  // 同步回填 profile.company_id，确保后续 RLS 查询/写入能命中
+  if (!profile?.company_id && companyId) {
+    await supabase
+      .from("profiles")
+      .update({ company_id: companyId, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+  }
+
   return { session: ctx.user, companyId, supabase };
 }
 
