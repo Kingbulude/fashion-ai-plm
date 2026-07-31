@@ -547,12 +547,12 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   return (
     <div className="min-h-screen bg-background flex">
       <aside
-        className={`${collapsed ? "w-[72px]" : "w-56"} bg-sidebar border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0`}
+        className={`group ${collapsed ? "w-16" : "w-48"} bg-sidebar border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0`}
       >
         {/* Brand */}
-        <div className="h-16 flex items-center px-4 border-b border-[var(--sidebar-border)]">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-premium overflow-hidden">
+        <div className="relative h-16 flex items-center px-3 border-b border-[var(--sidebar-border)]">
+          <div className={`flex items-center gap-3 flex-1 min-w-0 ${collapsed ? "justify-center" : ""}`}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-premium overflow-hidden">
               {currentBrand?.logo_url ? (
                 <img
                   src={currentBrand.logo_url}
@@ -561,24 +561,25 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                 />
               ) : (
                 <div className="w-full h-full rounded-xl gradient-navy flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-white" />
+                  <Sparkles className="h-[18px] w-[18px] text-white" />
                 </div>
               )}
             </div>
             {!collapsed && (
               <div className="min-w-0">
                 <h1 className="font-bold text-sm truncate text-foreground">{currentBrand?.name || profile.brandName || "未选择品牌"}</h1>
-                <p className="text-[10px] text-muted-foreground truncate tracking-wide uppercase font-medium">全链路管理</p>
+                <p className="text-[10px] text-muted-foreground truncate tracking-wide uppercase font-medium">AI全链路管理</p>
               </div>
             )}
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="flex-shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+            className={`flex-shrink-0 h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground ${collapsed ? "absolute -right-3 top-1/2 -translate-y-1/2 bg-sidebar border border-[var(--sidebar-border)] shadow-sm opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity" : ""}`}
             onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "展开侧边栏" : "收起侧边栏"}
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
 

@@ -864,7 +864,7 @@ export default function HomePage() {
               <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
                 <GitBranch className="h-4 w-4 text-white" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">{brandName} 全链路工序图</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{brandName} AI全链路工序图</h1>
             </div>
             <p className="text-sm text-muted-foreground ml-10">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
           </div>
