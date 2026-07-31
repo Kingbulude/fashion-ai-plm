@@ -76,6 +76,7 @@ export default function AdminAISkillsPage() {
   const [processRoles, setProcessRoles] = useState<ProcessRole[]>([]);
   const [scopes, setScopes] = useState<ProcessOwnerScope[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<AISkill | null>(null);
@@ -98,14 +99,18 @@ export default function AdminAISkillsPage() {
 
   const fetchSkills = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/ai-skills");
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (!res.ok) {
+        setError(data.error || data.detail || `加载失败 (${res.status})`);
+      } else if (Array.isArray(data)) {
         setSkills(data);
       }
-    } catch (error) {
-      console.error("Failed to fetch AI skills:", error);
+    } catch (err: any) {
+      console.error("Failed to fetch AI skills:", err);
+      setError(err?.message || "网络错误，无法加载 AI Skill");
     } finally {
       setLoading(false);
     }
@@ -267,6 +272,13 @@ export default function AdminAISkillsPage() {
               <div className="py-20 text-center text-muted-foreground flex items-center justify-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 加载中...
+              </div>
+            ) : error ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-red-600">{error}</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchSkills}>
+                  重试
+                </Button>
               </div>
             ) : skills.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">

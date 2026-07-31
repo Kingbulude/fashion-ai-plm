@@ -251,6 +251,45 @@ async function getCompanyId(request: Request, supabase: SupabaseClient) {
   return { companyId } as const;
 }
 
+// 手动 upsert：避免依赖特定唯一约束，兼容旧全局唯一约束和新的 (key, company_id) 约束
+async function upsertSkill(
+  client: SupabaseClient,
+  payload: any
+): Promise<{ data?: any; error?: any }> {
+  const { key, company_id } = payload;
+
+  // 1. 先按 key + company_id 查询是否存在
+  const { data: existing, error: findError } = await client
+    .from("ai_skills")
+    .select("id")
+    .eq("key", key)
+    .eq("company_id", company_id)
+    .maybeSingle();
+
+  if (findError) {
+    console.error("[ai-skills] upsert find error:", findError);
+    return { error: findError };
+  }
+
+  // 2. 存在则更新，不存在则插入
+  if (existing?.id) {
+    const { data, error } = await client
+      .from("ai_skills")
+      .update(payload)
+      .eq("id", existing.id)
+      .select()
+      .single();
+    return { data, error };
+  }
+
+  const { data, error } = await client
+    .from("ai_skills")
+    .insert({ ...payload, created_at: new Date().toISOString() })
+    .select()
+    .single();
+  return { data, error };
+}
+
 export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
@@ -278,22 +317,35 @@ export async function GET(request: Request) {
 
     // 如果当前公司没有任何 AI Skill，自动初始化默认数据
     if (!data || data.length === 0) {
-      const upsertPayload = defaultSkills.map((skill) => ({
-        ...skill,
-        company_id: companyId,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      }));
+      console.log("[ai-skills] no skills found for company", companyId, "seeding defaults...");
 
-      // 优先使用 service role 绕过可能的 RLS/唯一约束冲突；未配置时降级到 RLS 客户端
+      // 优先使用 service role 绕过 RLS/唯一约束；未配置时降级到 RLS 客户端
       const client = isServiceRoleConfigured ? getServiceRoleClient() : supabase;
-      const { error: seedError } = await client
-        .from("ai_skills")
-        .upsert(upsertPayload, { onConflict: "key,company_id" });
+      const seededIds: string[] = [];
+      const seedErrors: any[] = [];
 
-      if (seedError) {
-        console.warn("[ai-skills] seed defaults warning:", seedError);
-      } else {
+      for (const skill of defaultSkills) {
+        const payload = {
+          ...skill,
+          company_id: companyId,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: upserted, error: upsertError } = await upsertSkill(client, payload);
+        if (upsertError) {
+          console.error(`[ai-skills] failed to seed skill ${skill.key}:`, upsertError);
+          seedErrors.push({ key: skill.key, message: upsertError.message });
+        } else if (upserted?.id) {
+          seededIds.push(upserted.id);
+        }
+      }
+
+      if (seedErrors.length > 0) {
+        console.error("[ai-skills] seed errors:", seedErrors);
+      }
+
+      if (seededIds.length > 0) {
         const { data: seeded, error: seededError } = await supabase
           .from("ai_skills")
           .select("*")
@@ -382,13 +434,14 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // 统一使用 service role 处理核心写入，避免 RLS 边缘情况导致保存失败
+    // 统一使用 service role 处理核心写入；未配置时降级到 RLS 客户端
     const adminClient = isServiceRoleConfigured ? getServiceRoleClient() : supabase;
 
     let skillId: string;
     let skillData: any;
 
     if (id) {
+      // 按 ID 更新
       const { data, error } = await adminClient
         .from("ai_skills")
         .update(payload)
@@ -396,19 +449,19 @@ export async function POST(request: Request) {
         .eq("company_id", companyId)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error("[ai-skills] update error:", error);
+        throw error;
+      }
       skillId = data.id;
       skillData = data;
     } else {
-      const { data, error } = await adminClient
-        .from("ai_skills")
-        .upsert(
-          { ...payload, created_at: new Date().toISOString() },
-          { onConflict: "key,company_id" }
-        )
-        .select()
-        .single();
-      if (error) throw error;
+      // 手动 upsert：先查后写，避免依赖唯一约束
+      const { data, error } = await upsertSkill(adminClient, payload);
+      if (error) {
+        console.error("[ai-skills] insert/upsert error:", error);
+        throw error;
+      }
       skillId = data.id;
       skillData = data;
     }
@@ -422,7 +475,10 @@ export async function POST(request: Request) {
         process_role_id: processRoleId,
       }));
       const { error: roleError } = await adminClient.from("process_role_ai_skills").insert(roleInsert);
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error("[ai-skills] role relation error:", roleError);
+        throw roleError;
+      }
     }
 
     // 更新与主管类型的关联
@@ -434,7 +490,10 @@ export async function POST(request: Request) {
         scope_id: scopeId,
       }));
       const { error: scopeError } = await adminClient.from("process_owner_scope_ai_skills").insert(scopeInsert);
-      if (scopeError) throw scopeError;
+      if (scopeError) {
+        console.error("[ai-skills] scope relation error:", scopeError);
+        throw scopeError;
+      }
     }
 
     return NextResponse.json({
@@ -469,7 +528,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "缺少 AI Skill ID" }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const adminClient = isServiceRoleConfigured ? getServiceRoleClient() : supabase;
+
+    const { error } = await adminClient
       .from("ai_skills")
       .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq("id", id)
@@ -478,8 +539,9 @@ export async function DELETE(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to delete ai skill:", error);
-    return NextResponse.json({ error: "Failed to delete ai skill" }, { status: 500 });
+    const detail = error?.message || error?.details || "未知错误";
+    return NextResponse.json({ error: "Failed to delete ai skill", detail }, { status: 500 });
   }
 }
