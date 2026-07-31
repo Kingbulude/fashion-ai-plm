@@ -34,6 +34,7 @@ interface AISkill {
   skill_type: string;
   process_node: string | null;
   entry_route: string | null;
+  config_schema: Record<string, any> | null;
   is_active: boolean;
   processRoleIds: string[];
   scopeIds: string[];
@@ -85,6 +86,7 @@ export default function AdminAISkillsPage() {
   const [formSkillType, setFormSkillType] = useState("execution");
   const [formProcessNode, setFormProcessNode] = useState<string>("");
   const [formEntryRoute, setFormEntryRoute] = useState("");
+  const [formConfigSchema, setFormConfigSchema] = useState<Record<string, any> | null>(null);
   const [formProcessRoleIds, setFormProcessRoleIds] = useState<string[]>([]);
   const [formScopeIds, setFormScopeIds] = useState<string[]>([]);
 
@@ -140,6 +142,7 @@ export default function AdminAISkillsPage() {
     setFormSkillType("execution");
     setFormProcessNode("");
     setFormEntryRoute("");
+    setFormConfigSchema(null);
     setFormProcessRoleIds([]);
     setFormScopeIds([]);
   };
@@ -158,6 +161,7 @@ export default function AdminAISkillsPage() {
     setFormSkillType(skill.skill_type);
     setFormProcessNode(skill.process_node || "");
     setFormEntryRoute(skill.entry_route || "");
+    setFormConfigSchema(skill.config_schema || null);
     setFormProcessRoleIds(skill.processRoleIds || []);
     setFormScopeIds(skill.scopeIds || []);
     setDialogOpen(true);
@@ -194,6 +198,7 @@ export default function AdminAISkillsPage() {
           skill_type: formSkillType,
           process_node: formProcessNode || null,
           entry_route: formEntryRoute.trim() || null,
+          config_schema: formConfigSchema,
           processRoleIds: formProcessRoleIds,
           scopeIds: formScopeIds,
         }),
@@ -205,7 +210,8 @@ export default function AdminAISkillsPage() {
         await fetchSkills();
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || "保存失败");
+        const detail = err.detail ? `\n\n详情：${err.detail}` : "";
+        alert((err.error || "保存失败") + detail);
       }
     } catch (error) {
       console.error("Failed to save AI skill:", error);

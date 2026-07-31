@@ -382,11 +382,14 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    // 统一使用 service role 处理核心写入，避免 RLS 边缘情况导致保存失败
+    const adminClient = isServiceRoleConfigured ? getServiceRoleClient() : supabase;
+
     let skillId: string;
     let skillData: any;
 
     if (id) {
-      const { data, error } = await supabase
+      const { data, error } = await adminClient
         .from("ai_skills")
         .update(payload)
         .eq("id", id)
@@ -397,7 +400,7 @@ export async function POST(request: Request) {
       skillId = data.id;
       skillData = data;
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await adminClient
         .from("ai_skills")
         .upsert(
           { ...payload, created_at: new Date().toISOString() },
@@ -412,25 +415,25 @@ export async function POST(request: Request) {
 
     // 更新与工序角色的关联
     const validProcessRoleIds = (processRoleIds || []).filter((pid: string) => typeof pid === "string" && pid.length > 0);
-    await supabase.from("process_role_ai_skills").delete().eq("ai_skill_id", skillId);
+    await adminClient.from("process_role_ai_skills").delete().eq("ai_skill_id", skillId);
     if (validProcessRoleIds.length > 0) {
       const roleInsert = validProcessRoleIds.map((processRoleId: string) => ({
         ai_skill_id: skillId,
         process_role_id: processRoleId,
       }));
-      const { error: roleError } = await supabase.from("process_role_ai_skills").insert(roleInsert);
+      const { error: roleError } = await adminClient.from("process_role_ai_skills").insert(roleInsert);
       if (roleError) throw roleError;
     }
 
     // 更新与主管类型的关联
     const validScopeIds = (scopeIds || []).filter((sid: string) => typeof sid === "string" && sid.length > 0);
-    await supabase.from("process_owner_scope_ai_skills").delete().eq("ai_skill_id", skillId);
+    await adminClient.from("process_owner_scope_ai_skills").delete().eq("ai_skill_id", skillId);
     if (validScopeIds.length > 0) {
       const scopeInsert = validScopeIds.map((scopeId: string) => ({
         ai_skill_id: skillId,
         scope_id: scopeId,
       }));
-      const { error: scopeError } = await supabase.from("process_owner_scope_ai_skills").insert(scopeInsert);
+      const { error: scopeError } = await adminClient.from("process_owner_scope_ai_skills").insert(scopeInsert);
       if (scopeError) throw scopeError;
     }
 
@@ -439,9 +442,10 @@ export async function POST(request: Request) {
       processRoleIds: validProcessRoleIds,
       scopeIds: validScopeIds,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to save ai skill:", error);
-    return NextResponse.json({ error: "Failed to save ai skill" }, { status: 500 });
+    const detail = error?.message || error?.details || "未知错误";
+    return NextResponse.json({ error: "Failed to save ai skill", detail }, { status: 500 });
   }
 }
 
