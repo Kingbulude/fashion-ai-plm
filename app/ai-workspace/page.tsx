@@ -1,19 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTenant, AISkill } from "@/lib/auth/tenant-context";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AIChatDialog } from "@/components/ai/ai-chat-dialog";
+import { AIOrchestratorPanel } from "@/components/ai/ai-orchestrator-panel";
 import {
   Sparkles,
   UserCircle,
   Layers,
   Cpu,
-  ArrowRight,
   Lightbulb,
   Palette,
   Shirt,
@@ -23,7 +20,6 @@ import {
   TrendingUp,
   HeadphonesIcon,
   Wand2,
-  MessageSquare,
 } from "lucide-react";
 
 const processNodeLabels: Record<string, string> = {
@@ -69,20 +65,9 @@ const processNodeIcons: Record<string, React.ElementType> = {
 const skillTypeOrder = ["personal_assistant", "process_master", "execution"];
 
 export default function AIWorkspacePage() {
-  const { accessibleAISkills, isLoading } = useTenant();
+  const { accessibleAISkills, isLoading, currentSeason } = useTenant();
 
-  const [chatOpen, setChatOpen] = useState(false);
   const [activeSkill, setActiveSkill] = useState<AISkill | null>(null);
-
-  const openChat = (skill: AISkill) => {
-    setActiveSkill(skill);
-    setChatOpen(true);
-  };
-
-  const closeChat = () => {
-    setChatOpen(false);
-    setActiveSkill(null);
-  };
 
   const groupedSkills = useMemo(() => {
     const result: Record<string, Record<string, AISkill[]>> = {};
@@ -111,150 +96,105 @@ export default function AIWorkspacePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
-        {/* 顶部标题栏 */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
-                <Wand2 className="h-5 w-5 text-white" />
+      <div className="h-[calc(100vh-4rem)] flex">
+        {/* 左侧 Skill 列表 */}
+        <div className="w-80 border-r bg-white overflow-y-auto flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center">
+                <Wand2 className="h-4 w-4 text-white" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">AI 智能体中心</h1>
+              <h2 className="text-lg font-semibold">AI Skill</h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-13">
-              按工序和执行环节组织的 AI 能力矩阵，关键人物配备 AI 秘书，每道工序配备总管 AI 与执行 Skill
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">选择智能体并开始对话</p>
+          </div>
+
+          <div className="flex-1 p-3 space-y-4">
+            {isLoading ? (
+              <div className="py-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                <Sparkles className="h-4 w-4 animate-pulse" />
+                加载中...
+              </div>
+            ) : !hasAnySkills ? (
+              <Card>
+                <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                  暂无可用 AI 智能体
+                </CardContent>
+              </Card>
+            ) : (
+              skillTypeOrder.map((skillType) => {
+                const typeGroup = groupedSkills[skillType] || {};
+                const typeSkills = Object.values(typeGroup).flat();
+                if (typeSkills.length === 0) return null;
+
+                const typeConfig = skillTypeLabels[skillType];
+                const TypeIcon = typeConfig.icon;
+
+                return (
+                  <div key={skillType}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <TypeIcon className="h-3.5 w-3.5 text-navy-600" />
+                      <span className="text-xs font-medium text-navy-700">{typeConfig.title}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {Object.entries(typeGroup).map(([node, skills]) =>
+                        skills.map((skill) => {
+                          const NodeIcon = processNodeIcons[node] || Sparkles;
+                          const nodeLabel = processNodeLabels[node] || node;
+                          const isActive = activeSkill?.id === skill.id;
+
+                          return (
+                            <button
+                              key={skill.id}
+                              onClick={() => setActiveSkill(skill)}
+                              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                                isActive
+                                  ? "bg-navy-50 text-navy-800 border border-navy-200"
+                                  : "hover:bg-sand-50 border border-transparent"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium truncate">{skill.name}</span>
+                                {skill.process_node && (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1 font-normal shrink-0">
+                                    <NodeIcon className="h-3 w-3 mr-0.5" />
+                                    {nodeLabel}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                {skill.description || "暂无描述"}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="py-32 text-center text-muted-foreground flex items-center justify-center gap-2">
-            <Sparkles className="h-5 w-5 animate-pulse" />
-            加载 AI 能力中...
+        {/* 右侧执行面板 */}
+        <div className="flex-1 flex flex-col bg-sand-50/30">
+          <div className="px-6 py-4 border-b bg-white">
+            <h1 className="text-xl font-bold">
+              {activeSkill ? activeSkill.name : "AI 智能体中心"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeSkill
+                ? activeSkill.description || ""
+                : "从左侧选择一个 Skill，或直接输入需求"}
+            </p>
           </div>
-        ) : !hasAnySkills ? (
-          <Card className="card-premium">
-            <CardContent className="py-20 text-center">
-              <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">暂无可用 AI 智能体</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                当前账号未被分配任何 AI Skill。请联系管理员在「后台配置 → AI Skill 管理」中为您分配角色或主管类型对应的智能体。
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-10">
-            {skillTypeOrder.map((skillType) => {
-              const typeGroup = groupedSkills[skillType] || {};
-              const typeSkills = Object.values(typeGroup).flat();
-              if (typeSkills.length === 0) return null;
-
-              const typeConfig = skillTypeLabels[skillType];
-              const TypeIcon = typeConfig.icon;
-
-              return (
-                <section key={skillType}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-navy-100 flex items-center justify-center">
-                      <TypeIcon className="h-4 w-4 text-navy-700" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold tracking-tight">{typeConfig.title}</h2>
-                      <p className="text-xs text-muted-foreground">{typeConfig.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {Object.entries(typeGroup).map(([node, skills]) => {
-                      if (skills.length === 0) return null;
-                      const NodeIcon = processNodeIcons[node] || Sparkles;
-                      const nodeLabel = processNodeLabels[node] || node;
-
-                      return (
-                        <div key={`${skillType}-${node}`}>
-                          <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-                            <NodeIcon className="h-4 w-4" />
-                            <span className="font-medium text-foreground">{nodeLabel}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {skills.length} 个
-                            </Badge>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {skills.map((skill) => (
-                              <SkillCard key={skill.id} skill={skill} onChat={openChat} />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
+          <div className="flex-1 overflow-hidden">
+            <AIOrchestratorPanel skill={activeSkill} seasonId={currentSeason?.id} />
           </div>
-        )}
-
-        <AIChatDialog open={chatOpen} onClose={closeChat} skill={activeSkill} />
+        </div>
       </div>
     </SidebarLayout>
   );
 }
-
-function SkillCard({ skill, onChat }: { skill: AISkill; onChat: (skill: AISkill) => void }) {
-  const router = useRouter();
-  const nodeLabel = skill.process_node ? processNodeLabels[skill.process_node] : null;
-
-  return (
-    <Card className="card-premium group hover:shadow-premium transition-all duration-300">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base font-medium truncate">{skill.name}</CardTitle>
-            {nodeLabel && (
-              <Badge variant="outline" className="mt-1.5 text-xs font-normal">
-                {nodeLabel}
-              </Badge>
-            )}
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-sand-50 flex items-center justify-center flex-shrink-0 group-hover:bg-navy-50 transition-colors">
-            <Sparkles className="h-4 w-4 text-navy-600" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <CardDescription className="text-sm line-clamp-2 min-h-[2.5rem]">
-          {skill.description || "暂无描述"}
-        </CardDescription>
-
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground font-mono truncate">
-            {skill.key}
-          </span>
-          {skill.entry_route ? (
-            <Button
-              size="sm"
-              className="bg-navy-700 hover:bg-navy-800 text-white flex-shrink-0"
-              onClick={() => router.push(skill.entry_route!)}
-            >
-              进入
-              <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-shrink-0 border-navy-200 text-navy-700 hover:bg-navy-50 hover:text-navy-800"
-              onClick={() => onChat(skill)}
-            >
-              <MessageSquare className="h-3.5 w-3.5 mr-1" />
-              对话
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-
