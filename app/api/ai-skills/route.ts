@@ -3,6 +3,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -23,6 +24,163 @@ const processNodeOptions = [
   "aftersales",
 ];
 
+const defaultSkills = [
+  {
+    key: "theme-planner",
+    name: "主题企划助手",
+    description: "基于趋势、季节和目标人群生成企划主题与品类方向",
+    skill_type: "process_master",
+    process_node: "planning",
+    entry_route: "/planning",
+    config_schema: {
+      systemPrompt: "你是服装品牌企划专家。请基于品牌定位、目标人群、季节和当前趋势，生成主题方向、核心品类、色彩/面料/廓形建议，并说明理由。输出结构化的企划草案。",
+    },
+  },
+  {
+    key: "trend-researcher",
+    name: "市场趋势分析",
+    description: "分析时尚趋势、竞品动态，为企划提供数据参考",
+    skill_type: "execution",
+    process_node: "planning",
+    entry_route: "/planning",
+    config_schema: {
+      systemPrompt: "你是时尚趋势分析师。请基于用户提供的品类、季节、目标人群，分析市场趋势、流行元素、竞品动向，并给出可落地的企划建议。输出结构化的趋势报告。",
+    },
+  },
+  {
+    key: "style-derivative",
+    name: "款式衍生助手",
+    description: "根据参考图或描述生成多个款式设计方向",
+    skill_type: "execution",
+    process_node: "design",
+    entry_route: "/styles",
+    config_schema: {
+      systemPrompt: "你是服装设计师。请基于用户提供的参考图、主题、品类和季节，生成 3-5 个款式方向，每个方向包含名称、设计要点、面料建议、适用场景。输出结构化 JSON。",
+    },
+  },
+  {
+    key: "bom-assistant",
+    name: "BOM 物料助手",
+    description: "根据款式信息生成面料、辅料、包装等 BOM 建议",
+    skill_type: "execution",
+    process_node: "design",
+    entry_route: "/styles",
+    config_schema: {
+      systemPrompt: "你是服装工艺与采购专家。请根据款式描述、目标成本和季节，生成 BOM（物料清单）初稿，包括面料、辅料、包装、预计用量和参考单价，并给出优化建议。输出结构化 JSON。",
+    },
+  },
+  {
+    key: "sampling-risk",
+    name: "打样风险预警",
+    description: "评估打样难度、周期和潜在风险",
+    skill_type: "execution",
+    process_node: "sampling",
+    entry_route: "/styles",
+    config_schema: {
+      systemPrompt: "你是服装打样与工艺专家。请根据款式信息、面料和工艺复杂度，评估打样周期、关键风险点、需要特别关注的工艺环节，并给出降低风险的建议。输出结构化报告。",
+    },
+  },
+  {
+    key: "supplier-matcher",
+    name: "供应商匹配",
+    description: "根据 BOM 和交期要求推荐合适供应商",
+    skill_type: "execution",
+    process_node: "procurement",
+    entry_route: "/suppliers",
+    config_schema: {
+      systemPrompt: "你是服装供应链专家。请根据 BOM、目标交期、质量要求和预算，从供应商池中推荐最合适的供应商，并说明推荐理由、潜在风险和备选方案。输出结构化建议。",
+    },
+  },
+  {
+    key: "production-scheduler",
+    name: "生产排期助手",
+    description: "基于订单、产能和物料情况生成排期建议",
+    skill_type: "execution",
+    process_node: "stocking",
+    entry_route: "/production",
+    config_schema: {
+      systemPrompt: "你是服装生产计划专家。请根据订单量、工厂产能、物料到位情况和目标出货日期，生成生产排期建议，标出关键节点、产能瓶颈和风险预警。输出结构化排期表。",
+    },
+  },
+  {
+    key: "sales-forecast",
+    name: "销售预测",
+    description: "基于历史数据预测销量并给出补货建议",
+    skill_type: "execution",
+    process_node: "sales",
+    entry_route: "/sales",
+    config_schema: {
+      systemPrompt: "你是服装销售与商品分析专家。请基于历史销售数据、库存、季节、渠道和促销计划，预测未来销量，识别热销/滞销款，并给出补货、调拨或促销建议。输出结构化报告。",
+    },
+  },
+  {
+    key: "inventory-activation",
+    name: "库存盘活",
+    description: "识别滞销款并生成促销、返单或下架建议",
+    skill_type: "execution",
+    process_node: "sales",
+    entry_route: "/sales",
+    config_schema: {
+      systemPrompt: "你是库存与商品运营专家。请根据库存天数、售罄率、销售趋势和退货率，识别滞销款，并为每款生成促销、返单、调拨或下架建议，评估预期效果。输出结构化方案。",
+    },
+  },
+  {
+    key: "return-analyst",
+    name: "退货归因分析",
+    description: "分析售后退货原因并反馈给设计和企划",
+    skill_type: "execution",
+    process_node: "aftersales",
+    entry_route: "/aftersales",
+    config_schema: {
+      systemPrompt: "你是售后与品质分析专家。请根据退货记录、原因分类和款式维度，分析退货根因（尺码、版型、面料、色差、质量等），并将结论反馈给设计和企划，输出结构化改进建议。",
+    },
+  },
+  {
+    key: "design-assistant",
+    name: "设计主管 AI 秘书",
+    description: "为设计主管提供跨工序的辅助决策和提醒",
+    skill_type: "personal_assistant",
+    process_node: null,
+    entry_route: "/dashboard",
+    config_schema: {
+      systemPrompt: "你是服装设计主管的智能秘书。帮助用户快速查看设计进度、打样风险、款式反馈，并协助生成决策摘要和待办事项。",
+    },
+  },
+  {
+    key: "product-assistant",
+    name: "产品主管 AI 秘书",
+    description: "为产品主管提供打样、采购、生产环节的辅助",
+    skill_type: "personal_assistant",
+    process_node: null,
+    entry_route: "/dashboard",
+    config_schema: {
+      systemPrompt: "你是服装产品主管的智能秘书。帮助用户跟踪打样、采购、生产进度，识别延期风险和物料异常，并生成每日工作摘要。",
+    },
+  },
+  {
+    key: "operations-assistant",
+    name: "运营主管 AI 秘书",
+    description: "为运营主管提供销售、测款、售后环节的辅助",
+    skill_type: "personal_assistant",
+    process_node: null,
+    entry_route: "/dashboard",
+    config_schema: {
+      systemPrompt: "你是服装运营主管的智能秘书。帮助用户查看销售数据、测款结果、售后反馈，生成日报和需要立即跟进的异常提醒。",
+    },
+  },
+  {
+    key: "cross-process-summary",
+    name: "全链路健康度分析",
+    description: "跨工序汇总当季开发、生产、销售和售后表现",
+    skill_type: "process_master",
+    process_node: null,
+    entry_route: "/dashboard",
+    config_schema: {
+      systemPrompt: "你是服装品牌运营顾问。请基于当季企划、款式、生产、销售和售后数据，生成全链路健康度报告，指出关键风险、机会点和改进建议。输出结构化报告。",
+    },
+  },
+];
+
 async function requireAdmin(request: Request, supabase: SupabaseClient) {
   const session = await getSession(request as any);
   if (!session?.user) {
@@ -31,7 +189,7 @@ async function requireAdmin(request: Request, supabase: SupabaseClient) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role_level, company_id")
+    .select("role_level, company_id, brand_id")
     .eq("user_id", session.user.id)
     .single();
 
@@ -39,14 +197,28 @@ async function requireAdmin(request: Request, supabase: SupabaseClient) {
     return { error: "Forbidden", status: 403 };
   }
 
-  if (!profile?.company_id) {
+  let companyId = profile?.company_id;
+
+  // 兼容旧数据：company_id 为空时从 brand 推导
+  if (!companyId && profile?.brand_id) {
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("company_id")
+      .eq("id", profile.brand_id)
+      .single();
+    if (brand?.company_id) {
+      companyId = brand.company_id;
+    }
+  }
+
+  if (!companyId) {
     return { error: "当前用户未绑定公司", status: 400 };
   }
 
-  return { session, companyId: profile.company_id };
+  return { session, companyId };
 }
 
-// 获取当前用户的 company_id（用于普通用户的列表查询）
+// 获取当前用户的 company_id（用于普通用户的列表查询），支持从 brand 推导
 async function getCompanyId(request: Request, supabase: SupabaseClient) {
   const session = await getSession(request as any);
   if (!session?.user) {
@@ -55,15 +227,28 @@ async function getCompanyId(request: Request, supabase: SupabaseClient) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("company_id")
+    .select("company_id, brand_id")
     .eq("user_id", session.user.id)
     .single();
 
-  if (!profile?.company_id) {
+  let companyId = profile?.company_id;
+
+  if (!companyId && profile?.brand_id) {
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("company_id")
+      .eq("id", profile.brand_id)
+      .single();
+    if (brand?.company_id) {
+      companyId = brand.company_id;
+    }
+  }
+
+  if (!companyId) {
     return { error: "当前用户未绑定公司", status: 400 } as const;
   }
 
-  return { companyId: profile.company_id } as const;
+  return { companyId } as const;
 }
 
 export async function GET(request: Request) {
@@ -79,12 +264,50 @@ export async function GET(request: Request) {
 
     const { companyId } = companyCheck;
 
-    const { data } = await supabase
+    let { data, error: queryError } = await supabase
       .from("ai_skills")
       .select("*")
       .eq("is_active", true)
       .eq("company_id", companyId)
       .order("name");
+
+    if (queryError) {
+      console.error("[ai-skills] GET query error:", queryError);
+      return NextResponse.json({ error: "查询 AI Skill 失败", detail: queryError.message }, { status: 500 });
+    }
+
+    // 如果当前公司没有任何 AI Skill，自动初始化默认数据
+    if (!data || data.length === 0) {
+      const upsertPayload = defaultSkills.map((skill) => ({
+        ...skill,
+        company_id: companyId,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      }));
+
+      // 优先使用 service role 绕过可能的 RLS/唯一约束冲突；未配置时降级到 RLS 客户端
+      const client = isServiceRoleConfigured ? getServiceRoleClient() : supabase;
+      const { error: seedError } = await client
+        .from("ai_skills")
+        .upsert(upsertPayload, { onConflict: "key,company_id" });
+
+      if (seedError) {
+        console.warn("[ai-skills] seed defaults warning:", seedError);
+      } else {
+        const { data: seeded, error: seededError } = await supabase
+          .from("ai_skills")
+          .select("*")
+          .eq("is_active", true)
+          .eq("company_id", companyId)
+          .order("name");
+
+        if (seededError) {
+          console.error("[ai-skills] refetch after seed error:", seededError);
+        } else {
+          data = seeded || [];
+        }
+      }
+    }
 
     const skills = data || [];
     if (skills.length === 0) {
@@ -176,7 +399,10 @@ export async function POST(request: Request) {
     } else {
       const { data, error } = await supabase
         .from("ai_skills")
-        .insert(payload)
+        .upsert(
+          { ...payload, created_at: new Date().toISOString() },
+          { onConflict: "key,company_id" }
+        )
         .select()
         .single();
       if (error) throw error;
