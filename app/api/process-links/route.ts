@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logOperation, recordVersion } from "@/lib/auth/audit";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { getServiceRoleClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
+    // process_links 是全局工序配置，使用 service role 绕过 RLS，避免策略波动导致保存失败
+    const supabase = getServiceRoleClient();
 
     const { data, error } = await supabase
       .from("process_links")
@@ -59,7 +61,8 @@ export async function PUT(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { supabase } = ctx;
+    // process_links 是全局工序配置，使用 service role 绕过 RLS，避免策略波动导致保存失败
+    const supabase = getServiceRoleClient();
 
     const userId = ctx.user.id || "anonymous";
 

@@ -547,12 +547,12 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   return (
     <div className="min-h-screen bg-background flex">
       <aside
-        className={`group ${collapsed ? "w-16" : "w-48"} bg-sidebar border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0`}
+        className={`group ${collapsed ? "w-14" : "w-40"} bg-sidebar border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0`}
       >
         {/* Brand */}
-        <div className="relative h-16 flex items-center px-3 border-b border-[var(--sidebar-border)]">
+        <div className={`relative h-16 flex items-center border-b border-[var(--sidebar-border)] ${collapsed ? "px-2" : "px-3"}`}>
           <div className={`flex items-center gap-3 flex-1 min-w-0 ${collapsed ? "justify-center" : ""}`}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-premium overflow-hidden">
+            <div className={`rounded-xl flex items-center justify-center flex-shrink-0 shadow-premium overflow-hidden ${collapsed ? "w-8 h-8" : "w-9 h-9"}`}>
               {currentBrand?.logo_url ? (
                 <img
                   src={currentBrand.logo_url}

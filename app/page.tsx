@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  GitBranch,
   Clock,
   UserCog,
   Calendar,
@@ -237,25 +236,9 @@ export default function HomePage() {
     fetchLinks();
   }, []);
 
-  const [brandName, setBrandName] = useState("TEPNIX步戌");
   const [processOwnerScopes, setProcessOwnerScopes] = useState<any[]>([]);
   const [userProcessOwnerScopes, setUserProcessOwnerScopes] = useState<any[]>([]);
   const [organizationProfiles, setOrganizationProfiles] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchBrandName = async () => {
-      try {
-        const res = await fetch("/api/profile");
-        const data = await res.json();
-        if (data.brandName) {
-          setBrandName(data.brandName);
-        }
-      } catch (error) {
-        console.error("Failed to fetch brand name");
-      }
-    };
-    fetchBrandName();
-  }, []);
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -856,17 +839,12 @@ export default function HomePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
+      <div className="p-3 lg:p-4 max-w-[2400px] mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-lg gradient-navy flex items-center justify-center shadow-premium">
-                <GitBranch className="h-4 w-4 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">{brandName} AI全链路工序图</h1>
-            </div>
-            <p className="text-sm text-muted-foreground ml-10">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">AI全链路工序图</h1>
+            <p className="text-sm text-muted-foreground">全链路工序管理 · 点击节点进入工作区 · 点击截止时间编辑</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="h-7 px-3 text-xs font-medium border-navy-200 text-navy-700 bg-navy-50/50">
