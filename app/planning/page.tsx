@@ -43,6 +43,7 @@ interface Skill {
   color: string;
   bgGradient: string;
   endpoint: string;
+  skillKey: string;
 }
 
 const SKILLS: Skill[] = [
@@ -53,16 +54,18 @@ const SKILLS: Skill[] = [
     icon: Brain,
     color: "text-blue-600",
     bgGradient: "from-blue-50 to-indigo-50",
-    endpoint: "/api/planning/ai/brand-dna/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "brand-dna-analyst",
   },
   {
     id: "market-insight",
     name: "市场需求",
-    description: "爬虫分析市场趋势、热门商品和消费者需求",
+    description: "分析市场趋势、热门商品和消费者需求",
     icon: Search,
     color: "text-green-600",
     bgGradient: "from-green-50 to-emerald-50",
-    endpoint: "/api/planning/ai/market-insight/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "trend-researcher",
   },
   {
     id: "theme-inspiration",
@@ -71,7 +74,8 @@ const SKILLS: Skill[] = [
     icon: Lightbulb,
     color: "text-amber-600",
     bgGradient: "from-amber-50 to-orange-50",
-    endpoint: "/api/planning/ai/theme-inspiration/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "theme-planner",
   },
   {
     id: "product-planning",
@@ -80,7 +84,8 @@ const SKILLS: Skill[] = [
     icon: Package,
     color: "text-purple-600",
     bgGradient: "from-purple-50 to-violet-50",
-    endpoint: "/api/planning/ai/product-planning/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "theme-planner",
   },
   {
     id: "design-planning",
@@ -89,7 +94,8 @@ const SKILLS: Skill[] = [
     icon: Palette,
     color: "text-pink-600",
     bgGradient: "from-pink-50 to-rose-50",
-    endpoint: "/api/planning/ai/design-planning/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "style-derivative",
   },
   {
     id: "color-planning",
@@ -98,7 +104,8 @@ const SKILLS: Skill[] = [
     icon: Sparkles,
     color: "text-cyan-600",
     bgGradient: "from-cyan-50 to-teal-50",
-    endpoint: "/api/planning/ai/color-planning/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "theme-planner",
   },
   {
     id: "fabric-planning",
@@ -107,7 +114,8 @@ const SKILLS: Skill[] = [
     icon: Wind,
     color: "text-indigo-600",
     bgGradient: "from-indigo-50 to-blue-50",
-    endpoint: "/api/planning/ai/fabric-planning/chat",
+    endpoint: "/api/planning/ai/chat",
+    skillKey: "bom-assistant",
   },
 ];
 
@@ -118,7 +126,7 @@ export default function PlanningPage() {
   const [activeSkill, setActiveSkill] = useState<Skill>(SKILLS[0]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [, setConversationId] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [skillConversations, setSkillConversations] = useState<Record<string, { messages: Message[]; conversationId: string | null; isCompleted: boolean }>>({});
   const [planOpen, setPlanOpen] = useState(false);
@@ -132,67 +140,39 @@ export default function PlanningPage() {
   const [comprehensivePlan, setComprehensivePlan] = useState<any>(null);
   const [planError, setPlanError] = useState("");
 
+  const generateWelcomeMessage = (skill: Skill): Message => ({
+    id: "welcome",
+    content: `您好！我是「${skill.name}」AI 助手。${skill.description}\n\n请输入您的问题或需求，我会基于当前品牌/季次数据为您分析。`,
+    sender: "ai",
+    timestamp: new Date().toISOString(),
+  });
+
   const loadConversation = useCallback(async (skill: Skill) => {
     setActiveSkill(skill);
-    setIsLoading(true);
+    setIsLoading(false);
 
     const cached = skillConversations[skill.id];
     if (cached && cached.messages.length > 0) {
       setMessages(cached.messages);
       setConversationId(cached.conversationId);
       setIsCompleted(cached.isCompleted);
-      setIsLoading(false);
       return;
     }
 
-    try {
-      const response = await fetch(skill.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userMessage: "开始",
-          conversationId: cached?.conversationId || null,
-        }),
-      });
-      const data = await response.json();
-      
-      if (data.messages && data.messages.length > 0) {
-        setMessages(data.messages);
-        setConversationId(data.conversationId);
-        setIsCompleted(data.isCompleted || false);
+    // 本地生成欢迎语，不再调用写死的后端规则
+    const welcomeMessage = generateWelcomeMessage(skill);
+    setMessages([welcomeMessage]);
+    setConversationId(null);
+    setIsCompleted(false);
 
-        setSkillConversations(prev => ({
-          ...prev,
-          [skill.id]: {
-            messages: data.messages,
-            conversationId: data.conversationId,
-            isCompleted: data.isCompleted || false,
-          },
-        }));
-      } else {
-        const welcomeMessage: Message = {
-          id: "welcome",
-          content: `您好！我是${skill.name}AI助手。${skill.description}\n\n请问有什么可以帮您的？`,
-          sender: "ai",
-          timestamp: new Date().toISOString(),
-        };
-        setMessages([welcomeMessage]);
-        setConversationId(null);
-        setIsCompleted(false);
-      }
-    } catch {
-      const welcomeMessage: Message = {
-        id: "welcome",
-        content: `您好！我是${skill.name}AI助手。${skill.description}\n\n请问有什么可以帮您的？`,
-        sender: "ai",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages([welcomeMessage]);
-      setConversationId(null);
-      setIsCompleted(false);
-    } finally {
-      setIsLoading(false);
-    }
+    setSkillConversations(prev => ({
+      ...prev,
+      [skill.id]: {
+        messages: [welcomeMessage],
+        conversationId: null,
+        isCompleted: false,
+      },
+    }));
   }, [skillConversations]);
 
   useEffect(() => {
@@ -209,7 +189,8 @@ export default function PlanningPage() {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
     setIsLoading(true);
 
     try {
@@ -217,31 +198,37 @@ export default function PlanningPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          skillKey: activeSkill.skillKey,
           userMessage: content,
-          conversationId,
+          history: currentMessages.slice(0, -1), // 排除刚发送的这条
         }),
       });
 
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || "AI 对话请求失败");
+      }
+
       if (data.messages) {
-        setMessages(data.messages);
+        const updatedMessages = [...currentMessages, data.messages[data.messages.length - 1]];
+        setMessages(updatedMessages);
         setConversationId(data.conversationId);
         setIsCompleted(data.isCompleted || false);
 
         setSkillConversations(prev => ({
           ...prev,
           [activeSkill.id]: {
-            messages: data.messages,
+            messages: updatedMessages,
             conversationId: data.conversationId,
             isCompleted: data.isCompleted || false,
           },
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage: Message = {
         id: crypto.randomUUID(),
-        content: "抱歉，对话服务暂时不可用，请稍后再试。",
+        content: `抱歉，AI 对话失败：${error?.message || "请稍后再试"}`,
         sender: "ai",
         timestamp: new Date().toISOString(),
       };
@@ -261,7 +248,7 @@ export default function PlanningPage() {
     setMessages([]);
     setConversationId(null);
     setIsCompleted(false);
-    
+
     setSkillConversations(prev => ({
       ...prev,
       [activeSkill.id]: {
@@ -271,12 +258,7 @@ export default function PlanningPage() {
       },
     }));
 
-    const welcomeMessage: Message = {
-      id: "welcome",
-      content: `您好！我是${activeSkill.name}AI助手。${activeSkill.description}`,
-      sender: "ai",
-      timestamp: new Date().toISOString(),
-    };
+    const welcomeMessage = generateWelcomeMessage(activeSkill);
     setMessages([welcomeMessage]);
   };
 

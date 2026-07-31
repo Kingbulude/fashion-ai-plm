@@ -14,6 +14,7 @@ export interface OrchestratorInput {
   brandIds: string[];
   seasonId?: string;
   supabase: SupabaseClient;
+  history?: { role: "user" | "assistant"; content: string }[];
 }
 
 export interface OrchestratorResult {
@@ -35,13 +36,13 @@ async function resolveSkillKey(
   const skillList = availableSkills.map((s) => `- ${s.key}: ${s.name}。${s.description}`).join("\n");
   const user = `用户输入：${input.userMessage}\n\n可选 Skill：\n${skillList}\n\n请只返回最匹配的 key，不要解释。`;
 
-  const res = await generateAIResponse(
-    [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    { temperature: 0.2, max_tokens: 64 }
-  );
+  const messages: any[] = [
+    { role: "system", content: system },
+    ...(input.history || []).map((h) => ({ role: h.role, content: h.content })),
+    { role: "user", content: user },
+  ];
+
+  const res = await generateAIResponse(messages, { temperature: 0.2, max_tokens: 64 });
 
   const matched = res.content.trim().replace(/['"`]/g, "");
   return availableSkills.find((s) => s.key === matched)?.key || null;
@@ -80,13 +81,12 @@ export async function runOrchestrator(input: OrchestratorInput): Promise<Orchest
   if (!handler) {
     // 没有专用 handler，走通用系统提示
     const system = (skillMeta.configSchema as any)?.systemPrompt || `你是「${skillMeta.name}」AI 助手。`;
-    const res = await generateAIResponse(
-      [
-        { role: "system", content: system },
-        { role: "user", content: input.userMessage },
-      ],
-      { responseFormat: "text" }
-    );
+    const messages: any[] = [
+      { role: "system", content: system },
+      ...(input.history || []).map((h) => ({ role: h.role, content: h.content })),
+      { role: "user", content: input.userMessage },
+    ];
+    const res = await generateAIResponse(messages, { responseFormat: "text" });
     return {
       skillKey: skillMeta.key,
       skillName: skillMeta.name,
@@ -109,13 +109,13 @@ export async function runOrchestrator(input: OrchestratorInput): Promise<Orchest
   const promptText = await handler.buildContext(ctx, input.userMessage);
   const systemPrompt = (skillMeta.configSchema as any)?.systemPrompt || "你是专业的服装行业 AI 助手。";
 
-  const res = await generateAIResponse(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: promptText },
-    ],
-    { responseFormat: "json_object", temperature: 0.7 }
-  );
+  const messages: any[] = [
+    { role: "system", content: systemPrompt },
+    ...(input.history || []).map((h) => ({ role: h.role, content: h.content })),
+    { role: "user", content: promptText },
+  ];
+
+  const res = await generateAIResponse(messages, { responseFormat: "json_object", temperature: 0.7 });
 
   // 5. 解析输出
   const output = handler.parseOutput(res.content);

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const { user, supabase, tenant } = ctx;
     const body = await request.json().catch(() => ({}));
-    const { message, skillKey, seasonId } = body;
+    const { message, skillKey, seasonId, history } = body;
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "缺少 message" }, { status: 400 });
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       brandIds,
       seasonId: seasonId || tenant.season_id || undefined,
       supabase,
+      history,
     });
 
     // 记录执行日志

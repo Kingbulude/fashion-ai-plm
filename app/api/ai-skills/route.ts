@@ -179,6 +179,17 @@ const defaultSkills = [
       systemPrompt: "你是服装品牌运营顾问。请基于当季企划、款式、生产、销售和售后数据，生成全链路健康度报告，指出关键风险、机会点和改进建议。输出结构化报告。",
     },
   },
+  {
+    key: "brand-dna-analyst",
+    name: "品牌基因分析师",
+    description: "梳理品牌使命、目标客群、风格方向、视觉识别等品牌核心基因",
+    skill_type: "execution",
+    process_node: "planning",
+    entry_route: "/planning",
+    config_schema: {
+      systemPrompt: "你是品牌战略顾问。请通过对话引导用户梳理品牌基因，包括品牌使命、目标客群、年龄范围、风格方向、定价定位、核心价值、视觉识别、色彩体系、品牌故事、竞争优势等维度。根据用户提供的信息给出结构化整理和优化建议。",
+    },
+  },
 ];
 
 async function requireAdmin(request: Request, supabase: SupabaseClient) {

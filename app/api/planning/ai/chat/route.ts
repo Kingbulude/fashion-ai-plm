@@ -1,5 +1,5 @@
-// 通用 AI Skill 对话 API（兼容层）
-// 为没有独立 entry_route 的 skill 提供即时对话能力，底层走 Orchestrator
+// 企划页面统一 AI 对话 API
+// 底层走 Orchestrator + Cloudflare/DeepSeek，不再使用写死规则
 
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
@@ -7,13 +7,17 @@ import { runOrchestrator } from "@/lib/ai/orchestrator";
 
 export const runtime = "edge";
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  sender: "user" | "ai";
+  timestamp: string;
+}
+
 interface ChatRequest {
-  skillKey?: string;
-  skillName?: string;
-  description?: string;
-  processNode?: string;
+  skillKey: string;
   userMessage: string;
-  history?: { role: "user" | "assistant"; content: string }[];
+  history?: ChatMessage[];
 }
 
 export async function POST(request: Request) {
@@ -26,6 +30,10 @@ export async function POST(request: Request) {
     const { user, supabase, tenant } = ctx;
     const body: ChatRequest = await request.json().catch(() => ({} as ChatRequest));
     const { skillKey, userMessage, history } = body;
+
+    if (!skillKey) {
+      return NextResponse.json({ error: "缺少 skillKey" }, { status: 400 });
+    }
 
     if (!userMessage?.trim()) {
       return NextResponse.json({ error: "缺少 userMessage" }, { status: 400 });
@@ -43,6 +51,14 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
     const brandIds = (userBrands || []).map((b) => b.brand_id);
 
+    // 转换历史记录格式
+    const chatHistory = (history || [])
+      .filter((m) => m.sender === "user" || m.sender === "ai")
+      .map((m) => ({
+        role: m.sender as "user" | "assistant",
+        content: m.content,
+      }));
+
     const result = await runOrchestrator({
       userMessage: userMessage.trim(),
       skillKey,
@@ -51,19 +67,34 @@ export async function POST(request: Request) {
       brandIds,
       seasonId: tenant.season_id || undefined,
       supabase,
-      history,
+      history: chatHistory,
     });
 
+    const messages: ChatMessage[] = [
+      {
+        id: crypto.randomUUID(),
+        content: userMessage.trim(),
+        sender: "user",
+        timestamp: new Date().toISOString(),
+      },
+      {
+        id: crypto.randomUUID(),
+        content: result.output.summary || "（AI 未返回内容）",
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
     return NextResponse.json({
-      reply: result.output.summary,
+      conversationId: crypto.randomUUID(),
+      messages,
+      isCompleted: false,
       skillKey: result.skillKey,
       skillName: result.skillName,
-      structured: result.output,
     });
   } catch (error: any) {
-    console.error("[ai/chat] error:", error);
-    const message = error?.message || "AI 对话失败";
-    const status = message.includes("配置缺失") ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    console.error("[planning/ai/chat] error:", error);
+    const detail = error?.message || "AI 对话失败";
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 }
