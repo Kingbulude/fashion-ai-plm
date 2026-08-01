@@ -82,7 +82,7 @@ export default function BrandDetailPage() {
   if (error || !data) {
     return (
       <SidebarLayout>
-        <div className="p-6">
+        <div className="">
           <Button variant="ghost" onClick={() => router.push("/brands")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             返回品牌列表
@@ -106,7 +106,7 @@ export default function BrandDetailPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* 顶部导航 */}
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>

@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         {/* 顶部 */}
         <div className="flex items-center justify-between mb-6">
           <div>

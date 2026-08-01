@@ -76,7 +76,7 @@ export default function NewStylePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
@@ -210,7 +210,7 @@ export default function NewStylePage() {
 
           <div className="space-y-6">
             <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardContent className="p-6">
+              <CardContent className="">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                     <Sparkles className="h-5 w-5 text-white" />

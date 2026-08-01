@@ -225,7 +225,7 @@ export default function TodoDetailPage() {
   if (loading) {
     return (
       <SidebarLayout>
-        <div className="p-6 lg:p-8 max-w-[1200px] mx-auto">
+        <div className="max-w-[1200px] mx-auto">
           <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-terracotta-500" />
             <p className="text-sm">加载待办详情...</p>
@@ -238,7 +238,7 @@ export default function TodoDetailPage() {
   if (error || !todo) {
     return (
       <SidebarLayout>
-        <div className="p-6 lg:p-8 max-w-[1200px] mx-auto">
+        <div className="max-w-[1200px] mx-auto">
           <Card className="card-premium border-destructive/30 bg-red-50">
             <CardContent className="p-6 flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -263,7 +263,7 @@ export default function TodoDetailPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1200px] mx-auto">
+      <div className="max-w-[1200px] mx-auto">
         {/* 顶部导航 */}
         <Button
           variant="ghost"
@@ -279,7 +279,7 @@ export default function TodoDetailPage() {
           {/* 主内容 */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="card-premium">
-              <CardContent className="p-6">
+              <CardContent className="">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <Badge variant="outline" className={`${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
                     {statusCfg.label}

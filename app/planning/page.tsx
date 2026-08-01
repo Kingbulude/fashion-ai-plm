@@ -299,7 +299,7 @@ export default function PlanningPage() {
 
   return (
     <SidebarLayout>
-      <div className="h-[calc(100vh-72px)] flex p-4 gap-4">
+      <div className="h-[calc(100vh-72px)] flex gap-4">
         <div className="flex-1 min-h-0 flex flex-col gap-4">
           <div className="flex-1 min-h-0">
             <Card className="h-full flex flex-col overflow-hidden bg-gradient-to-br bg-white">

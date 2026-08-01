@@ -10,7 +10,7 @@ export default function ForbiddenPage() {
 
   return (
     <SidebarLayout>
-      <div className="min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center p-6">
+      <div className="min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center">
         <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-6">
           <ShieldAlert className="h-8 w-8 text-amber-600" />
         </div>

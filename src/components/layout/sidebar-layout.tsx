@@ -614,7 +614,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto p-3 lg:p-4">
         {/* Glass header */}
         <div className="h-14 header-glass flex items-center justify-between px-6">
           <TenantSwitcher />

@@ -156,7 +156,7 @@ export default function InspirationBoardDetailPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1800px] mx-auto">
+      <div className="max-w-[1800px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
             <Link

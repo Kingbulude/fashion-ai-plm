@@ -839,7 +839,7 @@ export default function HomePage() {
 
   return (
     <SidebarLayout>
-      <div className="p-3 lg:p-4 max-w-[2400px] mx-auto">
+      <div className="max-w-[2400px] mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>

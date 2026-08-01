@@ -486,7 +486,7 @@ export default function StyleDetailPage() {
   if (error || !style) {
     return (
       <SidebarLayout>
-        <div className="p-6">
+        <div className="">
           <Alert variant="destructive">
             <AlertDescription>{error || "款式不存在"}</AlertDescription>
           </Alert>
@@ -499,7 +499,7 @@ export default function StyleDetailPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[2400px] mx-auto">
+      <div className="max-w-[2400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
           <div className="flex items-center gap-3 flex-1">
             <Button variant="ghost" size="icon" onClick={() => router.back()} className="flex-shrink-0">

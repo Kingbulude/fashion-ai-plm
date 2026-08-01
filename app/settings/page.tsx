@@ -441,7 +441,7 @@ export default function SettingsPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 h-[calc(100vh-3.5rem)] overflow-auto">
+      <div className="h-[calc(100vh-3.5rem)] overflow-auto">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-9 h-9 rounded-xl gradient-navy flex items-center justify-center shadow-premium">
             <User className="h-4 w-4 text-white" />

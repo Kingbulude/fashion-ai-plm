@@ -135,7 +135,7 @@ export default function DesignPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">设计资产库</h1>

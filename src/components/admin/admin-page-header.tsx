@@ -76,7 +76,7 @@ export function AdminPageContainer({ children, className }: AdminPageContainerPr
   return (
     <div
       className={cn(
-        "min-h-[calc(100vh-4rem)] pt-8 pb-12 px-5 sm:px-8 lg:pt-12 lg:pb-16 lg:px-12 max-w-[2400px] mx-auto animate-fadeIn",
+        "min-h-[calc(100vh-4rem)] pt-8 pb-12 px-0 lg:pt-12 lg:pb-16 max-w-[2400px] mx-auto animate-fadeIn",
         className
       )}
     >
