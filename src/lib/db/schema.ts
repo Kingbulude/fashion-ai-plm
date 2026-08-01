@@ -337,6 +337,21 @@ export const brands = pgTable("brands", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const aiSkills = pgTable("ai_skills", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  skillType: text("skill_type").notNull(),
+  processNode: text("process_node"),
+  configSchema: jsonb("config_schema"),
+  entryRoute: text("entry_route"),
+  isActive: boolean("is_active").notNull().default(true),
+  companyId: uuid("company_id").references(() => companies.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(),
@@ -453,4 +468,47 @@ export const aiSuggestions = pgTable("ai_suggestions", {
   reviewComment: text("review_comment"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expireAt: timestamp("expire_at"),
+});
+
+// Phase 2: AI 建议记录（款式衍生闭环）
+export const aiRecommendations = pgTable("ai_recommendations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  skillId: uuid("skill_id").references(() => aiSkills.id),
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  seasonId: uuid("season_id").references(() => seasons.id),
+  userId: uuid("user_id").notNull(),
+  processNode: text("process_node"),
+  context: jsonb("context").notNull().default({}),
+  result: jsonb("result").notNull().default({}),
+  status: text("status").notNull().default("pending"),
+  rejectReason: text("reject_reason"),
+  modifiedResult: jsonb("modified_result"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Phase 2: 建议后续结果
+export const aiRecommendationOutcomes = pgTable("ai_recommendation_outcomes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recommendationId: uuid("recommendation_id").notNull(),
+  styleId: uuid("style_id").references(() => styles.id),
+  outcomeType: text("outcome_type").notNull(),
+  outcomeValue: numeric("outcome_value"),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+});
+
+// Phase 2: Skill 效果与版本追踪
+export const aiSkillMetrics = pgTable("ai_skill_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  skillId: uuid("skill_id").references(() => aiSkills.id),
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  seasonId: uuid("season_id").references(() => seasons.id),
+  totalRecommendations: integer("total_recommendations").notNull().default(0),
+  adoptedCount: integer("adopted_count").notNull().default(0),
+  rejectedCount: integer("rejected_count").notNull().default(0),
+  modifiedCount: integer("modified_count").notNull().default(0),
+  avgOutcomeScore: numeric("avg_outcome_score"),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
 });

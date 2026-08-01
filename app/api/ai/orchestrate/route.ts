@@ -2,7 +2,7 @@
 // 接收自然语言输入，经 Orchestrator 识别意图、调用 Skill、返回结构化结果
 
 import { NextResponse } from "next/server";
-import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 import { runOrchestrator } from "@/lib/ai/orchestrator";
 
 export const runtime = "edge";
@@ -67,7 +67,47 @@ export async function POST(request: Request) {
       status: "success",
     });
 
-    return NextResponse.json(result);
+    // Phase 2: 若 Skill 输出包含 designs（如款式衍生），写入 ai_recommendations 表
+    let recommendationId: string | null = null;
+    const outputData = result.output.data || {};
+    if (
+      result.skillKey === "style-derivative" &&
+      Array.isArray(outputData.designs) &&
+      outputData.designs.length > 0
+    ) {
+      const insertData = withTenant(
+        {
+          skill_id: skillRow?.id || null,
+          user_id: user.id,
+          process_node: "design",
+          context: { userMessage: message.trim() },
+          result: outputData,
+          status: "pending",
+        },
+        {
+          company_id: companyId,
+          brand_id: brandIds[0] || tenant.brand_id || "",
+          season_id: seasonId || tenant.season_id || null,
+        }
+      );
+
+      const { data: rec, error: recError } = await supabase
+        .from("ai_recommendations")
+        .insert(insertData)
+        .select("id")
+        .single();
+
+      if (recError) {
+        console.error("[ai/orchestrate] 创建 recommendation 失败:", recError);
+      } else if (rec) {
+        recommendationId = rec.id;
+      }
+    }
+
+    return NextResponse.json({
+      ...result,
+      recommendationId,
+    });
   } catch (error: any) {
     console.error("[ai/orchestrate] error:", error);
     return NextResponse.json(

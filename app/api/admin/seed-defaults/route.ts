@@ -106,6 +106,14 @@ const defaultAISkills = [
     entry_route: "/design",
   },
   {
+    key: "style-derivative",
+    name: "款式衍生",
+    description: "基于参考图与风格/面料/价格带约束生成多个款式方案与 BOM 草案",
+    skill_type: "execution",
+    process_node: "design",
+    entry_route: "/ai-workspace",
+  },
+  {
     key: "sample-review",
     name: "打样评审 AI",
     description: "对打样效果进行工艺、成本和交期多维评审",

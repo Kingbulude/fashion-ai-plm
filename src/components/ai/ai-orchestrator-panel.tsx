@@ -8,12 +8,16 @@ import { AISkill } from "@/lib/auth/tenant-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Bot, Loader2, Send, Trash2, User } from "lucide-react";
+import { StyleDerivativeCards } from "./style-derivative-cards";
+import { StyleDerivativeDesign } from "@/lib/skills/handlers/style-derivative";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  recommendationId?: string;
+  designs?: StyleDerivativeDesign[];
 }
 
 interface AIOrchestratorPanelProps {
@@ -87,11 +91,17 @@ export function AIOrchestratorPanel({ skill, seasonId }: AIOrchestratorPanelProp
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.detail || "执行失败");
 
+      const designs: StyleDerivativeDesign[] | undefined =
+        data.output?.data?.designs || data.structured?.data?.designs;
+      const recommendationId: string | undefined = data.recommendationId;
+
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: data.output?.summary || data.reply || "（AI 未返回内容）",
         createdAt: new Date().toISOString(),
+        recommendationId,
+        designs,
       };
 
       setConversations((prev) => ({
@@ -170,6 +180,12 @@ export function AIOrchestratorPanel({ skill, seasonId }: AIOrchestratorPanelProp
               }`}
             >
               {msg.content}
+              {msg.role === "assistant" && msg.recommendationId && msg.designs && msg.designs.length > 0 && (
+                <StyleDerivativeCards
+                  recommendationId={msg.recommendationId}
+                  designs={msg.designs}
+                />
+              )}
             </div>
           </div>
         ))}

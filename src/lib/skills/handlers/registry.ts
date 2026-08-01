@@ -4,6 +4,7 @@
 import { AISkillHandler } from "./types";
 import { themePlannerHandler } from "./theme-planner";
 import { inventoryActivationHandler } from "./inventory-activation";
+import { styleDerivativeHandler } from "./style-derivative";
 
 const registry = new Map<string, AISkillHandler>();
 
@@ -22,3 +23,4 @@ export function getAllSkillHandlers(): AISkillHandler[] {
 // 注册 Demo Skill
 registerSkillHandler(themePlannerHandler);
 registerSkillHandler(inventoryActivationHandler);
+registerSkillHandler(styleDerivativeHandler);

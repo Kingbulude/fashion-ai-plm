@@ -1,0 +1,110 @@
+// 修改 AI 建议中的某个设计方案
+// 保存用户修改后的结果，更新状态为 modified
+
+import { NextResponse } from "next/server";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { toCamelCase } from "@/lib/db/mappers";
+
+export const runtime = "edge";
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+
+    const { supabase, tenant } = ctx;
+    const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const { designId, modifiedDesign } = body;
+
+    if (!modifiedDesign || typeof modifiedDesign !== "object") {
+      return NextResponse.json({ error: "缺少 modifiedDesign" }, { status: 400 });
+    }
+
+    const { data: rec, error: recError } = await supabase
+      .from("ai_recommendations")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (recError || !rec) {
+      return NextResponse.json({ error: "建议不存在" }, { status: 404 });
+    }
+
+    const result = rec.result || {};
+    const designs = Array.isArray(result.designs) ? result.designs : [];
+    const targetDesign = designId
+      ? designs.find((d: any) => d.id === designId)
+      : designs[0];
+
+    const modifiedResult = {
+      originalDesignId: designId || targetDesign?.id || null,
+      originalDesign: targetDesign || null,
+      modifiedDesign,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    const { data: updatedRec, error } = await supabase
+      .from("ai_recommendations")
+      .update({
+        status: "modified",
+        modified_result: modifiedResult,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[modify] 更新建议失败:", error);
+      return NextResponse.json({ error: "修改保存失败" }, { status: 500 });
+    }
+
+    await incrementSkillMetrics(supabase, rec.skill_id, tenant, "modified");
+
+    return NextResponse.json(toCamelCase(updatedRec));
+  } catch (error: any) {
+    console.error("[modify] error:", error);
+    return NextResponse.json({ error: error?.message || "修改保存失败" }, { status: 500 });
+  }
+}
+
+async function incrementSkillMetrics(
+  supabase: any,
+  skillId: string | null,
+  tenant: { company_id: string; brand_id: string; season_id: string | null },
+  action: "adopted" | "rejected" | "modified"
+) {
+  if (!skillId || !tenant.company_id || !tenant.brand_id) return;
+
+  const { data: existing } = await supabase
+    .from("ai_skill_metrics")
+    .select("id, total_recommendations, adopted_count, rejected_count, modified_count")
+    .eq("skill_id", skillId)
+    .eq("company_id", tenant.company_id)
+    .eq("brand_id", tenant.brand_id)
+    .is("season_id", tenant.season_id || null)
+    .maybeSingle();
+
+  if (existing) {
+    const updates: any = {
+      total_recommendations: (existing.total_recommendations || 0) + 1,
+    };
+    if (action === "adopted") updates.adopted_count = (existing.adopted_count || 0) + 1;
+    if (action === "rejected") updates.rejected_count = (existing.rejected_count || 0) + 1;
+    if (action === "modified") updates.modified_count = (existing.modified_count || 0) + 1;
+
+    await supabase.from("ai_skill_metrics").update(updates).eq("id", existing.id);
+  } else {
+    await supabase.from("ai_skill_metrics").insert({
+      skill_id: skillId,
+      company_id: tenant.company_id,
+      brand_id: tenant.brand_id,
+      season_id: tenant.season_id,
+      total_recommendations: 1,
+      adopted_count: action === "adopted" ? 1 : 0,
+      rejected_count: action === "rejected" ? 1 : 0,
+      modified_count: action === "modified" ? 1 : 0,
+    });
+  }
+}
