@@ -227,7 +227,7 @@ export default function TodosPage() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[1200px] mx-auto">
+      <div className="max-w-[1200px]">
         {/* 顶部 */}
         <div className="flex items-center justify-between mb-6">
           <div>

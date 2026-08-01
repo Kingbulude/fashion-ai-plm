@@ -23,6 +23,7 @@ import {
   Target,
   Shirt,
 } from "lucide-react";
+import { SidebarLayout } from "@/components/layout/sidebar-layout";
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; border: string; label: string }> = {
   critical: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200", label: "严重" },
@@ -144,10 +145,11 @@ export default function DesignFeedbackPage() {
     .slice(0, 5);
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-1">设计反馈中心</h1>
+    <SidebarLayout>
+      <div className="max-w-[1600px]">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">设计反馈中心</h1>
           <p className="text-sm text-slate-500">
             售后问题反向迭代，数据驱动设计优化
           </p>
@@ -641,6 +643,7 @@ export default function DesignFeedbackPage() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </SidebarLayout>
   );
 }

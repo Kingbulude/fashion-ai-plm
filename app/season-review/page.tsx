@@ -19,6 +19,7 @@ import {
   Palette,
   History,
 } from "lucide-react";
+import { SidebarLayout } from "@/components/layout/sidebar-layout";
 
 interface SeasonReview {
   id: string;
@@ -155,13 +156,14 @@ export default function SeasonReviewPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">每季AI复盘</h1>
-          <p className="text-sm text-slate-500 mt-1">自动生成全链路复盘报告，洞察数据驱动优化</p>
+    <SidebarLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">每季AI复盘</h1>
+            <p className="text-sm text-slate-500 mt-1">自动生成全链路复盘报告，洞察数据驱动优化</p>
+          </div>
         </div>
-      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -608,6 +610,7 @@ export default function SeasonReviewPage() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </SidebarLayout>
   );
 }

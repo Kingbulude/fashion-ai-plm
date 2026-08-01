@@ -254,7 +254,7 @@ function ProductionPageInner() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[1800px] mx-auto">
+      <div className="max-w-[1800px]">
         {/* 顶部 */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>

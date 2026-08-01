@@ -212,7 +212,7 @@ export default function SuppliersPage() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[2400px] mx-auto">
+      <div className="max-w-[2400px]">
         {/* 顶部标题栏 */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>

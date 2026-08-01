@@ -225,7 +225,7 @@ export default function TodoDetailPage() {
   if (loading) {
     return (
       <SidebarLayout>
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1200px]">
           <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-terracotta-500" />
             <p className="text-sm">加载待办详情...</p>

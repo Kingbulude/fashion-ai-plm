@@ -283,7 +283,7 @@ export default function SalesPage() {
 
   return (
     <SidebarLayout>
-      <div className="max-w-[1600px] mx-auto">
+      <div className="max-w-[1600px]">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold mb-1">销售管理</h1>
