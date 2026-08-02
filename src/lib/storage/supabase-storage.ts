@@ -1,74 +1,40 @@
-import { supabase as globalSupabase } from "@/lib/db/client";
-import { type SupabaseClient } from "@supabase/supabase-js";
+// 兼容层：原有导入 import { uploadFile } from "@/lib/storage/supabase-storage" 保持可用
+// 底层已切换到统一 StorageProvider（通过 STORAGE_PROVIDER 切换 R2 / Supabase）
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  uploadFile as unifiedUploadFile,
+  getFileUrl as unifiedGetFileUrl,
+  deleteFile as unifiedDeleteFile,
+  createBucketIfNotExists as unifiedCreateBucket,
+} from "./index";
 
 const BUCKET_NAME = "design-assets";
-
-function getClient(client?: SupabaseClient): SupabaseClient {
-  return client || globalSupabase;
-}
 
 export async function uploadFile(
   file: File,
   path: string,
   client?: SupabaseClient
 ): Promise<{ url: string; path: string }> {
-  const supabase = getClient(client);
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${path}/${Date.now()}.${fileExt}`;
-
-  const { error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`上传文件失败: ${error.message}`);
-  }
-
-  const { data: urlData } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(fileName);
-
-  return { url: urlData.publicUrl, path: fileName };
+  return unifiedUploadFile(file, path, client, { bucket: BUCKET_NAME });
 }
 
-export async function getFileUrl(path: string, client?: SupabaseClient): Promise<string> {
-  const supabase = getClient(client);
-  const { data } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(path);
-
-  return data.publicUrl;
+export async function getFileUrl(
+  path: string,
+  client?: SupabaseClient
+): Promise<string> {
+  return unifiedGetFileUrl(path, client, { bucket: BUCKET_NAME });
 }
 
-export async function deleteFile(path: string, client?: SupabaseClient): Promise<void> {
-  const supabase = getClient(client);
-  const { error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .remove([path]);
-
-  if (error) {
-    throw new Error(`删除文件失败: ${error.message}`);
-  }
+export async function deleteFile(
+  path: string,
+  client?: SupabaseClient
+): Promise<void> {
+  return unifiedDeleteFile(path, client, { bucket: BUCKET_NAME });
 }
 
-export async function createBucketIfNotExists(client?: SupabaseClient): Promise<void> {
-  const supabase = getClient(client);
-  const { data: buckets } = await supabase.storage.listBuckets();
-
-  const bucketExists = buckets?.some((b) => b.name === BUCKET_NAME);
-
-  if (!bucketExists) {
-    const { error } = await supabase.storage.createBucket(BUCKET_NAME, {
-      public: true,
-      fileSizeLimit: 10485760,
-      allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"],
-    });
-
-    if (error) {
-      console.error("创建存储桶失败:", error.message);
-    }
-  }
+export async function createBucketIfNotExists(
+  client?: SupabaseClient
+): Promise<void> {
+  void client;
+  return unifiedCreateBucket(BUCKET_NAME);
 }
