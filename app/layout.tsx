@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { TenantProvider } from "@/lib/auth/tenant-context";
+import { ReactQueryProvider } from "@/lib/react-query/provider";
 import { Suspense } from "react";
 
 const geistSans = localFont({
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Suspense fallback={null}>
-          <TenantProvider>{children}</TenantProvider>
+          <ReactQueryProvider>
+            <TenantProvider>{children}</TenantProvider>
+          </ReactQueryProvider>
         </Suspense>
       </body>
     </html>
