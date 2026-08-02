@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, inspirationBoardCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -77,12 +78,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { title, description, brandId: bodyBrandId, seasonId, themeTags, coverImageUrl } = body;
-
-    if (!title?.trim()) {
-      return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(inspirationBoardCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { title, description, brandId: bodyBrandId, seasonId, themeTags, coverImageUrl } = validation.data;
 
     const { data, error } = await supabase
       .from("inspiration_boards")

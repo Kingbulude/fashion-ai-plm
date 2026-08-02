@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, aiSupplierMatchSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
     const { tenant, supabase } = ctx;
 
     const body = await request.json();
-    const { styleName, category, material, processRequirements, location, budget } = body;
+    const validation = validateBody(aiSupplierMatchSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleName, category, material, processRequirements, location, budget } = validation.data;
 
     // 多租户隔离：按 company_id 过滤
     const companyId = tenant.company_id;

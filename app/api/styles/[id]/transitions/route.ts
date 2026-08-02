@@ -7,6 +7,7 @@ import {
   StyleStatus,
   getAvailableTransitions,
 } from "@/lib/workflow/style-state-machine";
+import { validateBody, styleTransitionSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -71,11 +72,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     const { id } = await params;
 
     const body = await request.json();
-    const { toStatus, event, comment } = body;
-
-    if (!toStatus || !event) {
-      return NextResponse.json({ error: "缺少目标状态或事件" }, { status: 400 });
-    }
+    const validation = validateBody(styleTransitionSchema, body);
+    if (!validation.ok) return validation.response;
+    const { toStatus, event, comment } = validation.data;
 
     // 动态导入避免 Edge Runtime 问题
     const { transitionStyle } = await import("@/lib/workflow/style-transition");
@@ -94,7 +93,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       fromStatus: style.status as StyleStatus,
       toStatus: toStatus as StyleStatus,
       event,
-      comment,
+      comment: comment || undefined,
       userId: ctx.user.id,
       brandId: style.brand_id,
       supabase,

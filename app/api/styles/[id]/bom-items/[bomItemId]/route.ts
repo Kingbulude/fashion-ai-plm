@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, bomItemUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -47,8 +48,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { id, bomItemId } = await params;
     const body = await request.json();
-
-    const { materialName, materialType, specification, unitConsumption, lossRate, unitPrice } = body;
+    const validation = validateBody(bomItemUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { materialName, materialType, specification, unitConsumption, lossRate, unitPrice } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (materialName !== undefined) updateData.material_name = materialName;

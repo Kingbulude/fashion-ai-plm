@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { transitionStyle } from "@/lib/workflow/style-transition";
+import { validateBody, samplingUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -36,7 +37,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { samplingId } = await params;
     const body = await request.json();
-    const { round, factoryId, status, sentDate, receivedDate, feedback, revisionNotes, qcResult, approved } = body;
+    const validation = validateBody(samplingUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { round, factoryId, status, sentDate, receivedDate, feedback, revisionNotes, qcResult, approved } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (round !== undefined) updateData.round = round;

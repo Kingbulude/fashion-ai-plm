@@ -4,17 +4,9 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { runOrchestrator } from "@/lib/ai/orchestrator";
+import { validateBody, aiChatSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
-
-interface ChatRequest {
-  skillKey?: string;
-  skillName?: string;
-  description?: string;
-  processNode?: string;
-  userMessage: string;
-  history?: { role: "user" | "assistant"; content: string }[];
-}
 
 export async function POST(request: Request) {
   try {
@@ -24,12 +16,10 @@ export async function POST(request: Request) {
     }
 
     const { user, supabase, tenant } = ctx;
-    const body: ChatRequest = await request.json().catch(() => ({} as ChatRequest));
-    const { skillKey, userMessage, history } = body;
-
-    if (!userMessage?.trim()) {
-      return NextResponse.json({ error: "缺少 userMessage" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(aiChatSchema, body);
+    if (!validation.ok) return validation.response;
+    const { skillKey, userMessage, history } = validation.data;
 
     const companyId = tenant.company_id;
     if (!companyId) {

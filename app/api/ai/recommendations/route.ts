@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 import { toCamelCase } from "@/lib/db/mappers";
+import { validateBody, aiRecommendationCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -14,11 +15,9 @@ export async function POST(request: Request) {
 
     const { user, supabase, tenant } = ctx;
     const body = await request.json().catch(() => ({}));
-    const { skillId, processNode, context, result, status } = body;
-
-    if (!result || typeof result !== "object") {
-      return NextResponse.json({ error: "缺少 result" }, { status: 400 });
-    }
+    const validation = validateBody(aiRecommendationCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { skillId, processNode, context, result, status } = validation.data;
 
     const insertData = withTenant(
       {

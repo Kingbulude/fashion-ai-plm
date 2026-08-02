@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 import { runOrchestrator } from "@/lib/ai/orchestrator";
+import { validateBody, aiOrchestrateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -16,11 +17,9 @@ export async function POST(request: Request) {
 
     const { user, supabase, tenant } = ctx;
     const body = await request.json().catch(() => ({}));
-    const { message, skillKey, seasonId, history } = body;
-
-    if (!message?.trim()) {
-      return NextResponse.json({ error: "缺少 message" }, { status: 400 });
-    }
+    const validation = validateBody(aiOrchestrateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { message, skillKey, seasonId, history } = validation.data;
 
     const companyId = tenant.company_id;
     if (!companyId) {

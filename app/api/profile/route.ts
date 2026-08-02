@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/db/client";
 import { logOperation } from "@/lib/auth/audit";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, profileUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -212,8 +213,10 @@ export async function PUT(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const { name, avatarUrl } = body;
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(profileUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, avatarUrl } = validation.data;
 
     const userName = name || "小芳";
     const userAvatarUrl = avatarUrl || null;

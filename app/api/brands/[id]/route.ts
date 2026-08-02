@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, brandDetailUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -101,7 +102,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { name, logo_url } = body;
+    const validation = validateBody(brandDetailUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, logo_url } = validation.data;
 
     // 校验该品牌是否属于当前公司
     const { data: brand } = await supabase

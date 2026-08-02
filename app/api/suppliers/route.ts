@@ -3,6 +3,7 @@ import { toCamelCase } from "@/lib/db/mappers";
 import { requirePermission } from "@/lib/auth/permission";
 import { Permission } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, supplierCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -47,6 +48,8 @@ export async function POST(request: Request) {
       const { tenant } = tenantCtx;
 
       const body = await request.json();
+      const validation = validateBody(supplierCreateSchema, body);
+      if (!validation.ok) return validation.response;
       const {
         name,
         type,
@@ -57,14 +60,7 @@ export async function POST(request: Request) {
         qualityScore,
         deliveryScore,
         priceLevel,
-      } = body;
-
-      if (!name || !type) {
-        return NextResponse.json(
-          { error: "供应商名称和类型不能为空" },
-          { status: 400 }
-        );
-      }
+      } = validation.data;
 
       if (!tenant.company_id) {
         return NextResponse.json(

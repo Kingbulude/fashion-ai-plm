@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RoleLevel, RoleLevelLabels } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
+import { validateBody, organizationAssignSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -230,11 +231,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { userId, roleLevel: newRoleLevel, brandIds, name, processRoleIds, processOwnerScopeId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: "缺少用户ID" }, { status: 400 });
-    }
+    const validation = validateBody(organizationAssignSchema, body);
+    if (!validation.ok) return validation.response;
+    const { userId, roleLevel: newRoleLevel, brandIds, name, processRoleIds, processOwnerScopeId } = validation.data;
 
     // 校验不能修改 BOSS 账号（除 BOSS 自己外）
     if (userId !== ctx.user.id) {

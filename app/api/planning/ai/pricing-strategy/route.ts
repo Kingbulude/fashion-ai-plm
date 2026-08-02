@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJson } from "@/lib/ai/json-generation";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningPricingSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -36,10 +38,16 @@ function buildFallback(cost: number, positionMultiplier: number): PricingStrateg
 
 export async function POST(request: Request) {
   try {
-    const supabase = createServerSupabaseClient(request);
-    const { cost, category, brandPosition } = await request.json();
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
 
-    const baseCost = cost || 100;
+    const supabase = createServerSupabaseClient(request);
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningPricingSchema, body);
+    if (!validation.ok) return validation.response;
+    const { cost, category, brandPosition } = validation.data;
+
+    const baseCost = Number(cost) || 100;
     const positionMultiplier = (() => {
       const map: Record<string, number> = { "高端": 3.5, "中高端": 2.5, "中端": 2.0, "中低端": 1.5 };
       return map[brandPosition || "中高端"] || 2.5;

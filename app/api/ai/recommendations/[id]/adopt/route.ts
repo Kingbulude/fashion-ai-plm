@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 import { toCamelCase } from "@/lib/db/mappers";
+import { validateBody, aiRecAdoptSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -20,7 +21,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { user, supabase, tenant } = ctx;
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { designId } = body;
+    const validation = validateBody(aiRecAdoptSchema, body);
+    if (!validation.ok) return validation.response;
+    const { designId } = validation.data;
 
     if (!tenant.company_id || !tenant.brand_id) {
       return NextResponse.json({ error: "缺少公司或品牌上下文" }, { status: 400 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, seasonCreateSchema, seasonUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -51,11 +52,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { brandId, name, seasonType, year, startDate, endDate } = body;
-
-    if (!brandId || !name || !seasonType || !year || !startDate || !endDate) {
-      return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
-    }
+    const validation = validateBody(seasonCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { brandId, name, seasonType, year, startDate, endDate } = validation.data;
 
     // 创建新季次时，将同品牌其他季次设为非active
     await supabase
@@ -106,11 +105,9 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, name, seasonType, year, startDate, endDate, status } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "缺少季次 ID" }, { status: 400 });
-    }
+    const validation = validateBody(seasonUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { id, name, seasonType, year, startDate, endDate, status } = validation.data;
 
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),

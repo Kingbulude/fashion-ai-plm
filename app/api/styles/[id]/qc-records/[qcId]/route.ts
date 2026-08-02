@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, qcRecordUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -31,7 +32,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { qcId } = await params;
     const body = await request.json();
-    const { type, refId, result, defects, photos, inspector } = body;
+    const validation = validateBody(qcRecordUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { type, refId, result, defects, photos, inspector } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (type !== undefined) updateData.type = type;

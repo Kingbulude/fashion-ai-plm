@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, productionOrderUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -31,7 +32,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { orderId } = await params;
     const body = await request.json();
-    const { factoryId, status, quantity, colorSizeRatio, materialReady, startDate, expectedEndDate, actualEndDate, totalCost } = body;
+    const validation = validateBody(productionOrderUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { factoryId, status, quantity, colorSizeRatio, materialReady, startDate, expectedEndDate, actualEndDate, totalCost } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (factoryId !== undefined) updateData.factory_id = factoryId;

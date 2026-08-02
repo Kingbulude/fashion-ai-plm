@@ -4,6 +4,7 @@ import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { hasPermission, Permission, RoleLevel } from "@/lib/auth/rbac";
 import { canTransitionTo, type StyleStatus } from "@/lib/workflow/style-state-machine";
+import { validateBody, styleUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -84,11 +85,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const body = await request.json();
 
-    const { styleNo, name, season, category, description, targetCost, actualCost, status } = body;
-
-    if (!styleNo || !name) {
-      return NextResponse.json({ error: "款号和款式名称不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(styleUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleNo, name, season, category, description, targetCost, actualCost, status } = validation.data;
 
     // 校验目标款式是否在可访问品牌内
     const { data: existingStyle } = await supabase

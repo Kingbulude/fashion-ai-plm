@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningColorSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -24,8 +26,14 @@ const FALLBACK_COLORS: ColorRecommendation[] = [
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+
     const supabase = createServerSupabaseClient(request);
-    const { season, category, brandColors } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningColorSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, category, brandColors } = validation.data;
 
     const colorRecommendations = await generateJsonArray<ColorRecommendation>({
       prompt: `你是一位服装色彩企划专家。请为「${season || "下一季"}」「${category || "女装"}」系列生成 6 个色彩推荐。

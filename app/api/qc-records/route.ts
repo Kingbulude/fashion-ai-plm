@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
+import { validateBody, qcRecordCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -22,7 +23,9 @@ export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
     const body = await request.json();
-    const { styleId, process, result, defects, batch } = body;
+    const validation = validateBody(qcRecordCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, process, result, defects, batch } = validation.data;
 
     const { data: styleData } = await supabase
       .from("styles")

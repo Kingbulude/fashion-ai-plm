@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, techPackCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -41,7 +42,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     const { id } = await params;
     const body = await request.json();
 
-    const { sizeChart, processNotes, sewingStandard, printEmbroidery, aiGenerated, approved } = body;
+    const validation = validateBody(techPackCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { sizeChart, processNotes, sewingStandard, printEmbroidery, aiGenerated, approved } = validation.data;
 
     // 获取当前最大版本号
     const { data: existing } = await supabase

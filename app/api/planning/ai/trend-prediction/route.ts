@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningTrendSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -23,8 +25,14 @@ const FALLBACK_TRENDS: TrendItem[] = [
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+
     const supabase = createServerSupabaseClient(request);
-    const { season, category } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningTrendSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, category } = validation.data;
 
     const trends = await generateJsonArray<TrendItem>({
       prompt: `你是一位资深服装行业趋势分析师。请为「${season || "下一季"}」的「${category || "全品类"}」女装市场生成 5 个高置信度趋势洞察。

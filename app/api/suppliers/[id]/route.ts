@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, supplierUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -42,7 +43,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { name, type, contact, phone, email, capabilities, qualityScore, deliveryScore, priceLevel } = body;
+    const validation = validateBody(supplierUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, type, contact, phone, email, capabilities, qualityScore, deliveryScore, priceLevel } = validation.data;
 
     const { data, error } = await supabase
       .from("suppliers")

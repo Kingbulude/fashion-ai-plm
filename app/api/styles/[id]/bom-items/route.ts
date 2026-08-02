@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth, resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
+import { validateBody, bomItemCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -73,11 +74,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     const { id } = await params;
     const body = await request.json();
 
-    const { materialName, materialType, specification, unitConsumption, lossRate, unitPrice, aiSuggested } = body;
-
-    if (!materialName || !materialType || unitConsumption === undefined) {
-      return NextResponse.json({ error: "物料名称、类型、单耗不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(bomItemCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { materialName, materialType, specification, unitConsumption, lossRate, unitPrice, aiSuggested } = validation.data;
 
     const uc = Number(unitConsumption);
     const lr = Number(lossRate || 0);

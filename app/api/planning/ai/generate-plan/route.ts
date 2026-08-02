@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray, generateJson } from "@/lib/ai/json-generation";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningGeneratePlanSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -70,7 +71,10 @@ export async function POST(request: Request) {
     const { tenant } = ctx;
 
     const supabase = createServerSupabaseClient(request);
-    const { season, theme, category, targetCost, seasonId } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningGeneratePlanSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, theme, category, targetCost, seasonId } = validation.data;
 
     const effectiveSeasonId = seasonId || tenant.season_id || null;
 
@@ -92,8 +96,8 @@ export async function POST(request: Request) {
       if (data) brandDna = data;
     } catch {}
 
-    const baseCost = targetCost || 100;
-    const fallback = buildFallback(season, theme, category, baseCost, brandDna);
+    const baseCost = Number(targetCost) || 100;
+    const fallback = buildFallback(season || "", theme || "", category || "", baseCost, brandDna);
 
     const [trendItems, hotProductItems, colorItems, fabricItems, priceShape] = await Promise.all([
       generateJsonArray<TrendItem>({

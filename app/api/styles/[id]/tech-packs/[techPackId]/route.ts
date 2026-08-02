@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, techPackUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -40,8 +41,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { techPackId } = await params;
     const body = await request.json();
-
-    const { sizeChart, processNotes, sewingStandard, printEmbroidery, approved } = body;
+    const validation = validateBody(techPackUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { sizeChart, processNotes, sewingStandard, printEmbroidery, approved } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (sizeChart !== undefined) updateData.size_chart = sizeChart;

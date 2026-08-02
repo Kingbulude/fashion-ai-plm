@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
+import { validateBody, aiTestResultCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -22,7 +23,9 @@ export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
     const body = await request.json();
-    const { imageId, targetAudience, testDuration } = body;
+    const validation = validateBody(aiTestResultCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { imageId, targetAudience, testDuration } = validation.data;
 
     const { data: imageData } = await supabase
       .from("ai_images")

@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, todoUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -39,8 +40,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const { supabase } = ctx;
 
     const { id } = await params;
-    const body = await request.json();
-    const { status, isRead } = body;
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(todoUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { status, isRead } = validation.data;
 
     const updateData: any = { updated_at: new Date().toISOString() };
     if (status === "completed") {

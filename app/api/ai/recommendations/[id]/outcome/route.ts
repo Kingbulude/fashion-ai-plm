@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { toCamelCase } from "@/lib/db/mappers";
+import { validateBody, aiRecOutcomeSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -14,11 +15,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { supabase } = ctx;
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { styleId, outcomeType, outcomeValue } = body;
-
-    if (!outcomeType) {
-      return NextResponse.json({ error: "缺少 outcomeType" }, { status: 400 });
-    }
+    const validation = validateBody(aiRecOutcomeSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, outcomeType, outcomeValue } = validation.data;
 
     const { data: rec } = await supabase
       .from("ai_recommendations")

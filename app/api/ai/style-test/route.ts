@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { generateJson } from "@/lib/ai/json-generation";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
+import { validateBody, aiStyleTestSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
     const { supabase } = ctx;
 
     const body = await request.json();
-    const { styleId, styleName, category, price, season, targetAudience, designFeatures } = body;
+    const validation = validateBody(aiStyleTestSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, styleName, category, price, season, targetAudience, designFeatures } = validation.data;
 
     const prompt = `你是资深服装行业买手和趋势分析师。请对以下款式进行AI测款分析。
 

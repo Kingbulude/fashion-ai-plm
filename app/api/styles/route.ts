@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { validateBody, styleCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -31,11 +32,9 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { styleNo, name, season, category, description, targetCost, status, seasonId } = body;
-
-    if (!styleNo || !name) {
-      return NextResponse.json({ error: "款号和款式名称不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(styleCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleNo, name, season, category, description, targetCost, status, seasonId } = validation.data;
 
     // 多品牌：从可信租户上下文获取品牌（TenantSwitcher 设置）
     const effectiveTenant = {

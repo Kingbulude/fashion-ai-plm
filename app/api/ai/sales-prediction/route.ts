@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { AIRoleLevel, AISpecialistType, AISuggestionType, AISuggestionPriority } from "@/lib/ai/architecture";
 import { createAISuggestion } from "@/lib/ai/suggestion-helper";
+import { validateBody, aiSalesPredictionSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -12,8 +13,10 @@ export async function POST(request: Request) {
     if ("error" in ctx) return ctx.error;
     const { supabase } = ctx;
 
-    const body = await request.json();
-    const { styleId, styleName, category, price, season, targetAudience, initialStock } = body;
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(aiSalesPredictionSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, styleName, category, price, season, targetAudience, initialStock } = validation.data;
 
     const prompt = `你是一位资深的服装行业销售预测专家。请对以下款式进行销量预估：
 
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
       content: `AI销售专员对款式"${styleName}"的销量预估：\n\n${result}\n\n建议参考此预测进行备货和补货决策。`,
       proposedData: { styleId, prediction: result },
       targetTable: "styles",
-      targetId: styleId,
+      targetId: styleId || undefined,
     });
 
     return NextResponse.json({ prediction: result });

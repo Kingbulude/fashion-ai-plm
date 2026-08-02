@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, brandCreateSchema, brandUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -71,11 +72,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, logoUrl } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "品牌名称不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(brandCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, logoUrl } = validation.data;
 
     const { data, error } = await supabase
       .from("brands")
@@ -114,11 +113,9 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, name, logoUrl } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "缺少品牌ID" }, { status: 400 });
-    }
+    const validation = validateBody(brandUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { id, name, logoUrl } = validation.data;
 
     const { data, error } = await supabase
       .from("brands")

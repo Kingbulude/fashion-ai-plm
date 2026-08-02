@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, designFeedbackCreateSchema, designFeedbackUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -68,12 +69,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { styleId, title, description, defectCategory, severity, priority, relatedAftersaleIds } = body;
-
-    if (!styleId || !title?.trim()) {
-      return NextResponse.json({ error: "款式和标题不能为空" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(designFeedbackCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, title, description, defectCategory, severity, priority, relatedAftersaleIds } = validation.data;
 
     const { data, error } = await supabase
       .from("design_feedback_items")
@@ -110,12 +109,10 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { id, status, priority, severity, description } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID不能为空" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(designFeedbackUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { id, status, priority, severity, description } = validation.data;
 
     const updateData: Record<string, any> = {};
     if (status) updateData.status = status;

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningHotProductsSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -25,8 +27,14 @@ const FALLBACK_HOT_PRODUCTS: HotProduct[] = [
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+
     const supabase = createServerSupabaseClient(request);
-    const { category, season } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningHotProductsSchema, body);
+    if (!validation.ok) return validation.response;
+    const { category, season } = validation.data;
 
     const hotProducts = await generateJsonArray<HotProduct>({
       prompt: `你是一位服装电商爆款分析专家。请为「${season || "当季"}」「${category || "女装"}」市场生成 5 个潜在爆款。

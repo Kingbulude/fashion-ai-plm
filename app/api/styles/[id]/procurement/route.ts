@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth, resolveStyleTenant, withTenant } from "@/lib/auth/tenant-helpers";
+import { validateBody, procurementCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -67,11 +68,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { bomItemId, supplierId, status, orderDate, expectedDate, quantity, unitPrice } = body;
-
-    if (!bomItemId || !quantity) {
-      return NextResponse.json({ error: "物料项和数量不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(procurementCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { bomItemId, supplierId, status, orderDate, expectedDate, quantity, unitPrice } = validation.data;
 
     // 自动从款式继承租户字段
     const { tenant, error: tenantError } = await resolveStyleTenant(id, supabase);

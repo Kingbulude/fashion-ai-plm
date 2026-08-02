@@ -4,6 +4,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import { REDESIGN_PRESETS } from "@/lib/ai/redesign-presets";
+import { validateBody, aiRedesignSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -109,17 +110,12 @@ export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
     const body = await request.json();
-    const { styleId, sourceAssetId, instruction, saveAsAsset = true } = body;
-
-    if (!styleId) {
-      return NextResponse.json({ error: "缺少 styleId" }, { status: 400 });
-    }
-    if (!instruction || typeof instruction !== "string" || instruction.trim().length === 0) {
-      return NextResponse.json({ error: "缺少改款指令" }, { status: 400 });
-    }
+    const validation = validateBody(aiRedesignSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, sourceAssetId, instruction, saveAsAsset = true } = validation.data;
 
     // 1. 获取款式 + 源资产
-    const { sourceAsset, style } = await getSourceContext(supabase, sourceAssetId, styleId);
+    const { sourceAsset, style } = await getSourceContext(supabase, sourceAssetId || undefined, styleId);
     if (!style) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -45,12 +46,10 @@ export async function POST(request: Request) {
     if ("error" in ctx) return ctx.error;
     const { supabase, tenant } = ctx;
 
-    const body = await request.json();
-    const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags, seasonId } = body;
-
-    if (!season || !theme) {
-      return NextResponse.json({ error: "季节和主题不能为空" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags, seasonId } = validation.data;
 
     const payload = withTenant(
       {

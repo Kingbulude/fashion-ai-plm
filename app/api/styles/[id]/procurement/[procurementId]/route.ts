@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, procurementUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -32,7 +33,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
     const { id, procurementId } = await params;
     const body = await request.json();
-    const { supplierId, status, orderDate, expectedDate, actualDate, quantity, unitPrice, receivedQuantity } = body;
+    const validation = validateBody(procurementUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { supplierId, status, orderDate, expectedDate, actualDate, quantity, unitPrice, receivedQuantity } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (supplierId !== undefined) updateData.supplier_id = supplierId;

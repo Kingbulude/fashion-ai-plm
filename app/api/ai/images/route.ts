@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
+import { validateBody, aiImageCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -48,11 +49,13 @@ export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
     const body = await request.json();
-    const { styleName, styleId, description, styleType, colors } = body;
+    const validation = validateBody(aiImageCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleName, styleId, description, styleType, colors } = validation.data;
 
     const { prompt, size } = buildImagePrompt({
       styleName: styleName || "clothing",
-      description,
+      description: description ?? undefined,
       styleType,
       colors: Array.isArray(colors) ? colors : undefined,
     });

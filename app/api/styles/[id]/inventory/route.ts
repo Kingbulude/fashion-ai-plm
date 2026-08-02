@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, inventoryAdjustSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -54,11 +55,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { color, size, quantity } = body;
-
-    if (!color || !size || quantity === undefined) {
-      return NextResponse.json({ error: "颜色、尺码和数量不能为空" }, { status: 400 });
-    }
+    const validation = validateBody(inventoryAdjustSchema, body);
+    if (!validation.ok) return validation.response;
+    const { color, size, quantity } = validation.data;
 
     const existing = await supabase.from("inventory_records").select("id, quantity").eq("style_id", id).eq("color", color).eq("size", size).maybeSingle();
 

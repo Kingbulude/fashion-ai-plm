@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { emit, getMetrics, getEventLog } from "@/lib/events/emitter";
 import { EventType } from "@/lib/events/types";
+import { validateBody, cronSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -24,14 +25,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { schedule?: CronSchedule } = {};
+  let parsed: { schedule?: CronSchedule } = {};
   try {
-    body = await request.json();
+    const raw = await request.json();
+    const validation = validateBody(cronSchema, raw);
+    if (validation.ok) {
+      parsed = validation.data as { schedule?: CronSchedule };
+    }
+    // 校验失败时静默回退到默认 daily（保持与原行为一致，避免 cron 调用方因 body 问题中断）
   } catch {
     // 允许无 body，默认 daily
   }
 
-  const schedule: CronSchedule = body.schedule || "daily";
+  const schedule: CronSchedule = parsed.schedule || "daily";
 
   // 根据调度类型发射对应事件
   const eventType =

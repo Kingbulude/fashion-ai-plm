@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningTrendAnalyzeSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -13,7 +14,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     const { supabase } = ctx;
 
     const { id } = await params;
-    const { season, theme } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningTrendAnalyzeSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, theme } = validation.data;
 
     const prompt = `你是一位资深的服装行业趋势分析师。请针对以下企划进行趋势分析：
 

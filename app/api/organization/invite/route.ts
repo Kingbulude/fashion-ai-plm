@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSession } from "@/lib/auth/supabase";
 import { RoleLevel } from "@/lib/auth/rbac";
+import { validateBody, inviteUserSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -61,14 +62,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, name, roleLevel: newRoleLevel, brandIds, processRoleIds, processOwnerScopeId } = body;
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "请输入有效的邮箱地址" }, { status: 400 });
-    }
-    if (!newRoleLevel) {
-      return NextResponse.json({ error: "请选择角色层级" }, { status: 400 });
-    }
+    const validation = validateBody(inviteUserSchema, body);
+    if (!validation.ok) return validation.response;
+    const { email, name, roleLevel: newRoleLevel, brandIds, processRoleIds, processOwnerScopeId } = validation.data;
 
     // BOSS 是独立公司所有者，不继承邀请人公司
     const isBossInvite = newRoleLevel === RoleLevel.BOSS;

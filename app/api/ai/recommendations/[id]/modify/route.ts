@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { toCamelCase } from "@/lib/db/mappers";
+import { validateBody, aiRecModifySchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -15,11 +16,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { supabase, tenant } = ctx;
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { designId, modifiedDesign } = body;
-
-    if (!modifiedDesign || typeof modifiedDesign !== "object") {
-      return NextResponse.json({ error: "缺少 modifiedDesign" }, { status: 400 });
-    }
+    const validation = validateBody(aiRecModifySchema, body);
+    if (!validation.ok) return validation.response;
+    const { designId, modifiedDesign } = validation.data;
 
     const { data: rec, error: recError } = await supabase
       .from("ai_recommendations")

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { getServiceRoleClient, isServiceRoleConfigured } from "@/lib/db/client";
+import { validateBody, companyUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -36,8 +37,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "无权限修改公司信息" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { name, logoUrl } = body;
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(companyUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, logoUrl } = validation.data;
 
     const updatePayload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),

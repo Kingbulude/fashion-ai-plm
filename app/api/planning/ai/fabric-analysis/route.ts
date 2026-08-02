@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateJsonArray } from "@/lib/ai/json-generation";
+import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningFabricSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -24,8 +26,14 @@ const FALLBACK_FABRICS: FabricRecommendation[] = [
 
 export async function POST(request: Request) {
   try {
+    const ctx = await requireApiAuth(request);
+    if ("error" in ctx) return ctx.error;
+
     const supabase = createServerSupabaseClient(request);
-    const { category, season } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningFabricSchema, body);
+    if (!validation.ok) return validation.response;
+    const { category, season } = validation.data;
 
     const fabricRecommendations = await generateJsonArray<FabricRecommendation>({
       prompt: `你是一位服装面料企划专家。请为「${season || "当季"}」「${category || "女装"}」品类推荐 5 种适合的面料。

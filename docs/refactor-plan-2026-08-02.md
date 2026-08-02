@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 3. 保留 Supabase client 用于 RLS 鉴权，Drizzle 用于类型化查询构建。
 
 ### P1-3 Zod 输入校验
-**优先级：P1（健壮性）**
+**优先级：P1（健壮性）** | **状态：✅ 已完成**
 
 当前 API 路由直接读取 `request.json()` 不做校验，存在注入和脏数据风险。
 
@@ -107,6 +107,13 @@ export async function GET(request: Request) {
 1. 为每个 POST/PUT/PATCH 路由定义 Zod schema。
 2. 在路由入口统一 `safeParse`，失败返回 400。
 3. 抽取公共校验工具 `src/lib/validation/`。
+
+完成范围：
+- 款式 / BOM / 生产 / 采购 / 打样 / 工艺包 / 状态转换 / 供应商 / 销售 / 季次 / 品牌
+- 颜色 / 质检 / 库存 / 组织成员分配 / 邀请用户
+- AI 对话 / 调度 / 图片生成 / 测试结果 / 建议操作 / 销售预测 / 供应商匹配 / 改款 / 营销图
+- 企划及企划 AI 子能力（趋势/定价/色彩/面料/爆款/统筹/对话/趋势分析）
+- 灵感板及素材 / 审批 / 待办 / 个人资料 / 设计反馈 / 公司信息 / 定时任务
 
 ### P1-4 款式状态机校验
 **优先级：P1（业务正确性）**

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/client";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, colorCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -26,7 +27,9 @@ export async function POST(request: Request) {
     const { supabase, tenant } = ctx;
 
     const body = await request.json();
-    const { name, hex, usage, season } = body;
+    const validation = validateBody(colorCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { name, hex, usage, season } = validation.data;
 
     const { data, error } = await supabase
       .from("colors")

@@ -4,15 +4,9 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import { MARKETING_SCENES, type MarketingScene } from "@/lib/ai/marketing-scenes";
+import { validateBody, aiMarketingImagesSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
-
-interface GenerateRequest {
-  styleId: string;
-  sceneIds?: string[]; // 不传则生成全部6个
-  customInstruction?: string; // 用户的额外指令
-  sourceAssetId?: string; // 源设计稿ID
-}
 
 interface GeneratedImage {
   sceneId: string;
@@ -106,12 +100,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
-    const body = (await request.json()) as GenerateRequest;
-    const { styleId, sceneIds, customInstruction, sourceAssetId } = body;
-
-    if (!styleId) {
-      return NextResponse.json({ error: "缺少 styleId" }, { status: 400 });
-    }
+    const body = await request.json();
+    const validation = validateBody(aiMarketingImagesSchema, body);
+    if (!validation.ok) return validation.response;
+    const { styleId, sceneIds, customInstruction, sourceAssetId } = validation.data;
 
     // 1. 拉取款式
     const { data: style } = await supabase
@@ -125,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     // 2. 拉取源资产
-    const sourceAsset = await getSourceAsset(supabase, sourceAssetId);
+    const sourceAsset = await getSourceAsset(supabase, sourceAssetId || undefined);
 
     // 3. 确定要生成的场景
     const targetScenes = sceneIds && sceneIds.length > 0
@@ -140,7 +132,7 @@ export async function POST(request: Request) {
     const promptResults = await Promise.all(
       targetScenes.map(async (scene) => ({
         scene,
-        prompt: await buildScenePrompt({ scene, style, sourceAsset, customInstruction }),
+        prompt: await buildScenePrompt({ scene, style, sourceAsset, customInstruction: customInstruction ?? undefined }),
       }))
     );
 

@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth, withTenant } from "@/lib/auth/tenant-helpers";
+import { validateBody, todoCreateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -66,12 +67,10 @@ export async function POST(request: Request) {
     if ("error" in ctx) return ctx.error;
     const { tenant, supabase } = ctx;
 
-    const body = await request.json();
-    const { title, description, type, priority, targetTable, targetId, assignedTo, dueDate } = body;
-
-    if (!title) {
-      return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(todoCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { title, description, type, priority, targetTable, targetId, assignedTo, dueDate } = validation.data;
 
     const fallbackTenant = { company_id: DEFAULT_COMPANY, brand_id: DEFAULT_BRAND, season_id: null };
 

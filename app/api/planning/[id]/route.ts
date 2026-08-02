@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, planningUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -30,8 +31,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
     const { supabase } = ctx;
 
     const { id } = await params;
-    const body = await request.json();
-    const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags } = body;
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(planningUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { season, theme, category, targetCost, timeline, aiTrendAnalysis, inspirationTags } = validation.data;
 
     const updateData: Record<string, unknown> = {};
     if (season !== undefined) updateData.season = season;

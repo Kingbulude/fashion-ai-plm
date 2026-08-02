@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RoleLevel } from "@/lib/auth/rbac";
 import { logOperation } from "@/lib/auth/audit";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
+import { validateBody, approvalCreateSchema, approvalUpdateSchema } from "@/lib/validation/schemas";
 
 export const runtime = "edge";
 
@@ -43,12 +44,10 @@ export async function POST(request: Request) {
     if ("error" in ctx) return ctx.error;
     const { supabase } = ctx;
 
-    const body = await request.json();
-    const { brandId, tableName, recordId, action, proposedData } = body;
-
-    if (!tableName || !recordId || !action || !proposedData) {
-      return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(approvalCreateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { brandId, tableName, recordId, action, proposedData } = validation.data;
 
     const { data, error } = await supabase
       .from("approval_flows")
@@ -103,12 +102,10 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden - 无审批权限" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { id, status, reviewComment } = body;
-
-    if (!id || !status || !["approved", "rejected"].includes(status)) {
-      return NextResponse.json({ error: "参数错误" }, { status: 400 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const validation = validateBody(approvalUpdateSchema, body);
+    if (!validation.ok) return validation.response;
+    const { id, status, reviewComment } = validation.data;
 
     // 获取审批申请
     const { data: approval, error: fetchError } = await supabase
