@@ -143,6 +143,13 @@ export function isValidTransition(from: StyleStatus, to: StyleStatus, event: str
   );
 }
 
+// 是否存在从 from → to 的合法转换（不关心具体事件）
+// 用于款式更新 API 校验状态变更合法性
+export function canTransitionTo(from: StyleStatus, to: StyleStatus): boolean {
+  if (from === to) return true; // 状态未变更，允许
+  return STYLE_TRANSITIONS.some((t) => t.from === from && t.to === to);
+}
+
 // 款式状态 → 工序节点映射（用于确定待办负责人）
 export function statusToProcessNode(status: StyleStatus): string | null {
   const map: Record<StyleStatus, string | null> = {

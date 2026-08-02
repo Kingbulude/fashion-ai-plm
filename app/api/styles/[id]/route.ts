@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { toCamelCase } from "@/lib/db/mappers";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 import { hasPermission, Permission, RoleLevel } from "@/lib/auth/rbac";
+import { canTransitionTo, type StyleStatus } from "@/lib/workflow/style-state-machine";
 
 export const runtime = "edge";
 
@@ -92,9 +93,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
     // 校验目标款式是否在可访问品牌内
     const { data: existingStyle } = await supabase
       .from("styles")
-      .select("id, brand_id, style_no")
+      .select("id, brand_id, style_no, status")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (!existingStyle || !allowedBrandIds.includes(existingStyle.brand_id)) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
@@ -110,7 +111,18 @@ export async function PUT(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "款号已存在" }, { status: 400 });
     }
 
-    const { data, error } = await supabase.from("styles").update({
+    // 状态机校验：若请求包含 status 且与当前状态不同，必须为合法转换
+    const currentStatus = existingStyle.status as StyleStatus;
+    const targetStatus = (status as StyleStatus) || currentStatus;
+    if (status && !canTransitionTo(currentStatus, targetStatus)) {
+      return NextResponse.json(
+        { error: `非法状态流转：${currentStatus} → ${targetStatus}` },
+        { status: 409 }
+      );
+    }
+
+    // 仅更新提供的字段；未传 status 时保持原状态（避免误重置为 planning）
+    const updatePayload: Record<string, unknown> = {
       style_no: styleNo,
       name,
       season,
@@ -118,9 +130,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
       description,
       target_cost: targetCost ? Number(targetCost) : null,
       actual_cost: actualCost ? Number(actualCost) : null,
-      status: status || "planning",
       updated_at: new Date(),
-    }).eq("id", id).in("brand_id", allowedBrandIds).select().single();
+    };
+    if (status) {
+      updatePayload.status = targetStatus;
+    }
+
+    const { data, error } = await supabase.from("styles").update(updatePayload).eq("id", id).in("brand_id", allowedBrandIds).select().maybeSingle();
 
     if (error || !data) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
