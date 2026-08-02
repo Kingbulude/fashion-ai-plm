@@ -91,7 +91,7 @@
   - 新增 `ai_images`（migration 047）/ `ai_test_results`（migration 003 + 047）
 
 ### P1-2 启用 Drizzle ORM
-**优先级：P1（类型安全）**
+**优先级：P1（类型安全）** | **状态：🟡 部分完成（schema + 表名常量已就位；运行时 query builder 待 DATABASE_URL 决策）**
 
 当前 API 路由大量使用裸字符串 SQL 表名（`supabase.from("styles")`），无类型安全。
 
@@ -99,6 +99,17 @@
 1. 在 `src/lib/db/schema.ts` 完整定义所有业务表 schema（与 migration 对齐）。
 2. 引入 Drizzle query builder 封装，逐步替换裸查询。
 3. 保留 Supabase client 用于 RLS 鉴权，Drizzle 用于类型化查询构建。
+
+已完成：
+- ✅ `src/lib/db/schema.ts` 与 migration 对齐（P0-4 已完成 planning / inspiration_boards / ai_images / ai_test_results 等表定义）
+- ✅ 新增 `src/lib/db/tables.ts`：集中导出所有表名常量（`TABLES.styles` / `TABLES.salesRecords` 等），作为表名真相来源，防止 `sales` vs `sales_records` 类拼写错误
+
+待决策（暂缓）：
+- ⏸️ Drizzle 运行时 query builder：需要 `DATABASE_URL`（直连 Postgres 连接串，非 Supabase REST URL）。Drizzle 直连 Postgres 会绕过 Supabase RLS，需决策：
+  - 方案 A：Drizzle 仅用于 service_role 后台任务（RLS 由应用层保证）
+  - 方案 B：Drizzle 连接时 `SET ROLE authenticated` + 设置 `request.jwt.claims`，复用 Postgres RLS（复杂）
+  - 方案 C：暂不引入 Drizzle 运行时，仅保留 schema 作为类型契约与 migration 真相源（当前状态）
+- ⏸️ 建议采用方案 C，待项目有明确的批量查询/复杂 JOIN 性能瓶颈时再评估方案 A/B
 
 ### P1-3 Zod 输入校验
 **优先级：P1（健壮性）** | **状态：✅ 已完成**
