@@ -43,7 +43,7 @@
 ## 三、待办任务（按优先级排序）
 
 ### P0-3 强制 RLS：迁移 API 路由从 dbAdmin → createServerSupabaseClient
-**优先级：P0（安全）** | **依赖：P1-7 已完成**
+**优先级：P0（安全）** | **依赖：P1-7 已完成** | **状态：✅ 已完成**
 
 当前仍有 10 个 API 路由文件使用 `dbAdmin`（service_role，绕过 RLS），必须迁移到 `createServerSupabaseClient(request)` 以强制行级安全。
 
@@ -59,26 +59,16 @@
 9. `app/api/ai/image-redesign/route.ts`
 10. `app/api/planning/ai/brand-dna/route.ts`
 
-迁移模式：
-```typescript
-// Before
-import { dbAdmin } from "@/lib/db/client";
-export async function GET() {
-  const { data } = await dbAdmin.from("colors").select("*");
-  return NextResponse.json(data);
-}
+以上 10 个文件均已迁移至 `createServerSupabaseClient(request)`，不再使用 `dbAdmin`。
 
-// After
-import { createServerSupabaseClient } from "@/lib/db/client";
-export async function GET(request: Request) {
-  const supabase = createServerSupabaseClient(request);
-  const { data } = await supabase.from("colors").select("*");
-  return NextResponse.json(data);
-}
-```
+保留 service_role 的合理场景（经审计）：
+- `organization/*`：人员管理需读取全公司成员（绕过 RLS 读取 profiles）
+- `organization/invite`：调用 Supabase Admin API 创建用户
+- `process-links` / `process-owner-scopes` / `process-roles`：全局工序配置表，无 tenant 字段
+- `ai-skills`：全局 AI 技能配置，含 service_role 不可用时的回退逻辑
 
 ### P0-4 统一 Schema 表名真相来源
-**优先级：P0（数据一致性）**
+**优先级：P0（数据一致性）** | **状态：✅ 已完成**
 
 问题：Drizzle schema 用 `sales_data`，migration 用 `sales_records`，部分 API 查询用 `sales`。表名不一致导致查询失败。
 
@@ -87,6 +77,18 @@ export async function GET(request: Request) {
 2. 修正 Drizzle schema（`src/lib/db/schema.ts`）中所有不一致的表名。
 3. 修正 API 路由中所有错误的表名引用。
 4. 新增 migration `012_unify_table_names.sql` 仅做必要的视图/别名兼容（不改物理表名，避免数据迁移风险）。
+
+完成范围：
+- API 表名修正：`test_results` → `ai_test_results`（`app/api/ai/test-results/route.ts`、`app/api/ai/analyze-test/[styleId]/route.ts`）
+- 新增 migration `047_fix_ai_tables_and_rls.sql`：
+  - 创建 API 引用但 migration 缺失的 `ai_images` 表（含 RLS）
+  - 扩展 `ai_test_results` 表，补齐 API 所需列（`image_id`/`style_name`/`target_audience`/`test_duration`/`status`/`positive_count`/`negative_count`），并将 `style_id` 改为可空
+  - 修复 migration 030 中 `inventory_records`/`sales_records`/`aftersales_records` 的表名错误 RLS（原误用 `inventory`/`sales_data`/`after_sales`）
+- Drizzle schema（`src/lib/db/schema.ts`）对齐 migration：
+  - `planning` 表列对齐 migration 003 + 037（`theme`/`category`/`target_cost`/`timeline`/`brand_story`/`target_audience`/`price_range`/`ai_trend_analysis`/`inspiration_tags` + 租户字段；删除原错误的 `name`/`start_date`/`end_date`/`category_structure`/`cost_target`/`ai_plan_suggestion`）
+  - 删除已废弃的 `mood_boards` / `mood_board_shapes` / `mood_board_areas` / `mood_board_assets`（无活跃 migration 定义）
+  - 新增 `inspiration_boards` / `inspiration_items`（migration 020）
+  - 新增 `ai_images`（migration 047）/ `ai_test_results`（migration 003 + 047）
 
 ### P1-2 启用 Drizzle ORM
 **优先级：P1（类型安全）**
@@ -116,7 +118,7 @@ export async function GET(request: Request) {
 - 灵感板及素材 / 审批 / 待办 / 个人资料 / 设计反馈 / 公司信息 / 定时任务
 
 ### P1-4 款式状态机校验
-**优先级：P1（业务正确性）**
+**优先级：P1（业务正确性）** | **状态：✅ 已完成**
 
 款式状态流转（draft → design → sample → production → archived）目前无服务端校验，前端可任意绕过。
 
@@ -124,6 +126,11 @@ export async function GET(request: Request) {
 1. 在 `src/lib/styles/state-machine.ts` 定义合法状态流转图。
 2. 在款式更新 API 中校验状态变更合法性。
 3. 非法流转返回 409 Conflict。
+
+实现位置：
+- `src/lib/workflow/style-state-machine.ts`：状态流转图 + `canTransitionTo` / `isValidTransition`
+- `app/api/styles/[id]/route.ts`：PUT 接入状态机校验，非法流转返回 409
+- `app/api/styles/[id]/transitions/route.ts`：转换执行路由 + Zod 校验
 
 ### P2 及以后（暂列，本轮不实现）
 - P2-1：Cloudflare R2 文件存储替换 Supabase Storage

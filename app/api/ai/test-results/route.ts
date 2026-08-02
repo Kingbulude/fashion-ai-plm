@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   try {
     const supabase = createServerSupabaseClient(request);
     const { data, error } = await supabase
-      .from("test_results")
+      .from("ai_test_results")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const { data, error } = await supabase
-      .from("test_results")
+      .from("ai_test_results")
       .insert([{
         image_id: imageId,
         style_name: imageData?.style_name || "未命名",

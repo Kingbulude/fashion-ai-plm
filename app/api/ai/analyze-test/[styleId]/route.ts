@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     const supabase = createServerSupabaseClient(request);
 
     const { data: testData } = await supabase
-      .from("test_results")
+      .from("ai_test_results")
       .select("*")
       .eq("style_id", styleId)
       .order("created_at", { ascending: false })

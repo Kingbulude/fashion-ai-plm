@@ -266,69 +266,61 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// 企划表（以 migration 003_additional_tables.sql + 037_planning_season_tenant.sql 为准）
 export const planning = pgTable("planning", {
   id: uuid("id").primaryKey().defaultRandom(),
   season: text("season").notNull(),
-  name: text("name").notNull(),
-  startDate: date("start_date"),
-  endDate: date("end_date"),
-  categoryStructure: jsonb("category_structure"),
-  costTarget: numeric("cost_target"),
-  aiTrendAnalysis: text("ai_trend_analysis"),
-  aiPlanSuggestion: text("ai_plan_suggestion"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const moodBoards = pgTable("mood_boards", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  planningId: uuid("planning_id").references(() => planning.id),
-  name: text("name").notNull(),
-  thumbnailUrl: text("thumbnail_url"),
-  canvasWidth: numeric("canvas_width"),
-  canvasHeight: numeric("canvas_height"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const moodBoardShapes = pgTable("mood_board_shapes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  boardId: uuid("board_id").notNull().references(() => moodBoards.id),
-  type: text("type").notNull(),
-  x: numeric("x").notNull(),
-  y: numeric("y").notNull(),
-  width: numeric("width").notNull(),
-  height: numeric("height").notNull(),
-  rotation: numeric("rotation").default("0"),
-  zIndex: integer("z_index").default(0),
-  props: jsonb("props"),
-  areaId: text("area_id"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const moodBoardAreas = pgTable("mood_board_areas", {
-  id: text("id").primaryKey(),
-  boardId: uuid("board_id").notNull().references(() => moodBoards.id),
-  x: integer("x").notNull(),
-  y: integer("y").notNull(),
-  width: integer("width").notNull(),
-  height: integer("height").notNull(),
-  snapshotUrl: text("snapshot_url"),
-  snapshotTime: timestamp("snapshot_time"),
-  isDirty: boolean("is_dirty").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const moodBoardAssets = pgTable("mood_board_assets", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  boardId: uuid("board_id").notNull().references(() => moodBoards.id),
-  assetId: uuid("asset_id").references(() => designAssets.id),
-  shapeId: uuid("shape_id").references(() => moodBoardShapes.id),
-  aiTags: jsonb("ai_tags"),
-  aiColorPalette: jsonb("ai_color_palette"),
+  theme: text("theme").notNull(),
   category: text("category"),
+  targetCost: numeric("target_cost"),
+  timeline: text("timeline"),
+  brandStory: text("brand_story"),
+  targetAudience: text("target_audience"),
+  priceRange: text("price_range"),
+  aiTrendAnalysis: text("ai_trend_analysis"),
+  inspirationTags: jsonb("inspiration_tags"),
+  // 租户字段（migration 037 新增）
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  seasonId: uuid("season_id").references(() => seasons.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// 灵感板表（以 migration 020_inspiration_board.sql 为准；旧 mood_boards 系列已废弃）
+export const inspirationBoards = pgTable("inspiration_boards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id").notNull().references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  seasonId: uuid("season_id").references(() => seasons.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  themeTags: text("theme_tags").array().default([]),
+  coverImageUrl: text("cover_image_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const inspirationItems = pgTable("inspiration_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id").notNull().references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  boardId: uuid("board_id").notNull().references(() => inspirationBoards.id),
+  title: text("title"),
+  description: text("description"),
+  imageUrl: text("image_url").notNull(),
+  sourceUrl: text("source_url"),
+  sourceType: text("source_type").default("upload"),
+  tags: text("tags").array().default([]),
+  category: text("category"),
+  colorTags: text("color_tags").array().default([]),
+  styleTags: text("style_tags").array().default([]),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // 公司表
@@ -523,4 +515,42 @@ export const aiSkillMetrics = pgTable("ai_skill_metrics", {
   modifiedCount: integer("modified_count").notNull().default(0),
   avgOutcomeScore: numeric("avg_outcome_score"),
   recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+});
+
+// AI 生图记录表（以 migration 047_fix_ai_tables_and_rls.sql 为准）
+export const aiImages = pgTable("ai_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  styleId: uuid("style_id").references(() => styles.id),
+  styleName: text("style_name").notNull().default("未命名"),
+  description: text("description"),
+  styleType: text("style_type").notNull().default("realistic"),
+  colors: text("colors").array(),
+  imageUrl: text("image_url").notNull(),
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// AI 测款结果表（以 migration 003_additional_tables.sql + 047_fix_ai_tables_and_rls.sql 为准）
+// 注意：style_id 经 047 改为可空；image_id/style_name/target_audience/test_duration/status/
+//       positive_count/negative_count 由 047 新增；brand_id/company_id 由 011 新增
+export const aiTestResults = pgTable("ai_test_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  styleId: uuid("style_id").references(() => styles.id),
+  imageId: uuid("image_id").references(() => aiImages.id),
+  styleName: text("style_name").notNull().default("未命名"),
+  aiImageUrl: text("ai_image_url"),
+  testScore: numeric("test_score"),
+  feedbackCount: numeric("feedback_count"),
+  feedbackSummary: text("feedback_summary"),
+  suggestedQuantity: numeric("suggested_quantity"),
+  targetAudience: text("target_audience"),
+  testDuration: integer("test_duration").notNull().default(7),
+  status: text("status").notNull().default("active"),
+  positiveCount: integer("positive_count").notNull().default(0),
+  negativeCount: integer("negative_count").notNull().default(0),
+  companyId: uuid("company_id").references(() => companies.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
