@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import { MARKETING_SCENES, type MarketingScene } from "@/lib/ai/marketing-scenes";
@@ -86,13 +87,13 @@ async function buildScenePrompt(params: {
   return parsed.prompt.slice(0, 800);
 }
 
-async function getSourceAsset(assetId?: string) {
+async function getSourceAsset(supabase: SupabaseClient, assetId?: string) {
   if (!assetId) return null;
-  const { data } = await dbAdmin
+  const { data } = await supabase
     .from("design_assets")
     .select("id, file_url, file_name, ai_tags, ai_analysis")
     .eq("id", assetId)
-    .single();
+    .maybeSingle();
   return data;
 }
 
@@ -104,6 +105,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const body = (await request.json()) as GenerateRequest;
     const { styleId, sceneIds, customInstruction, sourceAssetId } = body;
 
@@ -112,18 +114,18 @@ export async function POST(request: Request) {
     }
 
     // 1. 拉取款式
-    const { data: style } = await dbAdmin
+    const { data: style } = await supabase
       .from("styles")
       .select("id, name, style_no, category, season, description, ai_tags, ai_color_palette, brand_id, company_id")
       .eq("id", styleId)
-      .single();
+      .maybeSingle();
 
     if (!style) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
     // 2. 拉取源资产
-    const sourceAsset = await getSourceAsset(sourceAssetId);
+    const sourceAsset = await getSourceAsset(supabase, sourceAssetId);
 
     // 3. 确定要生成的场景
     const targetScenes = sceneIds && sceneIds.length > 0
@@ -151,7 +153,7 @@ export async function POST(request: Request) {
 
       // 保存为设计资产
       const fileName = `AI营销图_${scene.label}_${style.name}_${Date.now()}.png`;
-      const { data: savedAsset, error } = await dbAdmin
+      const { data: savedAsset, error } = await supabase
         .from("design_assets")
         .insert({
           style_id: styleId,

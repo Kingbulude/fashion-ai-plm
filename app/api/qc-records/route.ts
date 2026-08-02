@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data, error } = await dbAdmin
+    const supabase = createServerSupabaseClient(request);
+    const { data, error } = await supabase
       .from("qc_records")
       .select("*")
       .order("created_at", { ascending: false });
-    
+
     if (error) throw error;
     return NextResponse.json(data || []);
   } catch (err) {
@@ -19,16 +20,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const body = await request.json();
     const { styleId, process, result, defects, batch } = body;
-    
-    const { data: styleData } = await dbAdmin
+
+    const { data: styleData } = await supabase
       .from("styles")
       .select("name")
       .eq("id", styleId)
-      .single();
-    
-    const { data, error } = await dbAdmin
+      .maybeSingle();
+
+    const { data, error } = await supabase
       .from("qc_records")
       .insert([{
         style_id: styleId || null,
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
         batch: batch || null,
       }])
       .select();
-    
+
     if (error) throw error;
     return NextResponse.json(data?.[0] || {}, { status: 201 });
   } catch (err) {

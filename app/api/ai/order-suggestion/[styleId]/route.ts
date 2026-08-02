@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import {
@@ -42,23 +42,24 @@ function buildFallbackSuggestion(styleName?: string): OrderSuggestionResult {
   };
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { styleId } = await params;
+    const supabase = createServerSupabaseClient(request);
 
     // 1. 拉取款式基础信息
-    const { data: style } = await dbAdmin
+    const { data: style } = await supabase
       .from("styles")
-      .select("id, name, style_no, category, season, target_cost, actual_cost, description, ai_tags, ai_color_palette")
+      .select("id, name, style_no, category, season, target_cost, actual_cost, description, ai_tags, ai_color_palette, brand_id, company_id")
       .eq("id", styleId)
-      .single();
+      .maybeSingle();
 
     if (!style) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
     // 2. 拉取最近 30 天历史销售数据
-    const { data: salesHistory } = await dbAdmin
+    const { data: salesHistory } = await supabase
       .from("sales_records")
       .select("quantity, unit_price, total_amount, color, size, sale_date")
       .eq("style_id", styleId)
@@ -72,16 +73,16 @@ export async function GET(_request: Request, { params }: RouteContext) {
     );
 
     // 3. 拉取最近一次 AI 测款结果
-    const { data: aiTestResult } = await dbAdmin
+    const { data: aiTestResult } = await supabase
       .from("ai_test_results")
       .select("test_score, feedback_count, feedback_summary, suggested_quantity")
       .eq("style_id", styleId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     // 4. 拉取 BOM 单耗与成本（用于估算单件成本）
-    const { data: bomItems } = await dbAdmin
+    const { data: bomItems } = await supabase
       .from("bom_items")
       .select("material_name, unit_consumption, unit_price, material_type")
       .eq("style_id", styleId);
@@ -93,7 +94,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     const unitCost = Number(style.actual_cost) || Number(style.target_cost) || materialCost || 0;
 
     // 5. 拉取当前库存（用于判断是否需要补货）
-    const { data: inventory } = await dbAdmin
+    const { data: inventory } = await supabase
       .from("inventory_records")
       .select("quantity")
       .eq("style_id", styleId);
@@ -175,6 +176,7 @@ AI 测款结果：
       aiRoleLevel: AIRoleLevel.AI_SPECIALIST,
       specialistType: AISpecialistType.STOCKING_AI,
       processNode: "stocking",
+      brandId: style.brand_id || undefined,
       type: AISuggestionType.DECISION,
       priority: AISuggestionPriority.HIGH,
       title: `下单建议：${style.name} 首单 ${suggestion.suggestedQuantity} 件`,
@@ -200,6 +202,7 @@ AI 测款结果：
       },
       targetTable: "production_orders",
       targetId: styleId,
+      supabase,
     });
 
     return NextResponse.json({

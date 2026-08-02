@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import {
@@ -105,23 +105,24 @@ function buildRuleBasedSimulation(params: {
   };
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { styleId } = await params;
+    const supabase = createServerSupabaseClient(request);
 
     // 1. 拉取款式信息
-    const { data: style } = await dbAdmin
+    const { data: style } = await supabase
       .from("styles")
-      .select("id, name, style_no, category, season, target_cost, actual_cost, retail_price, status")
+      .select("id, name, style_no, category, season, target_cost, actual_cost, retail_price, status, brand_id, company_id")
       .eq("id", styleId)
-      .single();
+      .maybeSingle();
 
     if (!style) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
 
     // 2. 拉取最近 60 天销售记录
-    const { data: salesHistory } = await dbAdmin
+    const { data: salesHistory } = await supabase
       .from("sales_records")
       .select("quantity, unit_price, total_amount, color, size, sale_date, channel")
       .eq("style_id", styleId)
@@ -143,7 +144,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       : 0;
 
     // 4. 当前库存
-    const { data: inventory } = await dbAdmin
+    const { data: inventory } = await supabase
       .from("inventory_records")
       .select("quantity")
       .eq("style_id", styleId);
@@ -279,6 +280,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         aiRoleLevel: AIRoleLevel.AI_SPECIALIST,
         specialistType: AISpecialistType.STOCKING_AI,
         processNode: "stocking",
+        brandId: style.brand_id || undefined,
         type: AISuggestionType.DECISION,
         priority:
           simulation.urgentLevel === "high"
@@ -306,6 +308,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         },
         targetTable: "production_orders",
         targetId: styleId,
+        supabase,
       });
     }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
@@ -29,9 +29,10 @@ function buildImagePrompt(params: {
   return { prompt: prompt.slice(0, 800), size: "square" };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data, error } = await dbAdmin
+    const supabase = createServerSupabaseClient(request);
+    const { data, error } = await supabase
       .from("ai_images")
       .select("*")
       .order("created_at", { ascending: false });
@@ -45,6 +46,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const body = await request.json();
     const { styleName, styleId, description, styleType, colors } = body;
 
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
 
     const imageUrl = `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${size}`;
 
-    const { data, error } = await dbAdmin
+    const { data, error } = await supabase
       .from("ai_images")
       .insert([{
         style_id: styleId || null,

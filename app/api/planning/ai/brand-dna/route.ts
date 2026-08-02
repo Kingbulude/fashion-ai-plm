@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
 import { requireApiAuth } from "@/lib/auth/tenant-helpers";
 
 export const runtime = "edge";
@@ -8,7 +7,8 @@ export async function GET(request: Request) {
   try {
     const ctx = await requireApiAuth(request);
     if ("error" in ctx) return ctx.error;
-    const { data, error } = await dbAdmin.from("brand_dna").select("*").limit(1).single();
+    const { supabase } = ctx;
+    const { data, error } = await supabase.from("brand_dna").select("*").limit(1).maybeSingle();
     
     if (error) {
       return NextResponse.json({

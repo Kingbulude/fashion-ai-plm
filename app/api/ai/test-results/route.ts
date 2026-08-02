@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { data, error } = await dbAdmin
+    const supabase = createServerSupabaseClient(request);
+    const { data, error } = await supabase
       .from("test_results")
       .select("*")
       .order("created_at", { ascending: false });
-    
+
     if (error) throw error;
     return NextResponse.json(data || []);
   } catch (err) {
@@ -19,16 +20,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const body = await request.json();
     const { imageId, targetAudience, testDuration } = body;
-    
-    const { data: imageData } = await dbAdmin
+
+    const { data: imageData } = await supabase
       .from("ai_images")
       .select("style_name")
       .eq("id", imageId)
-      .single();
-    
-    const { data, error } = await dbAdmin
+      .maybeSingle();
+
+    const { data, error } = await supabase
       .from("test_results")
       .insert([{
         image_id: imageId,
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
         negative_count: 0,
       }])
       .select();
-    
+
     if (error) throw error;
     return NextResponse.json(data?.[0] || {}, { status: 201 });
   } catch (err) {

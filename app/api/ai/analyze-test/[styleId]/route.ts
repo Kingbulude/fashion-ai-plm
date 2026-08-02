@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
 
 export const runtime = "edge";
 
 type RouteContext = { params: Promise<{ styleId: string }> };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { styleId } = await params;
-    
-    const { data: testData } = await dbAdmin
+    const supabase = createServerSupabaseClient(request);
+
+    const { data: testData } = await supabase
       .from("test_results")
       .select("*")
       .eq("style_id", styleId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     
     const feedbackCount = testData?.feedback_count || Math.floor(Math.random() * 200) + 50;
     const positiveCount = Math.floor(feedbackCount * (0.6 + Math.random() * 0.3));

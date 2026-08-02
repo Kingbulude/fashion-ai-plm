@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { dbAdmin } from "@/lib/db/client";
+import { createServerSupabaseClient } from "@/lib/db/client";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "@/lib/ai/cloudflare-ai";
 import { safeJsonParse } from "@/lib/pipeline/steps";
 import { REDESIGN_PRESETS } from "@/lib/ai/redesign-presets";
@@ -14,23 +15,23 @@ interface RedesignPlan {
 }
 
 // 拉取源资产 + 款式信息
-async function getSourceContext(assetId: string | undefined, styleId: string) {
+async function getSourceContext(supabase: SupabaseClient, assetId: string | undefined, styleId: string) {
   let sourceAsset: any = null;
 
   if (assetId) {
-    const { data } = await dbAdmin
+    const { data } = await supabase
       .from("design_assets")
       .select("id, file_url, file_name, ai_tags, ai_analysis, type")
       .eq("id", assetId)
-      .single();
+      .maybeSingle();
     sourceAsset = data;
   }
 
-  const { data: style } = await dbAdmin
+  const { data: style } = await supabase
     .from("styles")
     .select("id, name, style_no, category, season, description, ai_tags, ai_color_palette, brand_id, company_id")
     .eq("id", styleId)
-    .single();
+    .maybeSingle();
 
   return { sourceAsset, style };
 }
@@ -106,6 +107,7 @@ async function buildRedesignPrompt(params: {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createServerSupabaseClient(request);
     const body = await request.json();
     const { styleId, sourceAssetId, instruction, saveAsAsset = true } = body;
 
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     // 1. 获取款式 + 源资产
-    const { sourceAsset, style } = await getSourceContext(sourceAssetId, styleId);
+    const { sourceAsset, style } = await getSourceContext(supabase, sourceAssetId, styleId);
     if (!style) {
       return NextResponse.json({ error: "款式不存在" }, { status: 404 });
     }
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
     let savedAsset: any = null;
     if (saveAsAsset) {
       const fileName = `AI改款_${style.name}_${Date.now()}.png`;
-      const { data, error } = await dbAdmin
+      const { data, error } = await supabase
         .from("design_assets")
         .insert({
           style_id: styleId,
