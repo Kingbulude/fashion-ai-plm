@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Grid3X3,
   LayoutList,
+  PenTool,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TldrawBoard, type BoardCanvasShapeMeta } from "@/components/planning/tldraw-board";
 
 interface InspirationItem {
   id: string;
@@ -52,7 +54,7 @@ export default function InspirationBoardDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "masonry">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "masonry" | "canvas">("grid");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InspirationItem | null>(null);
@@ -203,6 +205,18 @@ export default function InspirationBoardDetailPage() {
                 <LayoutList className="h-3.5 w-3.5" />
                 瀑布流
               </button>
+              <button
+                onClick={() => setViewMode("canvas")}
+                className={`px-3 h-8 text-xs font-medium flex items-center gap-1 rounded-lg transition-all ${
+                  viewMode === "canvas"
+                    ? "bg-navy-700 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="自由画布：基于 tldraw"
+              >
+                <PenTool className="h-3.5 w-3.5" />
+                画布
+              </button>
             </div>
             <Button
               onClick={() => setDialogOpen(true)}
@@ -260,6 +274,28 @@ export default function InspirationBoardDetailPage() {
             <Loader2 className="h-5 w-5 animate-spin" />
             加载中...
           </div>
+        ) : viewMode === "canvas" ? (
+          <TldrawBoard
+            boardId={boardId}
+            initialItems={filteredItems.map((it) => ({
+              id: it.id,
+              title: it.title,
+              description: it.description,
+              imageUrl: it.imageUrl,
+              sourceUrl: it.sourceUrl,
+              sourceType: it.sourceType,
+              tags: it.tags,
+              category: it.category,
+            }))}
+            onShapeMetaChange={(_meta: BoardCanvasShapeMeta & {
+              shapeId: string;
+              shapeType: string;
+              event: "create" | "update" | "delete";
+            }) => {
+              // 预留：用户在画布操作后可触发数据库同步
+            }}
+            className="mt-2"
+          />
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mx-auto mb-4">
