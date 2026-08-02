@@ -203,38 +203,50 @@ export const qcRecords = pgTable("qc_records", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const inventory = pgTable("inventory", {
+export const inventoryRecords = pgTable("inventory_records", {
   id: uuid("id").primaryKey().defaultRandom(),
   styleId: uuid("style_id").notNull().references(() => styles.id),
   color: text("color").notNull(),
   size: text("size").notNull(),
-  quantity: integer("quantity").notNull().default(0),
-  warehouse: text("warehouse"),
+  quantity: numeric("quantity").notNull().default("0"),
+  batchNo: text("batch_no"),
+  costPrice: numeric("cost_price"),
+  companyId: uuid("company_id"),
+  brandId: uuid("brand_id"),
+  seasonId: uuid("season_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const salesData = pgTable("sales_data", {
+export const salesRecords = pgTable("sales_records", {
   id: uuid("id").primaryKey().defaultRandom(),
   styleId: uuid("style_id").notNull().references(() => styles.id),
-  channel: text("channel").notNull(),
-  color: text("color"),
-  size: text("size"),
-  quantity: integer("quantity").notNull(),
-  revenue: numeric("revenue"),
-  date: date("date").notNull(),
-  aiInsight: text("ai_insight"),
+  orderNo: text("order_no").unique().notNull(),
+  color: text("color").notNull(),
+  size: text("size").notNull(),
+  quantity: numeric("quantity").notNull(),
+  unitPrice: numeric("unit_price").notNull(),
+  totalAmount: numeric("total_amount").notNull(),
+  channel: text("channel"),
+  saleDate: date("sale_date").notNull().defaultNow(),
+  companyId: uuid("company_id"),
+  brandId: uuid("brand_id"),
+  seasonId: uuid("season_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const afterSales = pgTable("after_sales", {
+export const aftersalesRecords = pgTable("aftersales_records", {
   id: uuid("id").primaryKey().defaultRandom(),
   styleId: uuid("style_id").notNull().references(() => styles.id),
-  type: afterSalesTypeEnum("type"),
-  description: text("description"),
-  photoUrls: jsonb("photo_urls"),
-  aiCategorization: text("ai_categorization"),
-  aiDesignSuggestion: text("ai_design_suggestion"),
-  resolved: boolean("resolved").notNull().default(false),
+  salesRecordId: uuid("sales_record_id").references(() => salesRecords.id),
+  type: text("type").notNull().default("return"),
+  reason: text("reason"),
+  quantity: numeric("quantity").notNull(),
+  amount: numeric("amount"),
+  status: text("status").notNull().default("pending"),
+  solution: text("solution"),
+  companyId: uuid("company_id"),
+  brandId: uuid("brand_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

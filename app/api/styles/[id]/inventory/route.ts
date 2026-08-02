@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const { data, error } = await supabase
-      .from("inventory")
+      .from("inventory_records")
       .select("*")
       .eq("style_id", id)
       .order("color")
@@ -54,17 +54,17 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json();
-    const { color, size, quantity, warehouse } = body;
+    const { color, size, quantity } = body;
 
     if (!color || !size || quantity === undefined) {
       return NextResponse.json({ error: "颜色、尺码和数量不能为空" }, { status: 400 });
     }
 
-    const existing = await supabase.from("inventory").select("id, quantity").eq("style_id", id).eq("color", color).eq("size", size).single();
-    
+    const existing = await supabase.from("inventory_records").select("id, quantity").eq("style_id", id).eq("color", color).eq("size", size).maybeSingle();
+
     if (existing.data) {
       const newQuantity = Number(existing.data.quantity) + Number(quantity);
-      const { data, error } = await supabase.from("inventory").update({ quantity: newQuantity, warehouse }).eq("id", existing.data.id).select().single();
+      const { data, error } = await supabase.from("inventory_records").update({ quantity: newQuantity }).eq("id", existing.data.id).select().maybeSingle();
       if (error) {
         return NextResponse.json({ error: "更新库存失败" }, { status: 500 });
       }
@@ -72,16 +72,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const { data, error } = await supabase
-      .from("inventory")
+      .from("inventory_records")
       .insert({
         style_id: id,
         color,
         size,
         quantity: Number(quantity),
-        warehouse: warehouse || null,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json({ error: "创建库存记录失败" }, { status: 500 });

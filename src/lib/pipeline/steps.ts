@@ -76,10 +76,10 @@ export async function getBomItems(styleId: string) {
 // ─── 获取款式历史销售 ───
 export async function getSalesHistory(styleId: string, limit = 30) {
   const { data } = await dbAdmin
-    .from("sales_data")
+    .from("sales_records")
     .select("*")
     .eq("style_id", styleId)
-    .order("date", { ascending: false })
+    .order("sale_date", { ascending: false })
     .limit(limit);
   return data || [];
 }

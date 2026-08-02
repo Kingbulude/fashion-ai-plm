@@ -72,9 +72,9 @@ export const dailyCheckinPipeline: Pipeline = {
             .select("id, quantity")
             .gte("created_at", today),
           dbAdmin
-            .from("sales_data")
-            .select("quantity, revenue")
-            .eq("date", today),
+            .from("sales_records")
+            .select("quantity, total_amount")
+            .eq("sale_date", today),
           dbAdmin
             .from("ai_suggestions")
             .select("type, status")
@@ -82,7 +82,7 @@ export const dailyCheckinPipeline: Pipeline = {
         ]);
 
         const totalSales = (sales.data || []).reduce(
-          (s, r) => s + (r.revenue || 0),
+          (s, r) => s + (r.total_amount || 0),
           0
         );
         const totalSalesQty = (sales.data || []).reduce(
